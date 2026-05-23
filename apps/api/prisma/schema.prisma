@@ -6,3 +6,341 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum RateableKind {
+  work
+  list
+
+  @@map("rateable_kind")
+}
+
+enum WorkKind {
+  movie
+  show
+  season
+  episode
+  book
+
+  @@map("work_kind")
+}
+
+enum ContentKind {
+  movie
+  episode
+  book
+
+  @@map("content_kind")
+}
+
+enum ListVisibility {
+  public
+  friends
+  private
+
+  @@map("list_visibility")
+}
+
+enum ProgressStatus {
+  started
+  completed
+
+  @@map("progress_status")
+}
+
+enum ModerationActionKind {
+  hide
+  restore
+
+  @@map("moderation_action_kind")
+}
+
+model User {
+  id           String   @id @default(uuid()) @db.Uuid
+  username     String   @unique @db.VarChar(64)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash") @db.Text
+  displayName  String   @map("display_name") @db.VarChar(64)
+  bio          String?  @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  roles             UserRole[]
+  lists             List[]
+  ratings           Rating[]
+  posts             Post[]
+  following         Follow[]           @relation("Follower")
+  followers         Follow[]           @relation("Followed")
+  progress          Progress[]
+  moderationActions ModerationAction[]
+
+  @@index([username])
+  @@index([email])
+  @@map("users")
+}
+
+model Role {
+  id   Int    @id @db.SmallInt
+  code String @unique @db.VarChar(64)
+  name String @db.VarChar(64)
+
+  users UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId     String   @map("user_id") @db.Uuid
+  roleId     Int      @map("role_id") @db.SmallInt
+  assignedAt DateTime @default(now()) @map("assigned_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Restrict)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+model Rateable {
+  id        String       @id @default(uuid()) @db.Uuid
+  kind      RateableKind
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  work    Work?
+  list    List?
+  ratings Rating[]
+  posts   Post[]
+
+  @@map("rateables")
+}
+
+model Work {
+  id            String   @id @default(uuid()) @db.Uuid
+  rateableId    String   @unique @map("rateable_id") @db.Uuid
+  kind          WorkKind
+  title         String   @db.VarChar(255)
+  originalTitle String?  @map("original_title") @db.VarChar(255)
+  description   String?  @db.Text
+  releaseYear   Int?     @map("release_year") @db.SmallInt
+  imageUrl      String?  @map("image_url") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  rateable Rateable @relation(fields: [rateableId], references: [id], onDelete: Restrict)
+
+  content   Content?
+  movie     Movie?
+  show      Show?
+  season    Season?
+  episode   Episode?
+  book      Book?
+  listItems ListItem[]
+
+  @@index([kind, releaseYear])
+  @@index([title])
+  @@map("works")
+}
+
+model Content {
+  workId String @id @map("work_id") @db.Uuid
+
+  work     Work       @relation(fields: [workId], references: [id], onDelete: Cascade)
+  progress Progress[]
+
+  @@map("contents")
+}
+
+model Movie {
+  workId         String  @id @map("work_id") @db.Uuid
+  tmdbId         Int     @unique @map("tmdb_id")
+  runtimeMinutes Int?    @map("runtime_minutes") @db.SmallInt
+  directorNames  String? @map("director_names") @db.Text
+  actorNames     String? @map("actor_names") @db.Text
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@map("movies")
+}
+
+model Show {
+  workId       String    @id @map("work_id") @db.Uuid
+  tmdbId       Int       @unique @map("tmdb_id")
+  firstAirDate DateTime? @map("first_air_date") @db.Date
+  lastAirDate  DateTime? @map("last_air_date") @db.Date
+  creatorNames String?   @map("creator_names") @db.Text
+  actorNames   String?   @map("actor_names") @db.Text
+
+  work    Work     @relation(fields: [workId], references: [id], onDelete: Cascade)
+  seasons Season[]
+
+  @@map("shows")
+}
+
+model Season {
+  workId       String    @id @map("work_id") @db.Uuid
+  showWorkId   String    @map("show_work_id") @db.Uuid
+  tmdbId       Int       @unique @map("tmdb_id")
+  seasonNumber Int       @map("season_number") @db.SmallInt
+  airDate      DateTime? @map("air_date") @db.Date
+
+  work     Work      @relation(fields: [workId], references: [id], onDelete: Cascade)
+  show     Show      @relation(fields: [showWorkId], references: [workId], onDelete: Cascade)
+  episodes Episode[]
+
+  @@unique([showWorkId, seasonNumber])
+  @@map("seasons")
+}
+
+model Episode {
+  workId         String    @id @map("work_id") @db.Uuid
+  seasonWorkId   String    @map("season_work_id") @db.Uuid
+  tmdbId         Int       @unique @map("tmdb_id")
+  episodeNumber  Int       @map("episode_number") @db.SmallInt
+  airDate        DateTime? @map("air_date") @db.Date
+  runtimeMinutes Int?      @map("runtime_minutes") @db.SmallInt
+  directorNames  String?   @map("director_names") @db.Text
+  actorNames     String?   @map("actor_names") @db.Text
+
+  work   Work   @relation(fields: [workId], references: [id], onDelete: Cascade)
+  season Season @relation(fields: [seasonWorkId], references: [workId], onDelete: Cascade)
+
+  @@unique([seasonWorkId, episodeNumber])
+  @@map("episodes")
+}
+
+model Book {
+  workId             String  @id @map("work_id") @db.Uuid
+  openlibraryWorkKey String  @unique @map("openlibrary_work_key") @db.VarChar(32)
+  firstPublishYear   Int?    @map("first_publish_year") @db.SmallInt
+  authorNames        String? @map("author_names") @db.Text
+
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@map("books")
+}
+
+model List {
+  id          String         @id @default(uuid()) @db.Uuid
+  rateableId  String         @unique @map("rateable_id") @db.Uuid
+  ownerUserId String         @map("owner_user_id") @db.Uuid
+  title       String         @db.VarChar(255)
+  description String?        @db.Text
+  visibility  ListVisibility @default(public)
+  isHidden    Boolean        @default(false) @map("is_hidden")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  rateable          Rateable           @relation(fields: [rateableId], references: [id], onDelete: Restrict)
+  owner             User               @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  items             ListItem[]
+  moderationActions ModerationAction[]
+
+  @@index([ownerUserId])
+  @@index([visibility])
+  @@map("lists")
+}
+
+model ListItem {
+  listId   String   @map("list_id") @db.Uuid
+  workId   String   @map("work_id") @db.Uuid
+  position Int
+  addedAt  DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+
+  list List @relation(fields: [listId], references: [id], onDelete: Cascade)
+  work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
+
+  @@id([listId, workId])
+  @@unique([listId, position])
+  @@index([workId])
+  @@map("list_items")
+}
+
+model Rating {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  rateableId String   @map("rateable_id") @db.Uuid
+  value      Int      @db.SmallInt
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rateable Rateable @relation(fields: [rateableId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, rateableId])
+  @@index([rateableId])
+  @@map("ratings")
+}
+
+model Post {
+  id           String   @id @default(uuid()) @db.Uuid
+  authorUserId String   @map("author_user_id") @db.Uuid
+  rateableId   String?  @map("rateable_id") @db.Uuid
+  parentPostId String?  @map("parent_post_id") @db.Uuid
+  body         String   @db.Text
+  isHidden     Boolean  @default(false) @map("is_hidden")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  author            User               @relation(fields: [authorUserId], references: [id], onDelete: Cascade)
+  rateable          Rateable?          @relation(fields: [rateableId], references: [id], onDelete: Cascade)
+  parentPost        Post?              @relation("PostComments", fields: [parentPostId], references: [id], onDelete: Cascade)
+  comments          Post[]             @relation("PostComments")
+  moderationActions ModerationAction[]
+
+  @@index([authorUserId])
+  @@index([rateableId])
+  @@index([authorUserId, rateableId])
+  @@index([parentPostId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Follow {
+  followerUserId String   @map("follower_user_id") @db.Uuid
+  followedUserId String   @map("followed_user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  follower User @relation("Follower", fields: [followerUserId], references: [id], onDelete: Cascade)
+  followed User @relation("Followed", fields: [followedUserId], references: [id], onDelete: Cascade)
+
+  @@id([followerUserId, followedUserId])
+  @@index([followedUserId])
+  @@map("follows")
+}
+
+model Progress {
+  id            String         @id @default(uuid()) @db.Uuid
+  userId        String         @map("user_id") @db.Uuid
+  contentWorkId String         @map("content_work_id") @db.Uuid
+  status        ProgressStatus
+  valueNow      Int            @default(0) @map("value_now")
+  valueMax      Int            @default(-1) @map("value_max")
+  updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content Content @relation(fields: [contentWorkId], references: [workId], onDelete: Cascade)
+
+  @@unique([userId, contentWorkId])
+  @@index([contentWorkId])
+  @@map("progress")
+}
+
+model ModerationAction {
+  id              String               @id @default(uuid()) @db.Uuid
+  moderatorUserId String               @map("moderator_user_id") @db.Uuid
+  action          ModerationActionKind
+  targetPostId    String?              @map("target_post_id") @db.Uuid
+  targetListId    String?              @map("target_list_id") @db.Uuid
+  reason          String?              @db.Text
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  moderator  User  @relation(fields: [moderatorUserId], references: [id], onDelete: Restrict)
+  targetPost Post? @relation(fields: [targetPostId], references: [id], onDelete: Cascade)
+  targetList List? @relation(fields: [targetListId], references: [id], onDelete: Cascade)
+
+  @@index([moderatorUserId])
+  @@index([targetPostId])
+  @@index([targetListId])
+  @@map("moderation_actions")
+}
