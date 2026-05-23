@@ -20,7 +20,9 @@ const TMDB_LANGUAGE = process.env.TMDB_LANGUAGE ?? 'ru-RU';
 const TMDB_FALLBACK_LANGUAGE = process.env.TMDB_FALLBACK_LANGUAGE ?? 'en-US';
 const MOVIE_PAGES = readPositiveIntEnv('IMPORT_TMDB_MOVIE_PAGES', 2);
 const SHOW_PAGES = readPositiveIntEnv('IMPORT_TMDB_SHOW_PAGES', 2);
-const SEASONS_PER_SHOW = readPositiveIntEnv('IMPORT_TMDB_SEASONS_PER_SHOW', 1);
+const SEASONS_PER_SHOW = readOptionalPositiveIntEnv(
+  'IMPORT_TMDB_SEASONS_PER_SHOW',
+);
 const BOOK_LIMIT = readPositiveIntEnv('IMPORT_OPEN_LIBRARY_BOOK_LIMIT', 50);
 const BOOK_SUBJECT = process.env.IMPORT_OPEN_LIBRARY_SUBJECT ?? 'fiction';
 
@@ -129,6 +131,18 @@ function readPositiveIntEnv(name: string, fallback: number): number {
   const parsed = Number.parseInt(value, 10);
 
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function readOptionalPositiveIntEnv(name: string): number | null {
+  const value = process.env[name];
+
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 }
 
 function getRequiredEnv(name: string): string {
@@ -431,11 +445,15 @@ async function importShow(
 
   let seasons = 0;
   let episodes = 0;
-  const regularSeasons = (details.seasons ?? [])
-    .filter((season) => season.season_number > 0)
-    .slice(0, SEASONS_PER_SHOW);
+  const regularSeasons = (details.seasons ?? []).filter(
+    (season) => season.season_number > 0,
+  );
+  const seasonsToImport =
+    SEASONS_PER_SHOW === null
+      ? regularSeasons
+      : regularSeasons.slice(0, SEASONS_PER_SHOW);
 
-  for (const season of regularSeasons) {
+  for (const season of seasonsToImport) {
     const imported = await importSeason(
       details.id,
       showWorkId,

@@ -55,6 +55,8 @@ bun run db:import
 `db:import` loads popular movies and TV shows from TMDb and books from Open Library.
 Set `TMDB_API_KEY` in `.env` before running it. The importer is idempotent and skips
 content that already exists by external identifiers.
+By default, all regular seasons and their episodes are imported for every imported TV show.
+Set `IMPORT_TMDB_SEASONS_PER_SHOW` only when you need to limit seasons per show.
 
 ## Checks
 
