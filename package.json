@@ -10,6 +10,10 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "db:generate": "bun run --cwd apps/api prisma generate",
+    "db:migrate": "bun run --cwd apps/api prisma migrate dev",
+    "db:seed": "bun run --cwd apps/api prisma db seed",
+    "db:studio": "bun run --cwd apps/api prisma studio",
     "lint": "turbo lint",
     "format": "prettier --write .",
     "typecheck": "turbo typecheck"
