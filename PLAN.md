@@ -43,7 +43,7 @@ soft:    #9F9FDF
 - добавить root scripts, если не хватает: `db:migrate`, `db:generate`, `db:seed`, `db:studio`.
 
 Результат:
-- `docker compose -f infra/docker-compose.yml up -d` поднимает БД и Redis;
+- `docker compose --env-file .env -f infra/docker-compose.yml up -d` поднимает БД и Redis;
 - `bun run typecheck`, `bun run lint`, `bun run build` проходят.
 
 ---
