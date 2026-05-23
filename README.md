@@ -36,7 +36,7 @@ cp .env.example .env
 Start PostgreSQL and Redis:
 
 ```bash
-docker compose -f infra/docker-compose.yml up -d
+docker compose --env-file .env -f infra/docker-compose.yml up -d
 ```
 
 Run development servers:
