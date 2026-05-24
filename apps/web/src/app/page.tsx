@@ -17,6 +17,7 @@ type Work = {
   year: number;
   description: string;
   icon: typeof Film;
+  posterTone: string;
 };
 
 type ListPreview = {
@@ -56,6 +57,7 @@ const dune: Work = {
   description:
     "Политическая фантастика, песчаные планеты и большая война за власть.",
   icon: Film,
+  posterTone: "from-[#3838a8] via-[#6666cc] to-[#9f9fdf]",
 };
 
 const shogun: Work = {
@@ -64,6 +66,7 @@ const shogun: Work = {
   year: 2024,
   description: "Историческая драма о власти, языке и столкновении культур.",
   icon: Tv,
+  posterTone: "from-[#24245c] via-[#6666cc] to-[#8fd3a7]",
 };
 
 const city: Work = {
@@ -73,6 +76,7 @@ const city: Work = {
   description:
     "Мрачная городская фантастика о памяти, страхе и потерянных маршрутах.",
   icon: BookOpen,
+  posterTone: "from-[#181824] via-[#3838a8] to-[#f4a261]",
 };
 
 const feedItems: FeedItem[] = [
@@ -236,7 +240,9 @@ function FeedEvent({ item }: { item: FeedItem }) {
   const action = item.type === "rating" ? "поставила оценку" : "написал отзыв";
 
   return (
-    <article className="grid gap-4 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[minmax(0,1fr)_260px]">
+    <article className="grid gap-4 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[220px_minmax(0,1fr)]">
+      <WorkLinkCard work={item.work} />
+
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -262,12 +268,10 @@ function FeedEvent({ item }: { item: FeedItem }) {
         ) : (
           <p className="mt-5 text-lg leading-8">
             Оценка добавлена без отзыва. Произведение можно открыть из карточки
-            справа.
+            слева.
           </p>
         )}
       </div>
-
-      <WorkLinkCard work={item.work} />
     </article>
   );
 }
@@ -283,25 +287,29 @@ function UserAvatar({ name }: { name: string }) {
 function WorkLinkCard({ work }: { work: Work }) {
   return (
     <a
-      className="group block rounded-md border bg-background p-4 transition hover:border-primary hover:shadow-sm"
+      className="group block rounded-md border bg-background p-2 transition hover:border-primary hover:shadow-sm"
       href="#"
       aria-label={`Открыть карточку: ${work.title}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid size-11 shrink-0 place-items-center rounded-md bg-secondary text-secondary-foreground transition group-hover:bg-accent">
-          <work.icon className="size-5" />
+      <MockPoster
+        title={work.title}
+        icon={work.icon}
+        tone={work.posterTone}
+        className="aspect-[2/3] w-full"
+      />
+      <div className="p-2">
+        <div className="flex items-start justify-between gap-2">
+          <h2 className="line-clamp-2 text-sm font-semibold text-primary">
+            {work.title}
+          </h2>
+          <span className="shrink-0 rounded-sm bg-secondary px-2 py-1 text-[11px] text-secondary-foreground">
+            открыть
+          </span>
         </div>
-        <span className="rounded-sm bg-card px-2 py-1 text-xs text-muted-foreground">
-          открыть
-        </span>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {work.kind} · {work.year}
+        </p>
       </div>
-      <h2 className="mt-4 text-base font-semibold text-primary">
-        {work.title}
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {work.kind} · {work.year}
-      </p>
-      <p className="mt-3 line-clamp-3 text-sm leading-6">{work.description}</p>
     </a>
   );
 }
@@ -313,31 +321,68 @@ function ListPreviewCard({ list }: { list: ListPreview }) {
       href="#"
       aria-label={`Открыть список: ${list.title}`}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div>
+      <div className="flex items-start justify-between gap-4 px-1 pt-1">
+        <div className="min-w-0">
           <p className="text-sm text-muted-foreground">
             Пользовательский список
           </p>
-          <h2 className="mt-1 text-lg font-semibold text-primary">
+          <h2 className="mt-1 truncate text-lg font-semibold text-primary">
             {list.title}
           </h2>
         </div>
-        <span className="rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground">
+        <span className="shrink-0 rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground">
           {list.count} позиций
         </span>
       </div>
-      <p className="mt-3 text-sm leading-6">{list.description}</p>
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-        {list.items.map((title) => (
-          <span
+      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+        {list.items.map((title, index) => (
+          <MockPoster
             key={title}
-            className="shrink-0 rounded-md border bg-card px-3 py-2 text-sm text-card-foreground"
-          >
-            {title}
-          </span>
+            title={title}
+            icon={index % 2 === 0 ? BookOpen : Film}
+            tone={
+              index % 3 === 0
+                ? "from-[#3838a8] via-[#6666cc] to-[#9f9fdf]"
+                : index % 3 === 1
+                  ? "from-[#181824] via-[#3838a8] to-[#8fd3a7]"
+                  : "from-[#24245c] via-[#6666cc] to-[#f4a261]"
+            }
+            className="h-40 w-28 shrink-0"
+          />
         ))}
       </div>
+      <p className="mt-3 px-1 text-sm leading-6 text-muted-foreground">
+        {list.description}
+      </p>
     </a>
+  );
+}
+
+function MockPoster({
+  title,
+  icon: Icon,
+  tone,
+  className,
+}: {
+  title: string;
+  icon: typeof Film;
+  tone: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-md bg-linear-to-br ${tone} ${
+        className ?? ""
+      }`}
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.32),transparent_34%),linear-gradient(to_top,rgba(24,24,36,0.72),transparent_58%)]" />
+      <Icon className="absolute right-3 top-3 size-5 text-white/80" />
+      <div className="absolute inset-x-0 bottom-0 p-3">
+        <p className="line-clamp-3 text-sm font-semibold leading-5 text-white">
+          {title}
+        </p>
+      </div>
+    </div>
   );
 }
 
