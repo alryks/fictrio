@@ -25,11 +25,11 @@ const segmentColorClassNames = [
     active: "bg-[var(--fictrio-soft)]",
   },
   {
-    idle: "bg-[var(--fictrio-accent)]/25",
+    idle: "bg-[var(--fictrio-accent)]/35",
     active: "bg-[var(--fictrio-accent)]",
   },
   {
-    idle: "bg-[var(--fictrio-primary)]/25",
+    idle: "bg-[var(--fictrio-primary)]/35",
     active: "bg-[var(--fictrio-primary)]",
   },
 ];
