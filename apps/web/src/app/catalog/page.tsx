@@ -348,7 +348,7 @@ function CatalogContent() {
         ) : null}
 
         {items.length > 0 ? (
-          <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
             {items.map((work) => (
               <WorkCard key={work.id} work={work} />
             ))}
