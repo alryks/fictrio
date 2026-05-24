@@ -20,6 +20,7 @@ export type WorkListItem = {
 export type WorkDetails = WorkListItem & {
   details: Record<string, string | number | null> | null;
   seasons?: WorkSeason[];
+  episodes?: WorkListItem[];
 };
 
 export type WorkSeason = WorkListItem & {

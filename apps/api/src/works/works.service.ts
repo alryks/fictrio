@@ -50,6 +50,31 @@ type WorkWithDetails = Prisma.WorkGetPayload<{
         };
       };
     };
+    season: {
+      include: {
+        episodes: {
+          include: {
+            work: {
+              include: {
+                rateable: {
+                  select: {
+                    ratings: {
+                      select: {
+                        value: true;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+          };
+          orderBy: {
+            episodeNumber: 'asc';
+          };
+        };
+      };
+    };
+    episode: true;
     book: true;
     rateable: {
       select: {
@@ -157,9 +182,6 @@ export class WorksService {
     const work = await this.prisma.work.findFirst({
       where: {
         id,
-        kind: {
-          in: [WorkKind.movie, WorkKind.show, WorkKind.book],
-        },
       },
       include: {
         movie: true,
@@ -207,6 +229,31 @@ export class WorksService {
             },
           },
         },
+        season: {
+          include: {
+            episodes: {
+              include: {
+                work: {
+                  include: {
+                    rateable: {
+                      select: {
+                        ratings: {
+                          select: {
+                            value: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+              orderBy: {
+                episodeNumber: 'asc',
+              },
+            },
+          },
+        },
+        episode: true,
         book: true,
         rateable: {
           select: {
@@ -328,7 +375,15 @@ export class WorksService {
                 creatorNames: work.show?.creatorNames ?? null,
                 actorNames: work.show?.actorNames ?? null,
               }
-            : work.book,
+            : work.kind === WorkKind.season
+              ? {
+                  tmdbId: work.season?.tmdbId ?? null,
+                  seasonNumber: work.season?.seasonNumber ?? null,
+                  airDate: work.season?.airDate ?? null,
+                }
+              : work.kind === WorkKind.episode
+                ? work.episode
+                : work.book,
       seasons:
         work.kind === WorkKind.show
           ? (work.show?.seasons.map((season) => ({
@@ -337,6 +392,12 @@ export class WorksService {
                 this.toRelationWorkItem(episode.work),
               ),
             })) ?? [])
+          : undefined,
+      episodes:
+        work.kind === WorkKind.season
+          ? (work.season?.episodes.map((episode) =>
+              this.toRelationWorkItem(episode.work),
+            ) ?? [])
           : undefined,
     };
   }
@@ -400,6 +461,23 @@ export class WorksService {
         lastAirDate: work.show?.lastAirDate ?? null,
         creatorNames: work.show?.creatorNames ?? null,
         actorNames: work.show?.actorNames ?? null,
+      };
+    }
+
+    if (work.kind === WorkKind.season) {
+      return {
+        seasonNumber: work.season?.seasonNumber ?? null,
+        airDate: work.season?.airDate ?? null,
+      };
+    }
+
+    if (work.kind === WorkKind.episode) {
+      return {
+        episodeNumber: work.episode?.episodeNumber ?? null,
+        airDate: work.episode?.airDate ?? null,
+        runtimeMinutes: work.episode?.runtimeMinutes ?? null,
+        directorNames: work.episode?.directorNames ?? null,
+        actorNames: work.episode?.actorNames ?? null,
       };
     }
 

@@ -144,6 +144,13 @@ export default function WorkDetailsPage() {
                 </div>
               </div>
             ) : null}
+
+            {workQuery.data.kind === "season" &&
+            workQuery.data.episodes?.length ? (
+              <div className="md:col-span-2">
+                <WorkRail title="Эпизоды" works={workQuery.data.episodes} />
+              </div>
+            ) : null}
           </article>
         ) : null}
       </main>
@@ -205,6 +212,9 @@ function getMetaLabel(key: string) {
     firstAirDate: "Дата первой серии",
     lastAirDate: "Дата последней серии",
     creatorNames: "Создатели",
+    seasonNumber: "Номер сезона",
+    episodeNumber: "Номер эпизода",
+    airDate: "Дата выхода",
     firstPublishYear: "Первый год публикации",
     authorNames: "Авторы",
   };
@@ -217,7 +227,7 @@ function formatMetaValue(key: string, value: string | number) {
     return `${value} мин.`;
   }
 
-  if (key === "firstAirDate" || key === "lastAirDate") {
+  if (key === "firstAirDate" || key === "lastAirDate" || key === "airDate") {
     return formatDate(String(value));
   }
 
