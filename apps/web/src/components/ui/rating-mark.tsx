@@ -19,6 +19,20 @@ const sizeClassNames: Record<RatingMarkSize, string> = {
 };
 
 const segmentClassNames = ["rounded-tl-[38%]", "", "rounded-br-[38%]"];
+const segmentColorClassNames = [
+  {
+    idle: "bg-[var(--fictrio-soft)]/35",
+    active: "bg-[var(--fictrio-soft)]",
+  },
+  {
+    idle: "bg-[var(--fictrio-accent)]/25",
+    active: "bg-[var(--fictrio-accent)]",
+  },
+  {
+    idle: "bg-[var(--fictrio-primary)]/25",
+    active: "bg-[var(--fictrio-primary)]",
+  },
+];
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max);
@@ -43,7 +57,7 @@ export function RatingMark({
   const mark = (
     <span
       className={cn(
-        "grid overflow-hidden rounded-tl-[38%] rounded-br-[38%] bg-[var(--fictrio-soft)]/35",
+        "grid overflow-hidden rounded-tl-[38%] rounded-br-[38%]",
         sizeClassNames[size],
         className,
       )}
@@ -56,13 +70,17 @@ export function RatingMark({
           <span
             key={segmentIndex}
             className={cn(
-              "relative overflow-hidden bg-[var(--fictrio-soft)]/35",
+              "relative overflow-hidden",
               segmentClassNames[segmentIndex],
+              segmentColorClassNames[segmentIndex].idle,
             )}
           >
             <span
-              className="absolute inset-y-0 left-0 bg-primary"
-              style={{ width: `${fill * 100}%` }}
+              className={cn(
+                "absolute inset-x-0 bottom-0",
+                segmentColorClassNames[segmentIndex].active,
+              )}
+              style={{ height: `${fill * 100}%` }}
             />
           </span>
         );
