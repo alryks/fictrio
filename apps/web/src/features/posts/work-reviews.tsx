@@ -5,7 +5,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MessageCircle, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { useAuthStore } from "@/features/auth/auth-store";
-import { upsertWorkRating } from "@/features/ratings/ratings-api";
+import {
+  deleteWorkRating,
+  upsertWorkRating,
+} from "@/features/ratings/ratings-api";
 import type { WorkDetails } from "@/features/works/works-api";
 import {
   createWorkReview,
@@ -19,8 +22,6 @@ type WorkReviewsProps = {
   work: WorkDetails;
 };
 
-const ratingOptions = [0, 1, 2, 3];
-
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
@@ -32,17 +33,23 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     hydrate();
   }, [hydrate]);
 
-  const reviewsQuery = useQuery({
+  const activityQuery = useQuery({
     queryKey: ["work", work.id, "reviews"],
     queryFn: () => getWorkReviews(work.id),
   });
 
   const ownReview = useMemo(
     () =>
-      reviewsQuery.data?.items.find((review) => review.author.id === user?.id),
-    [reviewsQuery.data?.items, user?.id],
+      activityQuery.data?.items.find(
+        (item) => item.kind === "review" && item.author.id === user?.id,
+      ),
+    [activityQuery.data?.items, user?.id],
   );
-  const ratingValue = ratingDraft ?? work.userRating ?? ownReview?.rating ?? 0;
+  const ownRating = useMemo(
+    () => activityQuery.data?.items.find((item) => item.author.id === user?.id),
+    [activityQuery.data?.items, user?.id],
+  );
+  const ratingValue = ratingDraft ?? ownRating?.rating ?? work.userRating ?? 0;
   const reviewBody = reviewDraft ?? ownReview?.body ?? "";
 
   const ratingMutation = useMutation({
@@ -54,19 +61,34 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return upsertWorkRating(work.id, value, accessToken);
     },
     onSuccess: async (response) => {
-      setMessage("Оценка сохранена");
+      setMessage(response.value === 0 ? "Оценка сброшена" : "Оценка сохранена");
       setRatingDraft(response.value);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["work", work.id] }),
-        queryClient.invalidateQueries({ queryKey: ["works"] }),
-        queryClient.invalidateQueries({
-          queryKey: ["work", work.id, "reviews"],
-        }),
-      ]);
+      await invalidateWorkQueries(queryClient, work.id);
     },
     onError: (error) => {
       setMessage(
         error instanceof Error ? error.message : "Не удалось сохранить оценку",
+      );
+    },
+  });
+
+  const deleteRatingMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для удаления оценки нужно войти в аккаунт");
+      }
+
+      return deleteWorkRating(work.id, accessToken);
+    },
+    onSuccess: async () => {
+      setMessage("Оценка и отзыв удалены");
+      setRatingDraft(0);
+      setReviewDraft("");
+      await invalidateWorkQueries(queryClient, work.id);
+    },
+    onError: (error) => {
+      setMessage(
+        error instanceof Error ? error.message : "Не удалось удалить оценку",
       );
     },
   });
@@ -94,7 +116,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteReviewMutation = useMutation({
     mutationFn: () => {
       if (!accessToken || !ownReview) {
         throw new Error("Отзыв не найден");
@@ -122,122 +144,144 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     reviewMutation.mutate();
   }
 
-  return (
-    <section className="mt-6 grid gap-6 md:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
-      <div className="rounded-md border bg-card p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Ваша оценка и отзыв</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Сначала поставьте оценку, затем можно опубликовать отзыв.
-        </p>
+  function handleRatingClick() {
+    setMessage(null);
+    ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
+  }
 
-        <div className="mt-4">
-          <p className="text-sm font-medium">Оценка</p>
-          <div className="mt-2 grid grid-cols-4 gap-2">
-            {ratingOptions.map((value) => (
+  return (
+    <section className="mt-6 space-y-6">
+      <div className="rounded-md border bg-card p-4 shadow-sm">
+        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_220px]">
+          <form className="space-y-3" onSubmit={handleReviewSubmit}>
+            <div>
+              <h2 className="text-lg font-semibold">Ваш отзыв</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Отзыв можно опубликовать после выставления оценки.
+              </p>
+            </div>
+            <label className="block">
+              <span className="text-sm font-medium">Текст отзыва</span>
+              <textarea
+                className="mt-1 min-h-36 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                disabled={!isHydrated || !user || reviewMutation.isPending}
+                maxLength={5000}
+                onChange={(event) => setReviewDraft(event.target.value)}
+                placeholder="Что стоит обсудить после просмотра или чтения?"
+                required
+                value={reviewBody}
+              />
+            </label>
+            {message ? (
+              <p className="text-sm text-muted-foreground">{message}</p>
+            ) : null}
+            {!user && isHydrated ? (
+              <p className="text-sm text-muted-foreground">
+                Войдите в аккаунт на главной странице, чтобы оценивать и писать
+                отзывы.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
               <button
-                className="flex h-12 items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary disabled:opacity-60 data-[active=true]:border-primary data-[active=true]:bg-accent data-[active=true]:text-primary"
-                data-active={ratingValue === value}
-                disabled={!isHydrated || !user || ratingMutation.isPending}
-                key={value}
-                onClick={() => {
-                  setMessage(null);
-                  ratingMutation.mutate(value);
-                }}
-                type="button"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+                disabled={
+                  !user ||
+                  reviewMutation.isPending ||
+                  reviewBody.trim().length === 0
+                }
+                type="submit"
               >
-                <RatingMark value={value} size="sm" />
-                {value}
+                {ownReview ? (
+                  <Pencil className="size-4" />
+                ) : (
+                  <Send className="size-4" />
+                )}
+                {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
               </button>
-            ))}
+              {ownReview ? (
+                <button
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+                  disabled={deleteReviewMutation.isPending}
+                  onClick={() => deleteReviewMutation.mutate()}
+                  type="button"
+                >
+                  <Trash2 className="size-4" />
+                  Удалить отзыв
+                </button>
+              ) : null}
+            </div>
+          </form>
+
+          <div className="rounded-md border bg-background p-4">
+            <h2 className="text-lg font-semibold">Ваша оценка</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Нажатие циклически меняет оценку от 0 до 3.
+            </p>
+            <button
+              aria-label="Изменить оценку"
+              className="mt-5 flex h-28 w-full items-center justify-center rounded-md border bg-card transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
+              disabled={!isHydrated || !user || ratingMutation.isPending}
+              onClick={handleRatingClick}
+              type="button"
+            >
+              <RatingMark value={ratingValue} size="lg" />
+            </button>
+            <button
+              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+              disabled={!user || deleteRatingMutation.isPending}
+              onClick={() => deleteRatingMutation.mutate()}
+              type="button"
+            >
+              <Trash2 className="size-4" />
+              Удалить оценку
+            </button>
           </div>
         </div>
-
-        <form className="mt-5 space-y-3" onSubmit={handleReviewSubmit}>
-          <label className="block">
-            <span className="text-sm font-medium">Отзыв</span>
-            <textarea
-              className="mt-1 min-h-32 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              disabled={!isHydrated || !user || reviewMutation.isPending}
-              maxLength={5000}
-              onChange={(event) => setReviewDraft(event.target.value)}
-              placeholder="Что стоит обсудить после просмотра или чтения?"
-              required
-              value={reviewBody}
-            />
-          </label>
-          {message ? (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          ) : null}
-          {!user && isHydrated ? (
-            <p className="text-sm text-muted-foreground">
-              Войдите в аккаунт на главной странице, чтобы оценивать и писать
-              отзывы.
-            </p>
-          ) : null}
-          <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-              disabled={
-                !user ||
-                reviewMutation.isPending ||
-                reviewBody.trim().length === 0
-              }
-              type="submit"
-            >
-              {ownReview ? (
-                <Pencil className="size-4" />
-              ) : (
-                <Send className="size-4" />
-              )}
-              {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
-            </button>
-            {ownReview ? (
-              <button
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
-                disabled={deleteMutation.isPending}
-                onClick={() => deleteMutation.mutate()}
-                type="button"
-              >
-                <Trash2 className="size-4" />
-                Удалить
-              </button>
-            ) : null}
-          </div>
-        </form>
       </div>
 
       <div className="rounded-md border bg-card p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold">Отзывы</h2>
+          <h2 className="text-lg font-semibold">Отзывы и оценки</h2>
           <MessageCircle className="size-4 text-primary" />
         </div>
 
-        {reviewsQuery.isLoading ? (
+        {activityQuery.isLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Загружаем отзывы...
+            Загружаем активность...
           </p>
         ) : null}
 
-        {reviewsQuery.isError ? (
+        {activityQuery.isError ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            {reviewsQuery.error.message}
+            {activityQuery.error.message}
           </p>
         ) : null}
 
-        {reviewsQuery.data?.items.length === 0 ? (
+        {activityQuery.data?.items.length === 0 ? (
           <p className="mt-4 text-sm text-muted-foreground">
-            Отзывов пока нет. Станьте первым, кто начнет обсуждение.
+            Оценок и отзывов пока нет. Станьте первым, кто начнет обсуждение.
           </p>
         ) : null}
 
         <div className="mt-4 space-y-3">
-          {reviewsQuery.data?.items.map((review) => (
+          {activityQuery.data?.items.map((review) => (
             <ReviewCard key={review.id} review={review} />
           ))}
         </div>
       </div>
     </section>
   );
+}
+
+async function invalidateWorkQueries(
+  queryClient: ReturnType<typeof useQueryClient>,
+  workId: string,
+) {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["work", workId] }),
+    queryClient.invalidateQueries({ queryKey: ["works"] }),
+    queryClient.invalidateQueries({ queryKey: ["work", workId, "reviews"] }),
+  ]);
 }
 
 function ReviewCard({ review }: { review: Review }) {
@@ -257,19 +301,20 @@ function ReviewCard({ review }: { review: Review }) {
             </p>
           </div>
         </div>
-        {review.rating === null ? null : (
-          <span className="inline-flex shrink-0 items-center gap-2 text-sm font-medium text-primary">
-            <RatingMark value={review.rating} size="sm" />
-            {review.rating}
-          </span>
-        )}
+        <RatingMark value={review.rating ?? 0} size="sm" />
       </div>
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
-        {review.body}
-      </p>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Комментариев: {review.commentsCount}
-      </p>
+      {review.kind === "review" && review.body ? (
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+          {review.body}
+        </p>
+      ) : (
+        <p className="mt-3 text-sm text-muted-foreground">Поставлена оценка.</p>
+      )}
+      {review.kind === "review" ? (
+        <p className="mt-3 text-xs text-muted-foreground">
+          Комментариев: {review.commentsCount}
+        </p>
+      ) : null}
     </article>
   );
 }

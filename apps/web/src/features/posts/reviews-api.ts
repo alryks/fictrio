@@ -8,7 +8,8 @@ export type ReviewAuthor = {
 
 export type Review = {
   id: string;
-  body: string;
+  kind: "review" | "rating";
+  body: string | null;
   isHidden: boolean;
   createdAt: string;
   updatedAt: string;

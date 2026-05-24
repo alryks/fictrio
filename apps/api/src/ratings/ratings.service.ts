@@ -45,6 +45,43 @@ export class RatingsService {
     };
   }
 
+  async deleteWorkRating(workId: string, userId: string) {
+    const work = await this.prisma.work.findUnique({
+      where: { id: workId },
+      select: {
+        id: true,
+        rateableId: true,
+      },
+    });
+
+    if (!work) {
+      throw new NotFoundException('Произведение не найдено');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.post.deleteMany({
+        where: {
+          authorUserId: userId,
+          rateableId: work.rateableId,
+          parentPostId: null,
+        },
+      }),
+      this.prisma.rating.deleteMany({
+        where: {
+          userId,
+          rateableId: work.rateableId,
+        },
+      }),
+    ]);
+
+    const stats = await this.getRateableRatingStats(work.rateableId);
+
+    return {
+      deleted: true,
+      rating: stats,
+    };
+  }
+
   private async getRateableRatingStats(rateableId: string) {
     const aggregate = await this.prisma.rating.aggregate({
       where: {

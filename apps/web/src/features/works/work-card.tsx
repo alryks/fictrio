@@ -48,13 +48,7 @@ export function WorkCard({ work }: { work: WorkListItem }) {
         </div>
 
         <div className="absolute right-3 top-3 grid size-9 place-items-center rounded-md bg-background/92 text-primary shadow-sm backdrop-blur">
-          {work.rating.average === null ? (
-            <span className="text-xs font-semibold text-muted-foreground">
-              -
-            </span>
-          ) : (
-            <RatingMark value={work.rating.average} size="sm" />
-          )}
+          <RatingMark value={work.rating.average ?? 0} size="sm" />
         </div>
 
         <div className="absolute inset-0 flex translate-y-full flex-col justify-end bg-[linear-gradient(to_top,rgba(17,17,28,0.98)_0%,rgba(17,17,28,0.9)_45%,rgba(17,17,28,0.55)_72%,rgba(17,17,28,0.08)_100%)] p-4 text-white opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">

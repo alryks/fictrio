@@ -37,6 +37,20 @@ type PublicReview = Prisma.PostGetPayload<{
   include: typeof publicReviewInclude;
 }>;
 
+const publicRatingInclude = {
+  user: {
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+    },
+  },
+} satisfies Prisma.RatingInclude;
+
+type PublicRating = Prisma.RatingGetPayload<{
+  include: typeof publicRatingInclude;
+}>;
+
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -44,20 +58,45 @@ export class PostsService {
   async getWorkReviews(workId: string) {
     const work = await this.getWorkRateable(workId);
 
-    const reviews = await this.prisma.post.findMany({
-      where: {
-        rateableId: work.rateableId,
-        parentPostId: null,
-        isHidden: false,
-      },
-      include: publicReviewInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const [reviews, ratings] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where: {
+          rateableId: work.rateableId,
+          parentPostId: null,
+          isHidden: false,
+        },
+        include: publicReviewInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+      this.prisma.rating.findMany({
+        where: {
+          rateableId: work.rateableId,
+          user: {
+            posts: {
+              none: {
+                rateableId: work.rateableId,
+                parentPostId: null,
+                isHidden: false,
+              },
+            },
+          },
+        },
+        include: publicRatingInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+    ]);
 
     return {
-      items: reviews.map((review) => this.toPublicReview(review)),
+      items: [
+        ...reviews.map((review) => this.toPublicReview(review)),
+        ...ratings.map((rating) => this.toPublicRating(rating)),
+      ].sort(
+        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+      ),
     };
   }
 
@@ -165,6 +204,7 @@ export class PostsService {
 
     return {
       id: review.id,
+      kind: 'review' as const,
       body: review.body,
       isHidden: review.isHidden,
       createdAt: review.createdAt,
@@ -172,6 +212,20 @@ export class PostsService {
       author: review.author,
       rating: authorRating,
       commentsCount: review._count.comments,
+    };
+  }
+
+  private toPublicRating(rating: PublicRating) {
+    return {
+      id: rating.id,
+      kind: 'rating' as const,
+      body: null,
+      isHidden: false,
+      createdAt: rating.createdAt,
+      updatedAt: rating.updatedAt,
+      author: rating.user,
+      rating: rating.value,
+      commentsCount: 0,
     };
   }
 

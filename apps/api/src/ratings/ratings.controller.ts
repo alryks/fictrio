@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Param,
   ParseUUIDPipe,
   Put,
@@ -24,5 +25,13 @@ export class RatingsController {
     @Body() dto: UpsertRatingDto,
   ) {
     return this.ratingsService.upsertWorkRating(workId, user.id, dto);
+  }
+
+  @Delete()
+  deleteWorkRating(
+    @Param('workId', ParseUUIDPipe) workId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.ratingsService.deleteWorkRating(workId, user.id);
   }
 }

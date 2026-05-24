@@ -18,7 +18,7 @@ const sizeClassNames: Record<RatingMarkSize, string> = {
   lg: "h-9 w-8",
 };
 
-const segmentClassNames = ["rounded-tl-[3px]", "", "rounded-br-[3px]"];
+const segmentClassNames = ["rounded-tl-[5px]", "", "rounded-br-[5px]"];
 const segmentColorClassNames = [
   {
     idle: "bg-[var(--fictrio-soft)]/35",
@@ -57,7 +57,7 @@ export function RatingMark({
   const mark = (
     <span
       className={cn(
-        "grid grid-rows-3 overflow-hidden rounded-tl-[3px] rounded-br-[3px]",
+        "grid grid-rows-3 overflow-hidden rounded-tl-[5px] rounded-br-[5px]",
         sizeClassNames[size],
         className,
       )}

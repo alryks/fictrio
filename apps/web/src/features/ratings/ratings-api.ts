@@ -16,3 +16,13 @@ export function upsertWorkRating(workId: string, value: number, token: string) {
     body: JSON.stringify({ value }),
   });
 }
+
+export function deleteWorkRating(workId: string, token: string) {
+  return apiRequest<{ deleted: true; rating: UpsertRatingResponse["rating"] }>(
+    `/works/${workId}/rating`,
+    {
+      method: "DELETE",
+      token,
+    },
+  );
+}
