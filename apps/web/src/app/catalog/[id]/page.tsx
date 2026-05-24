@@ -4,20 +4,18 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, BookOpen, Film, Tv } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
+import type { ComponentProps } from "react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { WorkCard } from "@/features/works/work-card";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
 const kindLabels: Record<WorkKind, string> = {
   movie: "Фильм",
   show: "Сериал",
+  season: "Сезон",
+  episode: "Эпизод",
   book: "Книга",
-};
-
-const kindIcons = {
-  movie: Film,
-  show: Tv,
-  book: BookOpen,
 };
 
 export default function WorkDetailsPage() {
@@ -68,11 +66,7 @@ export default function WorkDetailsPage() {
 
         {workQuery.data ? (
           <article className="grid gap-6 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[240px_minmax(0,1fr)]">
-            <Poster
-              imageUrl={workQuery.data.imageUrl}
-              kind={workQuery.data.kind}
-              title={workQuery.data.title}
-            />
+            <Poster imageUrl={workQuery.data.imageUrl} />
             <div className="min-w-0">
               <p className="text-sm font-medium text-muted-foreground">
                 {kindLabels[workQuery.data.kind]}
@@ -125,13 +119,31 @@ export default function WorkDetailsPage() {
                         {getMetaLabel(key)}
                       </dt>
                       <dd className="mt-1 text-sm font-medium">
-                        {String(value)}
+                        {formatMetaValue(key, value)}
                       </dd>
                     </div>
                   ),
                 )}
               </dl>
             </div>
+
+            {workQuery.data.kind === "show" &&
+            workQuery.data.seasons?.length ? (
+              <div className="md:col-span-2">
+                <WorkRail title="Сезоны" works={workQuery.data.seasons} />
+                <div className="mt-8 space-y-8">
+                  {workQuery.data.seasons.map((season) =>
+                    season.episodes.length ? (
+                      <WorkRail
+                        key={season.id}
+                        title={season.title}
+                        works={season.episodes}
+                      />
+                    ) : null,
+                  )}
+                </div>
+              </div>
+            ) : null}
           </article>
         ) : null}
       </main>
@@ -139,28 +151,40 @@ export default function WorkDetailsPage() {
   );
 }
 
-function Poster({
-  imageUrl,
-  kind,
-  title,
-}: {
-  imageUrl: string | null;
-  kind: WorkKind;
-  title: string;
-}) {
-  const Icon = kindIcons[kind];
-
+function Poster({ imageUrl }: { imageUrl: string | null }) {
   return (
     <div
       className="relative aspect-[2/3] overflow-hidden rounded-md bg-linear-to-br from-[#3838a8] via-[#6666cc] to-[#9f9fdf] bg-cover bg-center"
       style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
     >
-      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.76),transparent_58%)]" />
-      <Icon className="absolute right-4 top-4 size-7 text-white/80" />
-      <p className="absolute inset-x-0 bottom-0 p-5 text-xl font-semibold leading-7 text-white">
-        {title}
-      </p>
+      <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
     </div>
+  );
+}
+
+function WorkRail({
+  title,
+  works,
+}: {
+  title: string;
+  works: Array<ComponentProps<typeof WorkCard>["work"]>;
+}) {
+  return (
+    <section>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">{title}</h2>
+        <span className="text-sm text-muted-foreground">
+          {works.length} {getWorksCountLabel(works.length)}
+        </span>
+      </div>
+      <div className="-mx-5 mt-4 flex gap-4 overflow-x-auto px-5 pb-3">
+        {works.map((work) => (
+          <div key={work.id} className="w-40 shrink-0 sm:w-44">
+            <WorkCard work={work} />
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -186,4 +210,45 @@ function getMetaLabel(key: string) {
   };
 
   return labels[key] ?? key;
+}
+
+function formatMetaValue(key: string, value: string | number) {
+  if (key === "runtimeMinutes") {
+    return `${value} мин.`;
+  }
+
+  if (key === "firstAirDate" || key === "lastAirDate") {
+    return formatDate(String(value));
+  }
+
+  return String(value);
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function getWorksCountLabel(count: number) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+
+  if (mod10 === 1 && mod100 !== 11) {
+    return "элемент";
+  }
+
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "элемента";
+  }
+
+  return "элементов";
 }

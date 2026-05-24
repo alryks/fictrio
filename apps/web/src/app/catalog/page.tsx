@@ -5,13 +5,14 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { BookOpen, Film, Search, Tv } from "lucide-react";
-import { RatingMark } from "@/components/ui/rating-mark";
-import { getWorks, WorkKind, WorkListItem } from "@/features/works/works-api";
+import { Search } from "lucide-react";
+import { WorkCard } from "@/features/works/work-card";
+import { getWorks, WorkKind } from "@/features/works/works-api";
 
 const catalogPageSize = 24;
+type CatalogWorkKind = Extract<WorkKind, "movie" | "show" | "book">;
 
-const kindOptions: Array<{ value: WorkKind; label: string }> = [
+const kindOptions: Array<{ value: CatalogWorkKind; label: string }> = [
   { value: "movie", label: "Фильмы" },
   { value: "show", label: "Сериалы" },
   { value: "book", label: "Книги" },
@@ -28,16 +29,10 @@ const sortOrderOptions = [
   { value: "desc", label: "По убыванию" },
 ] as const;
 
-const kindLabels: Record<WorkKind, string> = {
+const kindLabels: Record<CatalogWorkKind, string> = {
   movie: "Фильм",
   show: "Сериал",
   book: "Книга",
-};
-
-const kindIcons = {
-  movie: Film,
-  show: Tv,
-  book: BookOpen,
 };
 
 export default function CatalogPage() {
@@ -141,7 +136,7 @@ function CatalogContent() {
     });
   }
 
-  function toggleKind(kind: WorkKind) {
+  function toggleKind(kind: CatalogWorkKind) {
     const nextKinds = kinds.includes(kind)
       ? kinds.filter((item) => item !== kind)
       : [...kinds, kind];
@@ -380,10 +375,10 @@ function CatalogContent() {
   );
 }
 
-function getSelectedKinds(searchParams: URLSearchParams): WorkKind[] {
+function getSelectedKinds(searchParams: URLSearchParams): CatalogWorkKind[] {
   return searchParams
     .getAll("kinds")
-    .filter((kind): kind is WorkKind => kind in kindLabels);
+    .filter((kind): kind is CatalogWorkKind => kind in kindLabels);
 }
 
 function getSortBy(searchParams: URLSearchParams) {
@@ -398,64 +393,6 @@ function getSortOrder(searchParams: URLSearchParams) {
   const sortOrder = searchParams.get("sortOrder");
 
   return sortOrder === "asc" || sortOrder === "desc" ? sortOrder : "desc";
-}
-
-function WorkCard({ work }: { work: WorkListItem }) {
-  const Icon = kindIcons[work.kind];
-  const releaseYear = work.releaseYear
-    ? String(work.releaseYear)
-    : "Год неизвестен";
-
-  return (
-    <Link
-      className="group block overflow-hidden rounded-md border bg-card shadow-sm outline-none transition hover:border-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/50"
-      href={`/catalog/${work.id}`}
-    >
-      <article
-        className="relative aspect-[2/3] bg-linear-to-br from-[#3838a8] via-[#6666cc] to-[#9f9fdf] bg-cover bg-center"
-        style={
-          work.imageUrl
-            ? { backgroundImage: `url(${work.imageUrl})` }
-            : undefined
-        }
-      >
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.42),transparent_48%)]" />
-
-        <div className="absolute left-3 top-3 grid size-9 place-items-center rounded-md bg-background/92 text-primary shadow-sm backdrop-blur">
-          <Icon className="size-5" />
-          <span className="sr-only">{kindLabels[work.kind]}</span>
-        </div>
-
-        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-md bg-background/92 px-2 py-1 shadow-sm backdrop-blur">
-          {work.rating.average === null ? (
-            <span className="text-xs font-medium text-muted-foreground">
-              Нет оценок
-            </span>
-          ) : (
-            <>
-              <RatingMark value={work.rating.average} size="sm" />
-              <span className="text-xs font-semibold text-primary">
-                {work.rating.average.toFixed(1)}
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="absolute inset-0 flex translate-y-full flex-col justify-end bg-[linear-gradient(to_top,rgba(17,17,28,0.98)_0%,rgba(17,17,28,0.9)_45%,rgba(17,17,28,0.55)_72%,rgba(17,17,28,0.08)_100%)] p-4 text-white opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
-          <div className="flex items-center justify-between gap-3 text-xs font-medium text-white/80">
-            <span>{kindLabels[work.kind]}</span>
-            <span>{releaseYear}</span>
-          </div>
-          <h2 className="mt-2 line-clamp-2 text-lg font-semibold leading-6">
-            {work.title}
-          </h2>
-          <p className="mt-3 line-clamp-5 text-sm leading-6 text-white/82">
-            {work.description ?? "Описание пока не добавлено."}
-          </p>
-        </div>
-      </article>
-    </Link>
-  );
 }
 
 function CatalogState({ title, text }: { title: string; text: string }) {

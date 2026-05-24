@@ -6,7 +6,50 @@ import { GetWorksQueryDto } from './works.dto';
 type WorkWithDetails = Prisma.WorkGetPayload<{
   include: {
     movie: true;
-    show: true;
+    show: {
+      include: {
+        seasons: {
+          include: {
+            work: {
+              include: {
+                rateable: {
+                  select: {
+                    ratings: {
+                      select: {
+                        value: true;
+                      };
+                    };
+                  };
+                };
+              };
+            };
+            episodes: {
+              include: {
+                work: {
+                  include: {
+                    rateable: {
+                      select: {
+                        ratings: {
+                          select: {
+                            value: true;
+                          };
+                        };
+                      };
+                    };
+                  };
+                };
+              };
+              orderBy: {
+                episodeNumber: 'asc';
+              };
+            };
+          };
+          orderBy: {
+            seasonNumber: 'asc';
+          };
+        };
+      };
+    };
     book: true;
     rateable: {
       select: {
@@ -120,7 +163,50 @@ export class WorksService {
       },
       include: {
         movie: true,
-        show: true,
+        show: {
+          include: {
+            seasons: {
+              include: {
+                work: {
+                  include: {
+                    rateable: {
+                      select: {
+                        ratings: {
+                          select: {
+                            value: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                episodes: {
+                  include: {
+                    work: {
+                      include: {
+                        rateable: {
+                          select: {
+                            ratings: {
+                              select: {
+                                value: true,
+                              },
+                            },
+                          },
+                        },
+                      },
+                    },
+                  },
+                  orderBy: {
+                    episodeNumber: 'asc',
+                  },
+                },
+              },
+              orderBy: {
+                seasonNumber: 'asc',
+              },
+            },
+          },
+        },
         book: true,
         rateable: {
           select: {
@@ -235,8 +321,51 @@ export class WorksService {
         work.kind === WorkKind.movie
           ? work.movie
           : work.kind === WorkKind.show
-            ? work.show
+            ? {
+                tmdbId: work.show?.tmdbId ?? null,
+                firstAirDate: work.show?.firstAirDate ?? null,
+                lastAirDate: work.show?.lastAirDate ?? null,
+                creatorNames: work.show?.creatorNames ?? null,
+                actorNames: work.show?.actorNames ?? null,
+              }
             : work.book,
+      seasons:
+        work.kind === WorkKind.show
+          ? (work.show?.seasons.map((season) => ({
+              ...this.toRelationWorkItem(season.work),
+              episodes: season.episodes.map((episode) =>
+                this.toRelationWorkItem(episode.work),
+              ),
+            })) ?? [])
+          : undefined,
+    };
+  }
+
+  private toRelationWorkItem(
+    work: Prisma.WorkGetPayload<{
+      include: {
+        rateable: {
+          select: {
+            ratings: {
+              select: {
+                value: true;
+              };
+            };
+          };
+        };
+      };
+    }>,
+  ) {
+    return {
+      id: work.id,
+      kind: work.kind,
+      title: work.title,
+      originalTitle: work.originalTitle,
+      description: work.description,
+      releaseYear: work.releaseYear,
+      imageUrl: work.imageUrl,
+      rating: this.getRatingStats(work.rateable.ratings),
+      meta: {},
     };
   }
 

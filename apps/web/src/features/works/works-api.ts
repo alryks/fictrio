@@ -1,6 +1,6 @@
 import { apiRequest } from "@/lib/api";
 
-export type WorkKind = "movie" | "show" | "book";
+export type WorkKind = "movie" | "show" | "season" | "episode" | "book";
 
 export type WorkListItem = {
   id: string;
@@ -19,6 +19,11 @@ export type WorkListItem = {
 
 export type WorkDetails = WorkListItem & {
   details: Record<string, string | number | null> | null;
+  seasons?: WorkSeason[];
+};
+
+export type WorkSeason = WorkListItem & {
+  episodes: WorkListItem[];
 };
 
 export type WorksResponse = {
@@ -30,7 +35,7 @@ export type WorksResponse = {
 
 export type GetWorksParams = {
   search?: string;
-  kinds?: WorkKind[];
+  kinds?: Array<Extract<WorkKind, "movie" | "show" | "book">>;
   yearFrom?: string;
   yearTo?: string;
   minRating?: string;
