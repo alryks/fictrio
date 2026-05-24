@@ -17,6 +17,7 @@ describe('HealthController', () => {
                 status: 'ok',
                 api: 'ok',
                 database: 'ok',
+                redis: 'ok',
               }),
           },
         },
@@ -32,6 +33,7 @@ describe('HealthController', () => {
         status: 'ok',
         api: 'ok',
         database: 'ok',
+        redis: 'ok',
       });
     });
   });
