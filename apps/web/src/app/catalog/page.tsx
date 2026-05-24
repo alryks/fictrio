@@ -345,62 +345,58 @@ function getSortOrder(searchParams: URLSearchParams) {
 
 function WorkCard({ work }: { work: WorkListItem }) {
   const Icon = kindIcons[work.kind];
-  const subtitle = [kindLabels[work.kind], work.releaseYear]
-    .filter(Boolean)
-    .join(" · ");
+  const releaseYear = work.releaseYear
+    ? String(work.releaseYear)
+    : "Год неизвестен";
 
   return (
     <Link
-      className="group flex min-h-[260px] flex-col rounded-md border bg-card p-4 shadow-sm transition hover:border-primary hover:shadow-md"
+      className="group block overflow-hidden rounded-md border bg-card shadow-sm outline-none transition hover:border-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/50"
       href={`/catalog/${work.id}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        {work.imageUrl ? (
-          <div
-            aria-hidden="true"
-            className="h-24 w-16 shrink-0 rounded-md bg-cover bg-center"
-            style={{ backgroundImage: `url(${work.imageUrl})` }}
-          />
-        ) : (
-          <div className="grid size-11 shrink-0 place-items-center rounded-md bg-secondary text-secondary-foreground">
-            <Icon className="size-5" />
-          </div>
-        )}
-        <div className="text-right">
+      <article
+        className="relative aspect-[2/3] bg-linear-to-br from-[#3838a8] via-[#6666cc] to-[#9f9fdf] bg-cover bg-center"
+        style={
+          work.imageUrl
+            ? { backgroundImage: `url(${work.imageUrl})` }
+            : undefined
+        }
+      >
+        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.55),transparent_42%)] opacity-80 transition group-hover:opacity-100" />
+
+        <div className="absolute left-3 top-3 grid size-9 place-items-center rounded-md bg-background/92 text-primary shadow-sm backdrop-blur">
+          <Icon className="size-5" />
+          <span className="sr-only">{kindLabels[work.kind]}</span>
+        </div>
+
+        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-md bg-background/92 px-2 py-1 shadow-sm backdrop-blur">
           {work.rating.average === null ? (
-            <p className="text-sm text-muted-foreground">Нет оценок</p>
+            <span className="text-xs font-medium text-muted-foreground">
+              Нет оценок
+            </span>
           ) : (
-            <div className="flex items-center gap-2">
+            <>
               <RatingMark value={work.rating.average} size="sm" />
-              <span className="text-sm font-medium text-primary">
+              <span className="text-xs font-semibold text-primary">
                 {work.rating.average.toFixed(1)}
               </span>
-            </div>
+            </>
           )}
-          <p className="mt-1 text-xs text-muted-foreground">
-            {work.rating.count} оценок
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 translate-y-[calc(100%-72px)] bg-[linear-gradient(to_top,rgba(17,17,28,0.98),rgba(17,17,28,0.88),rgba(17,17,28,0.16))] p-4 pt-16 text-white transition duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
+          <div className="flex items-center justify-between gap-3 text-xs font-medium text-white/75">
+            <span>{kindLabels[work.kind]}</span>
+            <span>{releaseYear}</span>
+          </div>
+          <h2 className="mt-2 line-clamp-2 text-lg font-semibold leading-6">
+            {work.title}
+          </h2>
+          <p className="mt-3 line-clamp-5 text-sm leading-6 text-white/82">
+            {work.description ?? "Описание пока не добавлено."}
           </p>
         </div>
-      </div>
-      <div className="mt-5 min-w-0">
-        <p className="text-xs font-medium uppercase text-muted-foreground">
-          {subtitle}
-        </p>
-        <h2 className="mt-2 line-clamp-2 text-lg font-semibold text-primary">
-          {work.title}
-        </h2>
-        {work.originalTitle ? (
-          <p className="mt-1 truncate text-sm text-muted-foreground">
-            {work.originalTitle}
-          </p>
-        ) : null}
-        <p className="mt-4 line-clamp-4 text-sm leading-6 text-muted-foreground">
-          {work.description ?? "Описание пока не добавлено."}
-        </p>
-      </div>
-      <span className="mt-auto pt-5 text-sm font-medium text-primary group-hover:underline">
-        Открыть карточку
-      </span>
+      </article>
     </Link>
   );
 }
