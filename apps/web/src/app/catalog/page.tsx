@@ -3,11 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Suspense, useEffect, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { BookOpen, Film, Search, Tv } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { getWorks, WorkKind, WorkListItem } from "@/features/works/works-api";
+
+const catalogPageSize = 24;
 
 const kindOptions: Array<{ value: WorkKind; label: string }> = [
   { value: "movie", label: "Фильмы" },
@@ -64,13 +66,15 @@ function CatalogContent() {
   const minRating = searchParams.get("minRating") ?? "";
   const sortBy = getSortBy(searchParams);
   const sortOrder = getSortOrder(searchParams);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
-  const worksQuery = useQuery({
+  const worksQuery = useInfiniteQuery({
     queryKey: [
       "works",
       { search, kinds, yearFrom, yearTo, minRating, sortBy, sortOrder },
     ],
-    queryFn: () =>
+    initialPageParam: 0,
+    queryFn: ({ pageParam }) =>
       getWorks({
         search,
         kinds,
@@ -79,10 +83,42 @@ function CatalogContent() {
         minRating,
         sortBy,
         sortOrder,
+        limit: catalogPageSize,
+        offset: pageParam,
       }),
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.items.length;
+
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
   });
 
-  const items = worksQuery.data?.items ?? [];
+  const items = worksQuery.data?.pages.flatMap((page) => page.items) ?? [];
+  const total = worksQuery.data?.pages[0]?.total ?? 0;
+  const fetchNextPage = worksQuery.fetchNextPage;
+  const hasNextPage = worksQuery.hasNextPage;
+  const isFetchingNextPage = worksQuery.isFetchingNextPage;
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+
+    if (!target || !hasNextPage) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isFetchingNextPage && hasNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "600px 0px" },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   function updateParams(updates: Record<string, string | string[] | null>) {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -162,7 +198,7 @@ function CatalogContent() {
             </p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Найдено: {worksQuery.data?.total ?? 0}
+            Показано: {items.length} из {total}
           </p>
         </div>
 
@@ -317,6 +353,27 @@ function CatalogContent() {
               <WorkCard key={work.id} work={work} />
             ))}
           </section>
+        ) : null}
+
+        <div ref={loadMoreRef} className="h-8" />
+
+        {isFetchingNextPage ? (
+          <CatalogState
+            title="Загружаем еще"
+            text="Подбираем следующую порцию произведений."
+          />
+        ) : null}
+
+        {hasNextPage && !isFetchingNextPage ? (
+          <div className="mt-5 flex justify-center">
+            <button
+              className="inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary"
+              onClick={() => void fetchNextPage()}
+              type="button"
+            >
+              Загрузить еще
+            </button>
+          </div>
         ) : null}
       </main>
     </div>
