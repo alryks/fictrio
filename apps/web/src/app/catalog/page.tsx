@@ -362,7 +362,7 @@ function WorkCard({ work }: { work: WorkListItem }) {
             : undefined
         }
       >
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.55),transparent_42%)] opacity-80 transition group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.42),transparent_48%)]" />
 
         <div className="absolute left-3 top-3 grid size-9 place-items-center rounded-md bg-background/92 text-primary shadow-sm backdrop-blur">
           <Icon className="size-5" />
@@ -384,8 +384,8 @@ function WorkCard({ work }: { work: WorkListItem }) {
           )}
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 translate-y-[calc(100%-72px)] bg-[linear-gradient(to_top,rgba(17,17,28,0.98),rgba(17,17,28,0.88),rgba(17,17,28,0.16))] p-4 pt-16 text-white transition duration-200 group-hover:translate-y-0 group-focus-visible:translate-y-0">
-          <div className="flex items-center justify-between gap-3 text-xs font-medium text-white/75">
+        <div className="absolute inset-0 flex translate-y-full flex-col justify-end bg-[linear-gradient(to_top,rgba(17,17,28,0.98)_0%,rgba(17,17,28,0.9)_45%,rgba(17,17,28,0.55)_72%,rgba(17,17,28,0.08)_100%)] p-4 text-white opacity-0 transition duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100 group-focus-visible:translate-y-0 group-focus-visible:opacity-100">
+          <div className="flex items-center justify-between gap-3 text-xs font-medium text-white/80">
             <span>{kindLabels[work.kind]}</span>
             <span>{releaseYear}</span>
           </div>
