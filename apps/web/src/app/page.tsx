@@ -1,15 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AuthPanel } from "@/features/auth/auth-panel";
 import { RatingMark } from "@/components/ui/rating-mark";
-import {
-  Bell,
-  BookOpen,
-  Film,
-  MessageCircle,
-  Search,
-  Tv,
-  UserRound,
-} from "lucide-react";
+import { Bell, BookOpen, Film, MessageCircle, Search, Tv } from "lucide-react";
 
 type Work = {
   title: string;
@@ -173,10 +166,6 @@ export default function Home() {
             <Bell className="size-4" />
             <span className="sr-only">Уведомления</span>
           </button>
-          <button className="grid size-10 place-items-center rounded-md bg-primary text-primary-foreground transition hover:bg-[var(--fictrio-accent)]">
-            <UserRound className="size-4" />
-            <span className="sr-only">Профиль</span>
-          </button>
         </div>
       </header>
 
@@ -208,7 +197,9 @@ export default function Home() {
           </div>
         </section>
 
-        <aside className="hidden lg:block" aria-hidden="true" />
+        <aside className="space-y-4">
+          <AuthPanel />
+        </aside>
       </main>
     </div>
   );
