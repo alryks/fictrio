@@ -159,7 +159,7 @@ export default function Home() {
                     {item.user.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center justify-between gap-5">
                       <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                         <span className="font-semibold">{item.user}</span>
                         <span className="text-muted-foreground">
@@ -174,7 +174,7 @@ export default function Home() {
                       </div>
                       <RatingMark
                         value={item.rating}
-                        size="md"
+                        size="lg"
                         className="shrink-0"
                       />
                     </div>
