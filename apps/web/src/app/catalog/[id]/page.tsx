@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import type { ComponentProps } from "react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { WorkReviews } from "@/features/posts/work-reviews";
 import { WorkCard } from "@/features/works/work-card";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
@@ -151,6 +152,10 @@ export default function WorkDetailsPage() {
                 <WorkRail title="Эпизоды" works={workQuery.data.episodes} />
               </div>
             ) : null}
+
+            <div className="md:col-span-2">
+              <WorkReviews work={workQuery.data} />
+            </div>
           </article>
         ) : null}
       </main>

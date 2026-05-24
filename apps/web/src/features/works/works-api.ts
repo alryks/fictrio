@@ -19,6 +19,7 @@ export type WorkListItem = {
 
 export type WorkDetails = WorkListItem & {
   details: Record<string, string | number | null> | null;
+  userRating?: number | null;
   seasons?: WorkSeason[];
   episodes?: WorkListItem[];
 };

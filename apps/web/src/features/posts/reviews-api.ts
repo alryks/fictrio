@@ -1,0 +1,49 @@
+import { apiRequest } from "@/lib/api";
+
+export type ReviewAuthor = {
+  id: string;
+  username: string;
+  displayName: string;
+};
+
+export type Review = {
+  id: string;
+  body: string;
+  isHidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: ReviewAuthor;
+  rating: number | null;
+  commentsCount: number;
+};
+
+export type ReviewsResponse = {
+  items: Review[];
+};
+
+export function getWorkReviews(workId: string) {
+  return apiRequest<ReviewsResponse>(`/works/${workId}/reviews`);
+}
+
+export function createWorkReview(workId: string, body: string, token: string) {
+  return apiRequest<Review>(`/works/${workId}/reviews`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function updateReview(reviewId: string, body: string, token: string) {
+  return apiRequest<Review>(`/reviews/${reviewId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function deleteReview(reviewId: string, token: string) {
+  return apiRequest<{ deleted: true }>(`/reviews/${reviewId}`, {
+    method: "DELETE",
+    token,
+  });
+}
