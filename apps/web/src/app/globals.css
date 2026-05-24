@@ -49,7 +49,7 @@
 }
 
 :root {
-  --font-app-sans: var(--font-inter), system-ui, sans-serif;
+  --font-app-sans: var(--font-geist-sans), system-ui, sans-serif;
   --fictrio-primary: #3838a8;
   --fictrio-accent: #6666cc;
   --fictrio-soft: #9f9fdf;
