@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -49,7 +50,7 @@
 }
 
 :root {
-  --font-app-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-app-sans: "Geist", var(--font-geist-sans), system-ui, sans-serif;
   --fictrio-primary: #3838a8;
   --fictrio-accent: #6666cc;
   --fictrio-soft: #9f9fdf;
