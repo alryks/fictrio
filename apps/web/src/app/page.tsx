@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { RatingMark } from "@/components/ui/rating-mark";
 import {
   Bell,
   BookOpen,
@@ -7,7 +8,6 @@ import {
   ListPlus,
   MessageCircle,
   Search,
-  Star,
   Tv,
   UserRound,
 } from "lucide-react";
@@ -18,7 +18,7 @@ const feedItems = [
     action: "оценила",
     target: "Дюна: Часть вторая",
     meta: "фильм",
-    rating: "3.0",
+    rating: 3,
     text: "Большой экран, плотный звук и спокойная уверенность в каждом кадре.",
   },
   {
@@ -26,7 +26,7 @@ const feedItems = [
     action: "добавил отзыв",
     target: "Сегун",
     meta: "сериал",
-    rating: "2.5",
+    rating: 2.5,
     text: "Сильнее всего работает внимание к ритуалам и языку власти.",
   },
   {
@@ -34,15 +34,15 @@ const feedItems = [
     action: "обновила список",
     target: "Книги на май",
     meta: "список",
-    rating: "12",
+    rating: 2.6,
     text: "Нон-фикшн, современная проза и две книги для долгих выходных.",
   },
 ];
 
 const trends = [
-  { title: "Оппенгеймер", type: "Фильм", icon: Film, score: "2.8" },
-  { title: "Задача трех тел", type: "Сериал", icon: Tv, score: "2.4" },
-  { title: "Дом листьев", type: "Книга", icon: BookOpen, score: "2.7" },
+  { title: "Оппенгеймер", type: "Фильм", icon: Film, score: 2.8 },
+  { title: "Задача трех тел", type: "Сериал", icon: Tv, score: 2.4 },
+  { title: "Дом листьев", type: "Книга", icon: BookOpen, score: 2.7 },
 ];
 
 export default function Home() {
@@ -157,10 +157,7 @@ export default function Home() {
                     </div>
                     <p className="mt-3 text-base leading-7">{item.text}</p>
                     <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="inline-flex items-center gap-1 font-medium text-primary">
-                        <Star className="size-4 fill-current" />
-                        {item.rating}
-                      </span>
+                      <RatingMark value={item.rating} size="sm" />
                       <button className="inline-flex items-center gap-1 hover:text-primary">
                         <MessageCircle className="size-4" />
                         Комментировать
@@ -189,10 +186,7 @@ export default function Home() {
                     <p className="truncate text-sm font-medium">{item.title}</p>
                     <p className="text-xs text-muted-foreground">{item.type}</p>
                   </div>
-                  <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                    <Star className="size-4 fill-current" />
-                    {item.score}
-                  </span>
+                  <RatingMark value={item.score} size="sm" />
                 </div>
               ))}
             </div>
