@@ -47,18 +47,13 @@ export function WorkCard({ work }: { work: WorkListItem }) {
           <span className="sr-only">{kindLabels[work.kind]}</span>
         </div>
 
-        <div className="absolute right-3 top-3 flex items-center gap-2 rounded-md bg-background/92 px-2 py-1 shadow-sm backdrop-blur">
+        <div className="absolute right-3 top-3 grid size-9 place-items-center rounded-md bg-background/92 text-primary shadow-sm backdrop-blur">
           {work.rating.average === null ? (
-            <span className="text-xs font-medium text-muted-foreground">
-              Нет оценок
+            <span className="text-xs font-semibold text-muted-foreground">
+              -
             </span>
           ) : (
-            <>
-              <RatingMark value={work.rating.average} size="sm" />
-              <span className="text-xs font-semibold text-primary">
-                {work.rating.average.toFixed(1)}
-              </span>
-            </>
+            <RatingMark value={work.rating.average} size="sm" />
           )}
         </div>
 

@@ -75,35 +75,20 @@ export default function WorkDetailsPage() {
                   ? ` · ${workQuery.data.releaseYear}`
                   : ""}
               </p>
-              <h1 className="mt-2 text-3xl font-semibold text-primary">
-                {workQuery.data.title}
-              </h1>
+              <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
+                <h1 className="min-w-0 flex-1 text-3xl font-semibold text-primary">
+                  {workQuery.data.title}
+                </h1>
+                <WorkRatingSummary
+                  average={workQuery.data.rating.average}
+                  count={workQuery.data.rating.count}
+                />
+              </div>
               {workQuery.data.originalTitle ? (
                 <p className="mt-1 text-muted-foreground">
                   {workQuery.data.originalTitle}
                 </p>
               ) : null}
-
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                {workQuery.data.rating.average === null ? (
-                  <span className="text-sm text-muted-foreground">
-                    Оценок пока нет
-                  </span>
-                ) : (
-                  <>
-                    <RatingMark
-                      value={workQuery.data.rating.average}
-                      size="lg"
-                    />
-                    <span className="text-lg font-semibold text-primary">
-                      {workQuery.data.rating.average.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {workQuery.data.rating.count} оценок
-                    </span>
-                  </>
-                )}
-              </div>
 
               <p className="mt-6 max-w-3xl text-base leading-7">
                 {workQuery.data.description ?? "Описание пока не добавлено."}
@@ -170,6 +155,35 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
       style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
+    </div>
+  );
+}
+
+function WorkRatingSummary({
+  average,
+  count,
+}: {
+  average: number | null;
+  count: number;
+}) {
+  if (average === null) {
+    return (
+      <div className="shrink-0 rounded-md border bg-background px-4 py-3 text-right">
+        <p className="text-sm font-medium text-muted-foreground">Нет оценок</p>
+        <p className="mt-1 text-xs text-muted-foreground">0 шт.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3">
+      <RatingMark value={average} size="lg" />
+      <div className="text-right">
+        <p className="text-xl font-semibold text-primary">
+          {average.toFixed(1)}/3
+        </p>
+        <p className="text-xs text-muted-foreground">{count} шт.</p>
+      </div>
     </div>
   );
 }
