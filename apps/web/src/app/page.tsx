@@ -132,12 +132,12 @@ export default function Home() {
             <a className="rounded-md px-3 py-2 text-primary" href="#">
               Лента
             </a>
-            <a
+            <Link
               className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="#"
+              href="/catalog"
             >
               Каталог
-            </a>
+            </Link>
             <a
               className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
               href="#"
