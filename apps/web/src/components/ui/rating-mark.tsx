@@ -90,14 +90,8 @@ export function RatingMark({
 
   if (!onValueChange) {
     return (
-      <span
-        className="inline-flex items-center gap-2"
-        aria-label={accessibleLabel}
-      >
+      <span className="inline-flex items-center" aria-label={accessibleLabel}>
         {mark}
-        <span className="font-medium text-primary">
-          {normalizedValue.toFixed(1).replace(".", ",")}
-        </span>
       </span>
     );
   }
@@ -110,7 +104,6 @@ export function RatingMark({
       onClick={() => onValueChange((Math.floor(normalizedValue) + 1) % 4)}
     >
       {mark}
-      <span className="font-medium text-primary">{normalizedValue}</span>
     </button>
   );
 }

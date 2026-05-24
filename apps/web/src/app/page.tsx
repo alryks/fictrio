@@ -159,21 +159,27 @@ export default function Home() {
                     {item.user.slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
-                      <span className="font-semibold">{item.user}</span>
-                      <span className="text-muted-foreground">
-                        {item.action}
-                      </span>
-                      <span className="font-medium text-primary">
-                        {item.target}
-                      </span>
-                      <span className="rounded-sm bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                        {item.meta}
-                      </span>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                        <span className="font-semibold">{item.user}</span>
+                        <span className="text-muted-foreground">
+                          {item.action}
+                        </span>
+                        <span className="font-medium text-primary">
+                          {item.target}
+                        </span>
+                        <span className="rounded-sm bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+                          {item.meta}
+                        </span>
+                      </div>
+                      <RatingMark
+                        value={item.rating}
+                        size="sm"
+                        className="mt-0.5 shrink-0"
+                      />
                     </div>
                     <p className="mt-3 text-base leading-7">{item.text}</p>
                     <div className="mt-4 flex items-center gap-4 text-sm text-muted-foreground">
-                      <RatingMark value={item.rating} size="sm" />
                       <button className="inline-flex items-center gap-1 hover:text-primary">
                         <MessageCircle className="size-4" />
                         Комментировать
