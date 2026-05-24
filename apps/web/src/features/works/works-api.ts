@@ -30,8 +30,12 @@ export type WorksResponse = {
 
 export type GetWorksParams = {
   search?: string;
-  kind?: WorkKind | "all";
-  year?: string;
+  kinds?: WorkKind[];
+  yearFrom?: string;
+  yearTo?: string;
+  minRating?: string;
+  sortBy?: "title" | "releaseYear" | "averageRating";
+  sortOrder?: "asc" | "desc";
   limit?: number;
   offset?: number;
 };
@@ -43,12 +47,28 @@ export async function getWorks(params: GetWorksParams) {
     searchParams.set("search", params.search);
   }
 
-  if (params.kind && params.kind !== "all") {
-    searchParams.set("kind", params.kind);
+  for (const kind of params.kinds ?? []) {
+    searchParams.append("kinds", kind);
   }
 
-  if (params.year) {
-    searchParams.set("year", params.year);
+  if (params.yearFrom) {
+    searchParams.set("yearFrom", params.yearFrom);
+  }
+
+  if (params.yearTo) {
+    searchParams.set("yearTo", params.yearTo);
+  }
+
+  if (params.minRating) {
+    searchParams.set("minRating", params.minRating);
+  }
+
+  if (params.sortBy) {
+    searchParams.set("sortBy", params.sortBy);
+  }
+
+  if (params.sortOrder) {
+    searchParams.set("sortOrder", params.sortOrder);
   }
 
   searchParams.set("limit", String(params.limit ?? 24));

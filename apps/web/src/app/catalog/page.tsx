@@ -2,18 +2,29 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { BookOpen, Film, Search, Tv } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { getWorks, WorkKind, WorkListItem } from "@/features/works/works-api";
 
-const kindOptions: Array<{ value: WorkKind | "all"; label: string }> = [
-  { value: "all", label: "Все" },
+const kindOptions: Array<{ value: WorkKind; label: string }> = [
   { value: "movie", label: "Фильмы" },
   { value: "show", label: "Сериалы" },
   { value: "book", label: "Книги" },
 ];
+
+const sortOptions = [
+  { value: "title", label: "Название" },
+  { value: "releaseYear", label: "Дата выхода" },
+  { value: "averageRating", label: "Средняя оценка" },
+] as const;
+
+const sortOrderOptions = [
+  { value: "asc", label: "По возрастанию" },
+  { value: "desc", label: "По убыванию" },
+] as const;
 
 const kindLabels: Record<WorkKind, string> = {
   movie: "Фильм",
@@ -28,16 +39,79 @@ const kindIcons = {
 };
 
 export default function CatalogPage() {
-  const [search, setSearch] = useState("");
-  const [kind, setKind] = useState<WorkKind | "all">("all");
-  const [year, setYear] = useState("");
+  return (
+    <Suspense
+      fallback={
+        <CatalogState
+          title="Загрузка каталога"
+          text="Подготавливаем фильтры и параметры поиска."
+        />
+      }
+    >
+      <CatalogContent />
+    </Suspense>
+  );
+}
+
+function CatalogContent() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const search = searchParams.get("search") ?? "";
+  const kinds = getSelectedKinds(searchParams);
+  const yearFrom = searchParams.get("yearFrom") ?? "";
+  const yearTo = searchParams.get("yearTo") ?? "";
+  const minRating = searchParams.get("minRating") ?? "";
+  const sortBy = getSortBy(searchParams);
+  const sortOrder = getSortOrder(searchParams);
 
   const worksQuery = useQuery({
-    queryKey: ["works", { search, kind, year }],
-    queryFn: () => getWorks({ search, kind, year }),
+    queryKey: [
+      "works",
+      { search, kinds, yearFrom, yearTo, minRating, sortBy, sortOrder },
+    ],
+    queryFn: () =>
+      getWorks({
+        search,
+        kinds,
+        yearFrom,
+        yearTo,
+        minRating,
+        sortBy,
+        sortOrder,
+      }),
   });
 
   const items = worksQuery.data?.items ?? [];
+
+  function updateParams(updates: Record<string, string | string[] | null>) {
+    const nextParams = new URLSearchParams(searchParams.toString());
+
+    for (const [key, value] of Object.entries(updates)) {
+      nextParams.delete(key);
+
+      if (Array.isArray(value)) {
+        for (const item of value) {
+          nextParams.append(key, item);
+        }
+      } else if (value) {
+        nextParams.set(key, value);
+      }
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, {
+      scroll: false,
+    });
+  }
+
+  function toggleKind(kind: WorkKind) {
+    const nextKinds = kinds.includes(kind)
+      ? kinds.filter((item) => item !== kind)
+      : [...kinds, kind];
+
+    updateParams({ kinds: nextKinds });
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -92,14 +166,16 @@ export default function CatalogPage() {
           </p>
         </div>
 
-        <section className="mt-5 grid gap-3 rounded-md border bg-card p-4 shadow-sm md:grid-cols-[minmax(220px,1fr)_180px_140px]">
+        <section className="mt-5 grid gap-4 rounded-md border bg-card p-4 shadow-sm">
           <label className="block">
             <span className="text-sm font-medium">Поиск</span>
             <span className="relative mt-1 block">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={(event) =>
+                  updateParams({ search: event.target.value })
+                }
                 placeholder="Название произведения"
                 type="search"
                 value={search}
@@ -107,35 +183,111 @@ export default function CatalogPage() {
             </span>
           </label>
 
-          <label className="block">
-            <span className="text-sm font-medium">Тип</span>
-            <select
-              className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              onChange={(event) =>
-                setKind(event.target.value as WorkKind | "all")
-              }
-              value={kind}
-            >
-              {kindOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+            <div>
+              <p className="text-sm font-medium">Тип произведения</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {kindOptions.map((option) => (
+                  <label
+                    className="inline-flex h-10 items-center gap-2 rounded-md border bg-background px-3 text-sm font-medium transition hover:border-primary"
+                    key={option.value}
+                  >
+                    <input
+                      checked={kinds.includes(option.value)}
+                      className="size-4 accent-[var(--fictrio-primary)]"
+                      onChange={() => toggleKind(option.value)}
+                      type="checkbox"
+                    />
+                    {option.label}
+                  </label>
+                ))}
+              </div>
+            </div>
 
-          <label className="block">
-            <span className="text-sm font-medium">Год</span>
-            <input
-              className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              max={2100}
-              min={1800}
-              onChange={(event) => setYear(event.target.value)}
-              placeholder="2024"
-              type="number"
-              value={year}
-            />
-          </label>
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+              <label className="block">
+                <span className="text-sm font-medium">Год от</span>
+                <input
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  max={2100}
+                  min={1800}
+                  onChange={(event) =>
+                    updateParams({ yearFrom: event.target.value })
+                  }
+                  placeholder="1990"
+                  type="number"
+                  value={yearFrom}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium">Год до</span>
+                <input
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  max={2100}
+                  min={1800}
+                  onChange={(event) =>
+                    updateParams({ yearTo: event.target.value })
+                  }
+                  placeholder="2026"
+                  type="number"
+                  value={yearTo}
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-sm font-medium">Оценка от</span>
+                <input
+                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  max={3}
+                  min={0}
+                  onChange={(event) =>
+                    updateParams({ minRating: event.target.value })
+                  }
+                  placeholder="2.0"
+                  step="0.1"
+                  type="number"
+                  value={minRating}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-sm font-medium">Сортировка</span>
+              <select
+                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                onChange={(event) =>
+                  updateParams({ sortBy: event.target.value })
+                }
+                value={sortBy}
+              >
+                {sortOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-sm font-medium">Порядок</span>
+              <select
+                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                onChange={(event) =>
+                  updateParams({ sortOrder: event.target.value })
+                }
+                value={sortOrder}
+              >
+                {sortOrderOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </section>
 
         {worksQuery.isLoading ? (
@@ -169,6 +321,26 @@ export default function CatalogPage() {
       </main>
     </div>
   );
+}
+
+function getSelectedKinds(searchParams: URLSearchParams): WorkKind[] {
+  return searchParams
+    .getAll("kinds")
+    .filter((kind): kind is WorkKind => kind in kindLabels);
+}
+
+function getSortBy(searchParams: URLSearchParams) {
+  const sortBy = searchParams.get("sortBy");
+
+  return sortOptions.some((option) => option.value === sortBy)
+    ? (sortBy as (typeof sortOptions)[number]["value"])
+    : "releaseYear";
+}
+
+function getSortOrder(searchParams: URLSearchParams) {
+  const sortOrder = searchParams.get("sortOrder");
+
+  return sortOrder === "asc" || sortOrder === "desc" ? sortOrder : "desc";
 }
 
 function WorkCard({ work }: { work: WorkListItem }) {
