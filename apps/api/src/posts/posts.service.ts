@@ -177,6 +177,17 @@ export class PostsService {
 
   private rethrowPostWriteError(error: unknown): never | void {
     if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
+      if (
+        error instanceof Prisma.PrismaClientUnknownRequestError &&
+        error.message.includes(
+          'Review requires an existing rating by the same user for the same rateable object',
+        )
+      ) {
+        throw new BadRequestException(
+          'Отзыв можно создать только после выставления оценки',
+        );
+      }
+
       return;
     }
 

@@ -13,7 +13,11 @@ async function bootstrap() {
     new FastifyAdapter(),
   );
 
-  app.enableCors();
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
   app.useGlobalPipes(new ZodValidationPipe());
   app.useGlobalFilters(new ApiExceptionFilter());
 
