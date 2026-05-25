@@ -164,7 +164,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             <div className="flex shrink-0 items-center gap-2">
               <button
                 aria-label="Изменить оценку"
-                className="grid size-14 place-items-center rounded-md border bg-background transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
+                className="grid size-14 place-items-center rounded-md transition hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
                 disabled={!isHydrated || !user || ratingMutation.isPending}
                 onClick={handleRatingClick}
                 type="button"
@@ -173,7 +173,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               </button>
               <button
                 aria-label="Удалить оценку"
-                className="grid size-10 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                className="grid size-14 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
                 disabled={!user || deleteRatingMutation.isPending}
                 onClick={() => deleteRatingMutation.mutate()}
                 type="button"
@@ -298,7 +298,7 @@ function ReviewCard({ review }: { review: Review }) {
             </p>
           </div>
         </div>
-        <RatingMark value={review.rating ?? 0} size="sm" />
+        <RatingMark value={review.rating ?? 0} size="xl" />
       </div>
       {review.kind === "review" && review.body ? (
         <p className="mt-3 whitespace-pre-wrap text-sm leading-6">

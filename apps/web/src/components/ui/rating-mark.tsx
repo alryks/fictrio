@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 
-type RatingMarkSize = "sm" | "md" | "lg";
+type RatingMarkSize = "sm" | "md" | "lg" | "xl";
 
 type RatingMarkProps = {
   value: number;
@@ -16,12 +16,14 @@ const sizeClassNames: Record<RatingMarkSize, string> = {
   sm: "h-[18px] w-4",
   md: "h-[27px] w-6",
   lg: "h-9 w-8",
+  xl: "h-10 w-9",
 };
 
 const radiusClassNames: Record<RatingMarkSize, string> = {
   sm: "rounded-tl-[3px] rounded-br-[3px]",
   md: "rounded-tl-[4.5px] rounded-br-[4.5px]",
   lg: "rounded-tl-[6px] rounded-br-[6px]",
+  xl: "rounded-tl-[6.667px] rounded-br-[6.667px]",
 };
 
 const segmentColorClassNames = [

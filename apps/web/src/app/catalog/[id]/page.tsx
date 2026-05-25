@@ -168,9 +168,12 @@ function WorkRatingSummary({
 }) {
   if (average === null) {
     return (
-      <div className="shrink-0 rounded-md border bg-background px-4 py-3 text-right">
-        <p className="text-sm font-medium text-muted-foreground">Нет оценок</p>
-        <p className="mt-1 text-xs text-muted-foreground">0 шт.</p>
+      <div className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3">
+        <RatingMark value={0} size="lg" />
+        <div className="text-right">
+          <p className="text-xl font-semibold text-primary">0.0/3.0</p>
+          <p className="text-xs text-muted-foreground">0 шт.</p>
+        </div>
       </div>
     );
   }
