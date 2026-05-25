@@ -201,7 +201,7 @@ export class PostsService {
       },
       include: publicCommentInclude,
       orderBy: {
-        createdAt: 'asc',
+        createdAt: 'desc',
       },
     });
 
