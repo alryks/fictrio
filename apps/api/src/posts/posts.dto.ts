@@ -28,6 +28,14 @@ export class CreateCommentDto {
   body!: string;
 }
 
+export class UpdateCommentDto {
+  static readonly schema = z.object({
+    body: commentBodySchema,
+  });
+
+  body!: string;
+}
+
 export class UpdateReviewDto {
   static readonly schema = z.object({
     body: reviewBodySchema,
