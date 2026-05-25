@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateReviewDto, UpdateReviewDto } from './posts.dto';
+import {
+  CreateCommentDto,
+  CreateReviewDto,
+  GetPostsPageQueryDto,
+  UpdateCommentDto,
+  UpdateReviewDto,
+} from './posts.dto';
 
 const publicReviewInclude = {
   author: {
@@ -28,7 +34,11 @@ const publicReviewInclude = {
   },
   _count: {
     select: {
-      comments: true,
+      comments: {
+        where: {
+          isHidden: false,
+        },
+      },
     },
   },
 } satisfies Prisma.PostInclude;
@@ -51,11 +61,39 @@ type PublicRating = Prisma.RatingGetPayload<{
   include: typeof publicRatingInclude;
 }>;
 
+const publicCommentInclude = {
+  author: {
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+    },
+  },
+  parentPost: {
+    select: {
+      rateable: {
+        select: {
+          ratings: {
+            select: {
+              userId: true,
+              value: true,
+            },
+          },
+        },
+      },
+    },
+  },
+} satisfies Prisma.PostInclude;
+
+type PublicComment = Prisma.PostGetPayload<{
+  include: typeof publicCommentInclude;
+}>;
+
 @Injectable()
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getWorkReviews(workId: string) {
+  async getWorkReviews(workId: string, query: GetPostsPageQueryDto) {
     const work = await this.getWorkRateable(workId);
 
     const [reviews, ratings] = await this.prisma.$transaction([
@@ -90,13 +128,18 @@ export class PostsService {
       }),
     ]);
 
+    const items = [
+      ...reviews.map((review) => this.toPublicReview(review)),
+      ...ratings.map((rating) => this.toPublicRating(rating)),
+    ].sort(
+      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+    );
+
     return {
-      items: [
-        ...reviews.map((review) => this.toPublicReview(review)),
-        ...ratings.map((rating) => this.toPublicRating(rating)),
-      ].sort(
-        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-      ),
+      items: items.slice(query.offset, query.offset + query.limit),
+      total: items.length,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
@@ -155,6 +198,94 @@ export class PostsService {
     };
   }
 
+  async getReviewComments(postId: string, query: GetPostsPageQueryDto) {
+    await this.getPublicReview(postId);
+
+    const where = {
+      parentPostId: postId,
+      isHidden: false,
+    } satisfies Prisma.PostWhereInput;
+
+    const [comments, total] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where,
+        include: publicCommentInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: query.limit,
+        skip: query.offset,
+      }),
+      this.prisma.post.count({ where }),
+    ]);
+
+    return {
+      items: comments.map((comment) => this.toPublicComment(comment)),
+      total,
+      limit: query.limit,
+      offset: query.offset,
+    };
+  }
+
+  async createReviewComment(
+    postId: string,
+    userId: string,
+    dto: CreateCommentDto,
+  ) {
+    await this.getPublicReview(postId);
+
+    try {
+      const comment = await this.prisma.post.create({
+        data: {
+          authorUserId: userId,
+          parentPostId: postId,
+          body: dto.body,
+        },
+        include: publicCommentInclude,
+      });
+
+      return this.toPublicComment(comment);
+    } catch (error) {
+      this.rethrowPostWriteError(error);
+      throw error;
+    }
+  }
+
+  async updateComment(postId: string, userId: string, dto: UpdateCommentDto) {
+    const comment = await this.getEditableComment(postId, userId);
+
+    try {
+      const updatedComment = await this.prisma.post.update({
+        where: {
+          id: comment.id,
+        },
+        data: {
+          body: dto.body,
+        },
+        include: publicCommentInclude,
+      });
+
+      return this.toPublicComment(updatedComment);
+    } catch (error) {
+      this.rethrowPostWriteError(error);
+      throw error;
+    }
+  }
+
+  async deleteComment(postId: string, userId: string) {
+    const comment = await this.getEditableComment(postId, userId);
+
+    await this.prisma.post.delete({
+      where: {
+        id: comment.id,
+      },
+    });
+
+    return {
+      deleted: true,
+    };
+  }
+
   private async getWorkRateable(workId: string) {
     const work = await this.prisma.work.findUnique({
       where: {
@@ -196,6 +327,50 @@ export class PostsService {
     return review;
   }
 
+  private async getEditableComment(postId: string, userId: string) {
+    const comment = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        authorUserId: true,
+        parentPostId: true,
+      },
+    });
+
+    if (!comment || comment.parentPostId === null) {
+      throw new NotFoundException('Комментарий не найден');
+    }
+
+    if (comment.authorUserId !== userId) {
+      throw new ForbiddenException(
+        'Можно изменять только собственный комментарий',
+      );
+    }
+
+    return comment;
+  }
+
+  private async getPublicReview(postId: string) {
+    const review = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        parentPostId: true,
+        isHidden: true,
+      },
+    });
+
+    if (!review || review.parentPostId !== null || review.isHidden) {
+      throw new NotFoundException('Отзыв не найден');
+    }
+
+    return review;
+  }
+
   private toPublicReview(review: PublicReview) {
     const authorRating =
       review.rateable?.ratings.find(
@@ -226,6 +401,23 @@ export class PostsService {
       author: rating.user,
       rating: rating.value,
       commentsCount: 0,
+    };
+  }
+
+  private toPublicComment(comment: PublicComment) {
+    const authorRating =
+      comment.parentPost?.rateable?.ratings.find(
+        (rating) => rating.userId === comment.authorUserId,
+      )?.value ?? null;
+
+    return {
+      id: comment.id,
+      body: comment.body,
+      isHidden: comment.isHidden,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: comment.author,
+      rating: authorRating,
     };
   }
 
