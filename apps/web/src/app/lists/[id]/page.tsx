@@ -13,8 +13,8 @@ import {
   rateList,
   reorderListItems,
 } from "@/features/lists/lists-api";
-import { getItemsLabel } from "@/features/lists/list-card";
 import { WorkCard } from "@/features/works/work-card";
+import { getWorksCountLabel } from "@/features/works/work-rail";
 
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -135,7 +135,7 @@ export default function ListDetailsPage() {
                 <div className="min-w-0">
                   <p className="text-sm text-muted-foreground">
                     @{list.owner.username} · {list.items.length}{" "}
-                    {getItemsLabel(list.items.length)}
+                    {getWorksCountLabel(list.items.length)}
                   </p>
                   <h1 className="mt-1 text-3xl font-semibold text-primary">
                     {list.title}
