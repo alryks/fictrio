@@ -17,6 +17,8 @@ import {
   getReviewComments,
   getWorkReviews,
   Review,
+  ReviewAuthor,
+  ReviewComment,
   updateReview,
 } from "./reviews-api";
 
@@ -289,22 +291,12 @@ async function invalidateWorkQueries(
 function ReviewCard({ review, workId }: { review: Review; workId: string }) {
   return (
     <article className="rounded-md border bg-background p-4">
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {review.author.username.slice(0, 2).toUpperCase()}
-          </div>
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold">
-              {review.author.displayName}
-            </h3>
-            <p className="truncate text-xs text-muted-foreground">
-              @{review.author.username} · {formatDate(review.createdAt)}
-            </p>
-          </div>
-        </div>
-        <RatingMark value={review.rating ?? 0} size="xl" />
-      </div>
+      <PostHeader
+        author={review.author}
+        createdAt={review.createdAt}
+        rating={review.rating}
+        ratingSize="xl"
+      />
       {review.kind === "review" && review.body ? (
         <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
           {review.body}
@@ -316,6 +308,37 @@ function ReviewCard({ review, workId }: { review: Review; workId: string }) {
         <CommentThread review={review} workId={workId} />
       ) : null}
     </article>
+  );
+}
+
+function PostHeader({
+  author,
+  createdAt,
+  rating,
+  ratingSize,
+}: {
+  author: ReviewAuthor;
+  createdAt: string;
+  rating: number | null;
+  ratingSize: "lg" | "xl";
+}) {
+  return (
+    <header className="flex items-start justify-between gap-4">
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+          {author.username.slice(0, 2).toUpperCase()}
+        </div>
+        <div className="min-w-0">
+          <h3 className="truncate text-sm font-semibold">
+            {author.displayName}
+          </h3>
+          <p className="truncate text-xs text-muted-foreground">
+            @{author.username} · {formatDate(createdAt)}
+          </p>
+        </div>
+      </div>
+      {rating === null ? null : <RatingMark value={rating} size={ratingSize} />}
+    </header>
   );
 }
 
@@ -401,26 +424,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
           ) : null}
 
           {commentsQuery.data?.items.map((comment) => (
-            <div
-              className="rounded-md bg-muted/45 px-3 py-2"
-              key={comment.id}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <p className="min-w-0 truncate text-xs font-semibold">
-                  {comment.author.displayName}
-                  <span className="font-normal text-muted-foreground">
-                    {" "}
-                    @{comment.author.username}
-                  </span>
-                </p>
-                <p className="shrink-0 text-xs text-muted-foreground">
-                  {formatDate(comment.createdAt)}
-                </p>
-              </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
-                {comment.body}
-              </p>
-            </div>
+            <CommentCard comment={comment} key={comment.id} />
           ))}
 
           <form className="space-y-2" onSubmit={handleCommentSubmit}>
@@ -457,6 +461,22 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
         </div>
       ) : null}
     </div>
+  );
+}
+
+function CommentCard({ comment }: { comment: ReviewComment }) {
+  return (
+    <article className="rounded-md bg-muted/45 px-3 py-2">
+      <PostHeader
+        author={comment.author}
+        createdAt={comment.createdAt}
+        rating={comment.rating}
+        ratingSize="lg"
+      />
+      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+        {comment.body}
+      </p>
+    </article>
   );
 }
 
