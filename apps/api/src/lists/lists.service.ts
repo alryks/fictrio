@@ -290,6 +290,39 @@ export class ListsService {
     };
   }
 
+  async deleteListRating(listId: string, userId: string) {
+    const list = await this.prisma.list.findFirst({
+      where: {
+        id: listId,
+        isHidden: false,
+      },
+      select: {
+        rateableId: true,
+        visibility: true,
+        ownerUserId: true,
+      },
+    });
+
+    if (
+      !list ||
+      (list.visibility !== ListVisibility.public && list.ownerUserId !== userId)
+    ) {
+      throw new NotFoundException('Список не найден');
+    }
+
+    await this.prisma.rating.deleteMany({
+      where: {
+        userId,
+        rateableId: list.rateableId,
+      },
+    });
+
+    return {
+      deleted: true,
+      rating: await this.getRatingStats(list.rateableId),
+    };
+  }
+
   private async assertOwnedList(listId: string, userId: string) {
     const list = await this.prisma.list.findUnique({
       where: {
