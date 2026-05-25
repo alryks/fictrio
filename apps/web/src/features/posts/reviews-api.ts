@@ -25,6 +25,7 @@ export type ReviewComment = {
   createdAt: string;
   updatedAt: string;
   author: ReviewAuthor;
+  rating: number | null;
 };
 
 export type ReviewsResponse = {
