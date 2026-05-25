@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -15,6 +16,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   CreateCommentDto,
   CreateReviewDto,
+  GetPostsPageQueryDto,
   UpdateCommentDto,
   UpdateReviewDto,
 } from './posts.dto';
@@ -25,8 +27,11 @@ export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
   @Get('works/:workId/reviews')
-  getWorkReviews(@Param('workId', ParseUUIDPipe) workId: string) {
-    return this.postsService.getWorkReviews(workId);
+  getWorkReviews(
+    @Param('workId', ParseUUIDPipe) workId: string,
+    @Query() query: GetPostsPageQueryDto,
+  ) {
+    return this.postsService.getWorkReviews(workId, query);
   }
 
   @Post('works/:workId/reviews')
@@ -59,8 +64,11 @@ export class PostsController {
   }
 
   @Get('reviews/:postId/comments')
-  getReviewComments(@Param('postId', ParseUUIDPipe) postId: string) {
-    return this.postsService.getReviewComments(postId);
+  getReviewComments(
+    @Param('postId', ParseUUIDPipe) postId: string,
+    @Query() query: GetPostsPageQueryDto,
+  ) {
+    return this.postsService.getReviewComments(postId, query);
   }
 
   @Post('reviews/:postId/comments')
