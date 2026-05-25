@@ -269,7 +269,11 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
         <div className="mt-4 space-y-3">
           {activityQuery.data?.items.map((review) => (
-            <ReviewCard key={review.id} review={review} workId={work.id} />
+            <ReviewDiscussionCard
+              key={review.id}
+              review={review}
+              workId={work.id}
+            />
           ))}
         </div>
       </div>
@@ -288,22 +292,27 @@ async function invalidateWorkQueries(
   ]);
 }
 
-function ReviewCard({ review, workId }: { review: Review; workId: string }) {
+function ReviewDiscussionCard({
+  review,
+  workId,
+}: {
+  review: Review;
+  workId: string;
+}) {
+  const body =
+    review.kind === "review" && review.body ? review.body : "Поставлена оценка.";
+  const isMuted = review.kind !== "review";
+
   return (
     <article className="rounded-md border bg-background p-4">
-      <PostHeader
+      <PostContent
         author={review.author}
+        body={body}
         createdAt={review.createdAt}
+        isMuted={isMuted}
         rating={review.rating}
         ratingSize="xl"
       />
-      {review.kind === "review" && review.body ? (
-        <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
-          {review.body}
-        </p>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground">Поставлена оценка.</p>
-      )}
       {review.kind === "review" ? (
         <CommentThread review={review} workId={workId} />
       ) : null}
@@ -311,34 +320,117 @@ function ReviewCard({ review, workId }: { review: Review; workId: string }) {
   );
 }
 
-function PostHeader({
+function PostContent({
   author,
+  body,
   createdAt,
+  isMuted = false,
   rating,
   ratingSize,
 }: {
   author: ReviewAuthor;
+  body: string;
   createdAt: string;
+  isMuted?: boolean;
   rating: number | null;
   ratingSize: "lg" | "xl";
 }) {
   return (
-    <header className="flex items-start justify-between gap-4">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-          {author.username.slice(0, 2).toUpperCase()}
+    <>
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+            {author.username.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">
+              {author.displayName}
+            </h3>
+            <p className="truncate text-xs text-muted-foreground">
+              @{author.username} · {formatDate(createdAt)}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold">
-            {author.displayName}
-          </h3>
-          <p className="truncate text-xs text-muted-foreground">
-            @{author.username} · {formatDate(createdAt)}
-          </p>
-        </div>
-      </div>
-      {rating === null ? null : <RatingMark value={rating} size={ratingSize} />}
-    </header>
+        {rating === null ? null : (
+          <div className="shrink-0 leading-none">
+            <RatingMark value={rating} size={ratingSize} />
+          </div>
+        )}
+      </header>
+      <p
+        className={`mt-3 whitespace-pre-wrap text-sm leading-6 ${
+          isMuted ? "text-muted-foreground" : ""
+        }`}
+      >
+        {body}
+      </p>
+    </>
+  );
+}
+
+function CommentList({ comments }: { comments: ReviewComment[] }) {
+  return (
+    <div className="divide-y">
+      {comments.map((comment) => (
+        <article className="py-3 first:pt-0 last:pb-0" key={comment.id}>
+          <PostContent
+            author={comment.author}
+            body={comment.body}
+            createdAt={comment.createdAt}
+            rating={comment.rating}
+            ratingSize="lg"
+          />
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function CommentForm({
+  commentDraft,
+  commentMessage,
+  isDisabled,
+  isPending,
+  isUserMissing,
+  onDraftChange,
+  onSubmit,
+}: {
+  commentDraft: string;
+  commentMessage: string | null;
+  isDisabled: boolean;
+  isPending: boolean;
+  isUserMissing: boolean;
+  onDraftChange: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <form className="space-y-2" onSubmit={onSubmit}>
+      <textarea
+        className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+        disabled={isDisabled}
+        maxLength={2000}
+        onChange={(event) => onDraftChange(event.target.value)}
+        placeholder="Ответить на отзыв"
+        required
+        value={commentDraft}
+      />
+      {commentMessage ? (
+        <p className="text-sm text-muted-foreground">{commentMessage}</p>
+      ) : null}
+      {isUserMissing ? (
+        <p className="text-sm text-muted-foreground">
+          Войдите в аккаунт, чтобы участвовать в обсуждении.
+        </p>
+      ) : null}
+      <button
+        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+        disabled={isPending || commentDraft.trim().length === 0}
+        type="submit"
+      >
+        <Send className="size-4" />
+        Отправить
+      </button>
+    </form>
   );
 }
 
@@ -392,7 +484,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   }
 
   return (
-    <div className="mt-4 border-t pt-3">
+    <section className="mt-4 border-t pt-3">
       <button
         className="inline-flex items-center gap-2 text-xs font-medium text-primary transition hover:text-[var(--fictrio-accent)]"
         onClick={() => setIsOpen((value) => !value)}
@@ -423,60 +515,26 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             </p>
           ) : null}
 
-          {commentsQuery.data?.items.map((comment) => (
-            <CommentCard comment={comment} key={comment.id} />
-          ))}
+          {commentsQuery.data?.items.length ? (
+            <CommentList comments={commentsQuery.data.items} />
+          ) : null}
 
-          <form className="space-y-2" onSubmit={handleCommentSubmit}>
-            <textarea
-              className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              disabled={!isHydrated || !user || commentMutation.isPending}
-              maxLength={2000}
-              onChange={(event) => setCommentDraft(event.target.value)}
-              placeholder="Ответить на отзыв"
-              required
-              value={commentDraft}
-            />
-            {commentMessage ? (
-              <p className="text-sm text-muted-foreground">{commentMessage}</p>
-            ) : null}
-            {!user && isHydrated ? (
-              <p className="text-sm text-muted-foreground">
-                Войдите в аккаунт, чтобы участвовать в обсуждении.
-              </p>
-            ) : null}
-            <button
-              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-              disabled={
-                !user ||
-                commentMutation.isPending ||
-                commentDraft.trim().length === 0
-              }
-              type="submit"
-            >
-              <Send className="size-4" />
-              Отправить
-            </button>
-          </form>
+          <CommentForm
+            commentDraft={commentDraft}
+            commentMessage={commentMessage}
+            isDisabled={!isHydrated || !user || commentMutation.isPending}
+            isPending={
+              !user ||
+              commentMutation.isPending ||
+              commentDraft.trim().length === 0
+            }
+            isUserMissing={!user && isHydrated}
+            onDraftChange={setCommentDraft}
+            onSubmit={handleCommentSubmit}
+          />
         </div>
       ) : null}
-    </div>
-  );
-}
-
-function CommentCard({ comment }: { comment: ReviewComment }) {
-  return (
-    <article className="rounded-md bg-muted/45 px-3 py-2">
-      <PostHeader
-        author={comment.author}
-        createdAt={comment.createdAt}
-        rating={comment.rating}
-        ratingSize="lg"
-      />
-      <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
-        {comment.body}
-      </p>
-    </article>
+    </section>
   );
 }
 
