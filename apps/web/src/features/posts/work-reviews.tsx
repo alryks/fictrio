@@ -11,8 +11,10 @@ import {
 } from "@/features/ratings/ratings-api";
 import type { WorkDetails } from "@/features/works/works-api";
 import {
+  createReviewComment,
   createWorkReview,
   deleteReview,
+  getReviewComments,
   getWorkReviews,
   Review,
   updateReview,
@@ -265,7 +267,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
         <div className="mt-4 space-y-3">
           {activityQuery.data?.items.map((review) => (
-            <ReviewCard key={review.id} review={review} />
+            <ReviewCard key={review.id} review={review} workId={work.id} />
           ))}
         </div>
       </div>
@@ -284,7 +286,7 @@ async function invalidateWorkQueries(
   ]);
 }
 
-function ReviewCard({ review }: { review: Review }) {
+function ReviewCard({ review, workId }: { review: Review; workId: string }) {
   return (
     <article className="rounded-md border bg-background p-4">
       <div className="flex items-start justify-between gap-4">
@@ -311,11 +313,150 @@ function ReviewCard({ review }: { review: Review }) {
         <p className="mt-3 text-sm text-muted-foreground">Поставлена оценка.</p>
       )}
       {review.kind === "review" ? (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Комментариев: {review.commentsCount}
-        </p>
+        <CommentThread review={review} workId={workId} />
       ) : null}
     </article>
+  );
+}
+
+function CommentThread({ review, workId }: { review: Review; workId: string }) {
+  const queryClient = useQueryClient();
+  const { accessToken, user, isHydrated } = useAuthStore();
+  const [isOpen, setIsOpen] = useState(review.commentsCount > 0);
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentMessage, setCommentMessage] = useState<string | null>(null);
+
+  const commentsQuery = useQuery({
+    queryKey: ["review", review.id, "comments"],
+    queryFn: () => getReviewComments(review.id),
+    enabled: isOpen,
+  });
+
+  const commentMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для комментария нужно войти в аккаунт");
+      }
+
+      return createReviewComment(review.id, commentDraft.trim(), accessToken);
+    },
+    onSuccess: async () => {
+      setCommentDraft("");
+      setCommentMessage(null);
+      setIsOpen(true);
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["review", review.id, "comments"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work", workId, "reviews"],
+        }),
+      ]);
+    },
+    onError: (error) => {
+      setCommentMessage(
+        error instanceof Error
+          ? error.message
+          : "Не удалось опубликовать комментарий",
+      );
+    },
+  });
+
+  function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCommentMessage(null);
+    commentMutation.mutate();
+  }
+
+  return (
+    <div className="mt-4 border-t pt-3">
+      <button
+        className="inline-flex items-center gap-2 text-xs font-medium text-primary transition hover:text-[var(--fictrio-accent)]"
+        onClick={() => setIsOpen((value) => !value)}
+        type="button"
+      >
+        <MessageCircle className="size-3.5" />
+        {isOpen ? "Скрыть обсуждение" : "Обсудить"}
+        <span className="text-muted-foreground">({review.commentsCount})</span>
+      </button>
+
+      {isOpen ? (
+        <div className="mt-3 space-y-3">
+          {commentsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">
+              Загружаем комментарии...
+            </p>
+          ) : null}
+
+          {commentsQuery.isError ? (
+            <p className="text-sm text-muted-foreground">
+              {commentsQuery.error.message}
+            </p>
+          ) : null}
+
+          {commentsQuery.data?.items.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Пока нет комментариев.
+            </p>
+          ) : null}
+
+          {commentsQuery.data?.items.map((comment) => (
+            <div
+              className="rounded-md bg-muted/45 px-3 py-2"
+              key={comment.id}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 truncate text-xs font-semibold">
+                  {comment.author.displayName}
+                  <span className="font-normal text-muted-foreground">
+                    {" "}
+                    @{comment.author.username}
+                  </span>
+                </p>
+                <p className="shrink-0 text-xs text-muted-foreground">
+                  {formatDate(comment.createdAt)}
+                </p>
+              </div>
+              <p className="mt-1 whitespace-pre-wrap text-sm leading-6">
+                {comment.body}
+              </p>
+            </div>
+          ))}
+
+          <form className="space-y-2" onSubmit={handleCommentSubmit}>
+            <textarea
+              className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+              disabled={!isHydrated || !user || commentMutation.isPending}
+              maxLength={2000}
+              onChange={(event) => setCommentDraft(event.target.value)}
+              placeholder="Ответить на отзыв"
+              required
+              value={commentDraft}
+            />
+            {commentMessage ? (
+              <p className="text-sm text-muted-foreground">{commentMessage}</p>
+            ) : null}
+            {!user && isHydrated ? (
+              <p className="text-sm text-muted-foreground">
+                Войдите в аккаунт, чтобы участвовать в обсуждении.
+              </p>
+            ) : null}
+            <button
+              className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+              disabled={
+                !user ||
+                commentMutation.isPending ||
+                commentDraft.trim().length === 0
+              }
+              type="submit"
+            >
+              <Send className="size-4" />
+              Отправить
+            </button>
+          </form>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
