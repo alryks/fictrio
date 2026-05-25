@@ -337,7 +337,7 @@ function PostContent({
 }) {
   return (
     <>
-      <header className="flex items-start justify-between gap-4">
+      <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
             {author.username.slice(0, 2).toUpperCase()}
