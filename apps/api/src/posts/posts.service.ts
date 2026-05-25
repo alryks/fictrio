@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateCommentDto,
   CreateReviewDto,
+  UpdateCommentDto,
   UpdateReviewDto,
 } from './posts.dto';
 
@@ -234,6 +235,41 @@ export class PostsService {
     }
   }
 
+  async updateComment(postId: string, userId: string, dto: UpdateCommentDto) {
+    const comment = await this.getEditableComment(postId, userId);
+
+    try {
+      const updatedComment = await this.prisma.post.update({
+        where: {
+          id: comment.id,
+        },
+        data: {
+          body: dto.body,
+        },
+        include: publicCommentInclude,
+      });
+
+      return this.toPublicComment(updatedComment);
+    } catch (error) {
+      this.rethrowPostWriteError(error);
+      throw error;
+    }
+  }
+
+  async deleteComment(postId: string, userId: string) {
+    const comment = await this.getEditableComment(postId, userId);
+
+    await this.prisma.post.delete({
+      where: {
+        id: comment.id,
+      },
+    });
+
+    return {
+      deleted: true,
+    };
+  }
+
   private async getWorkRateable(workId: string) {
     const work = await this.prisma.work.findUnique({
       where: {
@@ -273,6 +309,31 @@ export class PostsService {
     }
 
     return review;
+  }
+
+  private async getEditableComment(postId: string, userId: string) {
+    const comment = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        authorUserId: true,
+        parentPostId: true,
+      },
+    });
+
+    if (!comment || comment.parentPostId === null) {
+      throw new NotFoundException('Комментарий не найден');
+    }
+
+    if (comment.authorUserId !== userId) {
+      throw new ForbiddenException(
+        'Можно изменять только собственный комментарий',
+      );
+    }
+
+    return comment;
   }
 
   private async getPublicReview(postId: string) {
