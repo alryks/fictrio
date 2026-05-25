@@ -77,19 +77,21 @@ export default function WorkDetailsPage() {
                     : ""}
                 </p>
                 <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-                  <h1 className="min-w-0 flex-1 text-3xl font-semibold text-primary">
-                    {workQuery.data.title}
-                  </h1>
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-3xl font-semibold text-primary">
+                      {workQuery.data.title}
+                    </h1>
+                    {workQuery.data.originalTitle ? (
+                      <p className="mt-1 text-muted-foreground">
+                        {workQuery.data.originalTitle}
+                      </p>
+                    ) : null}
+                  </div>
                   <WorkRatingSummary
                     average={workQuery.data.rating.average}
                     count={workQuery.data.rating.count}
                   />
                 </div>
-                {workQuery.data.originalTitle ? (
-                  <p className="mt-1 text-muted-foreground">
-                    {workQuery.data.originalTitle}
-                  </p>
-                ) : null}
 
                 <p className="mt-6 max-w-3xl text-base leading-7">
                   {workQuery.data.description ?? "Описание пока не добавлено."}
