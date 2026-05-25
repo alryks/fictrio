@@ -7,7 +7,7 @@ export function ListCard({ list }: { list: FictrioList }) {
   const works = list.items.map((item) => item.work);
 
   return (
-    <article className="rounded-md border bg-card p-5 shadow-sm">
+    <article className="min-w-0 overflow-hidden rounded-md border bg-card p-5 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
@@ -56,7 +56,7 @@ export function ListCard({ list }: { list: FictrioList }) {
         </p>
       ) : null}
 
-      <div className="mt-2">
+      <div className="mt-2 min-w-0">
         <WorkRail works={works} emptyText="Список пока пуст." />
       </div>
     </article>

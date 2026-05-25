@@ -141,7 +141,7 @@ export default function ListsPage() {
             </p>
           ) : null}
 
-          <div className="mt-5 grid gap-4">
+          <div className="mt-5 grid min-w-0 gap-4">
             {lists.map((list) => (
               <ListCard key={list.id} list={list} />
             ))}
