@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import type { ComponentProps } from "react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { WorkReviews } from "@/features/posts/work-reviews";
 import { WorkCard } from "@/features/works/work-card";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
@@ -65,93 +66,84 @@ export default function WorkDetailsPage() {
         ) : null}
 
         {workQuery.data ? (
-          <article className="grid gap-6 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[240px_minmax(0,1fr)]">
-            <Poster imageUrl={workQuery.data.imageUrl} />
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-muted-foreground">
-                {kindLabels[workQuery.data.kind]}
-                {workQuery.data.releaseYear
-                  ? ` · ${workQuery.data.releaseYear}`
-                  : ""}
-              </p>
-              <h1 className="mt-2 text-3xl font-semibold text-primary">
-                {workQuery.data.title}
-              </h1>
-              {workQuery.data.originalTitle ? (
-                <p className="mt-1 text-muted-foreground">
-                  {workQuery.data.originalTitle}
+          <>
+            <article className="grid gap-6 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[240px_minmax(0,1fr)]">
+              <Poster imageUrl={workQuery.data.imageUrl} />
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-muted-foreground">
+                  {kindLabels[workQuery.data.kind]}
+                  {workQuery.data.releaseYear
+                    ? ` · ${workQuery.data.releaseYear}`
+                    : ""}
                 </p>
+                <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0 flex-1">
+                    <h1 className="text-3xl font-semibold text-primary">
+                      {workQuery.data.title}
+                    </h1>
+                    {workQuery.data.originalTitle ? (
+                      <p className="mt-1 text-muted-foreground">
+                        {workQuery.data.originalTitle}
+                      </p>
+                    ) : null}
+                  </div>
+                  <WorkRatingSummary
+                    average={workQuery.data.rating.average}
+                    count={workQuery.data.rating.count}
+                  />
+                </div>
+
+                <p className="mt-6 max-w-3xl text-base leading-7">
+                  {workQuery.data.description ?? "Описание пока не добавлено."}
+                </p>
+
+                <dl className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {Object.entries(workQuery.data.meta).map(([key, value]) =>
+                    value === null ? null : (
+                      <div
+                        key={key}
+                        className="rounded-md border bg-background p-3"
+                      >
+                        <dt className="text-xs uppercase text-muted-foreground">
+                          {getMetaLabel(key)}
+                        </dt>
+                        <dd className="mt-1 text-sm font-medium">
+                          {formatMetaValue(key, value)}
+                        </dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </div>
+
+              {workQuery.data.kind === "show" &&
+              workQuery.data.seasons?.length ? (
+                <div className="md:col-span-2">
+                  <WorkRail title="Сезоны" works={workQuery.data.seasons} />
+                  <div className="mt-8 space-y-8">
+                    {workQuery.data.seasons.map((season) =>
+                      season.episodes.length ? (
+                        <WorkRail
+                          key={season.id}
+                          title={season.title}
+                          works={season.episodes}
+                        />
+                      ) : null,
+                    )}
+                  </div>
+                </div>
               ) : null}
 
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                {workQuery.data.rating.average === null ? (
-                  <span className="text-sm text-muted-foreground">
-                    Оценок пока нет
-                  </span>
-                ) : (
-                  <>
-                    <RatingMark
-                      value={workQuery.data.rating.average}
-                      size="lg"
-                    />
-                    <span className="text-lg font-semibold text-primary">
-                      {workQuery.data.rating.average.toFixed(1)}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {workQuery.data.rating.count} оценок
-                    </span>
-                  </>
-                )}
-              </div>
-
-              <p className="mt-6 max-w-3xl text-base leading-7">
-                {workQuery.data.description ?? "Описание пока не добавлено."}
-              </p>
-
-              <dl className="mt-6 grid gap-3 sm:grid-cols-2">
-                {Object.entries(workQuery.data.meta).map(([key, value]) =>
-                  value === null ? null : (
-                    <div
-                      key={key}
-                      className="rounded-md border bg-background p-3"
-                    >
-                      <dt className="text-xs uppercase text-muted-foreground">
-                        {getMetaLabel(key)}
-                      </dt>
-                      <dd className="mt-1 text-sm font-medium">
-                        {formatMetaValue(key, value)}
-                      </dd>
-                    </div>
-                  ),
-                )}
-              </dl>
-            </div>
-
-            {workQuery.data.kind === "show" &&
-            workQuery.data.seasons?.length ? (
-              <div className="md:col-span-2">
-                <WorkRail title="Сезоны" works={workQuery.data.seasons} />
-                <div className="mt-8 space-y-8">
-                  {workQuery.data.seasons.map((season) =>
-                    season.episodes.length ? (
-                      <WorkRail
-                        key={season.id}
-                        title={season.title}
-                        works={season.episodes}
-                      />
-                    ) : null,
-                  )}
+              {workQuery.data.kind === "season" &&
+              workQuery.data.episodes?.length ? (
+                <div className="md:col-span-2">
+                  <WorkRail title="Эпизоды" works={workQuery.data.episodes} />
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </article>
 
-            {workQuery.data.kind === "season" &&
-            workQuery.data.episodes?.length ? (
-              <div className="md:col-span-2">
-                <WorkRail title="Эпизоды" works={workQuery.data.episodes} />
-              </div>
-            ) : null}
-          </article>
+            <WorkReviews work={workQuery.data} />
+          </>
         ) : null}
       </main>
     </div>
@@ -166,6 +158,55 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
     </div>
+  );
+}
+
+function WorkRatingSummary({
+  average,
+  count,
+}: {
+  average: number | null;
+  count: number;
+}) {
+  function scrollToReviewForm() {
+    document.getElementById("work-review-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
+  if (average === null) {
+    return (
+      <button
+        aria-label="Перейти к отзыву"
+        className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
+        onClick={scrollToReviewForm}
+        type="button"
+      >
+        <RatingMark value={0} size="lg" />
+        <div className="text-right">
+          <p className="text-xl font-semibold text-primary">0.0/3.0</p>
+          <p className="text-xs text-muted-foreground">0 шт.</p>
+        </div>
+      </button>
+    );
+  }
+
+  return (
+    <button
+      aria-label="Перейти к отзыву"
+      className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
+      onClick={scrollToReviewForm}
+      type="button"
+    >
+      <RatingMark value={average} size="lg" />
+      <div className="text-right">
+        <p className="text-xl font-semibold text-primary">
+          {average.toFixed(1)}/3.0
+        </p>
+        <p className="text-xs text-muted-foreground">{count} шт.</p>
+      </div>
+    </button>
   );
 }
 
