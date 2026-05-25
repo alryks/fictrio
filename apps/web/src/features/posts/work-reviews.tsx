@@ -311,7 +311,6 @@ function ReviewDiscussionCard({
         createdAt={review.createdAt}
         isMuted={isMuted}
         rating={review.rating}
-        ratingSize="xl"
       />
       {review.kind === "review" ? (
         <CommentThread review={review} workId={workId} />
@@ -326,14 +325,12 @@ function PostContent({
   createdAt,
   isMuted = false,
   rating,
-  ratingSize,
 }: {
   author: ReviewAuthor;
   body: string;
   createdAt: string;
   isMuted?: boolean;
   rating: number | null;
-  ratingSize: "lg" | "xl";
 }) {
   return (
     <>
@@ -353,7 +350,7 @@ function PostContent({
         </div>
         {rating === null ? null : (
           <div className="shrink-0 leading-none">
-            <RatingMark value={rating} size={ratingSize} />
+            <RatingMark value={rating} size="xl" />
           </div>
         )}
       </header>
@@ -378,7 +375,6 @@ function CommentList({ comments }: { comments: ReviewComment[] }) {
             body={comment.body}
             createdAt={comment.createdAt}
             rating={comment.rating}
-            ratingSize="lg"
           />
         </article>
       ))}
