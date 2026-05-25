@@ -15,6 +15,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   CreateCommentDto,
   CreateReviewDto,
+  UpdateCommentDto,
   UpdateReviewDto,
 } from './posts.dto';
 import { PostsService } from './posts.service';
@@ -70,5 +71,24 @@ export class PostsController {
     @Body() dto: CreateCommentDto,
   ) {
     return this.postsService.createReviewComment(postId, user.id, dto);
+  }
+
+  @Patch('comments/:postId')
+  @UseGuards(JwtAuthGuard)
+  updateComment(
+    @Param('postId', ParseUUIDPipe) postId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateCommentDto,
+  ) {
+    return this.postsService.updateComment(postId, user.id, dto);
+  }
+
+  @Delete('comments/:postId')
+  @UseGuards(JwtAuthGuard)
+  deleteComment(
+    @Param('postId', ParseUUIDPipe) postId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.postsService.deleteComment(postId, user.id);
   }
 }
