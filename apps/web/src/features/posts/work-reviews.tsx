@@ -480,7 +480,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   }
 
   return (
-    <section className="mt-4 border-t pt-3">
+    <section className="mt-4">
       <button
         className="inline-flex items-center gap-2 text-xs font-medium text-primary transition hover:text-[var(--fictrio-accent)]"
         onClick={() => setIsOpen((value) => !value)}
@@ -492,7 +492,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       </button>
 
       {isOpen ? (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 pl-8">
           {commentsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">
               Загружаем комментарии...
