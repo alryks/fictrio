@@ -291,6 +291,7 @@ async function invalidateWorkQueries(
     queryClient.invalidateQueries({ queryKey: ["work", workId] }),
     queryClient.invalidateQueries({ queryKey: ["works"] }),
     queryClient.invalidateQueries({ queryKey: ["work", workId, "reviews"] }),
+    queryClient.invalidateQueries({ queryKey: ["review"] }),
   ]);
 }
 
@@ -592,7 +593,7 @@ function CommentForm({
 function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated } = useAuthStore();
-  const [isOpen, setIsOpen] = useState(review.commentsCount > 0);
+  const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
@@ -652,19 +653,21 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
       {isOpen ? (
         <div className="mt-3 space-y-3 pl-8">
-          <CommentForm
-            commentDraft={commentDraft}
-            commentMessage={commentMessage}
-            isDisabled={!isHydrated || !user || commentMutation.isPending}
-            isPending={
-              !user ||
-              commentMutation.isPending ||
-              commentDraft.trim().length === 0
-            }
-            isUserMissing={!user && isHydrated}
-            onDraftChange={setCommentDraft}
-            onSubmit={handleCommentSubmit}
-          />
+          <div className="border-b pb-3">
+            <CommentForm
+              commentDraft={commentDraft}
+              commentMessage={commentMessage}
+              isDisabled={!isHydrated || !user || commentMutation.isPending}
+              isPending={
+                !user ||
+                commentMutation.isPending ||
+                commentDraft.trim().length === 0
+              }
+              isUserMissing={!user && isHydrated}
+              onDraftChange={setCommentDraft}
+              onSubmit={handleCommentSubmit}
+            />
+          </div>
 
           {commentsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">
