@@ -23,12 +23,11 @@ export function ListCard({ list }: { list: FictrioList }) {
           </div>
         </div>
 
-        <Link
-          className="rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-          href={`/lists/${list.id}`}
-        >
-          Открыть список
-        </Link>
+        <RatingMark
+          className="shrink-0"
+          value={list.rating.average ?? 0}
+          size="lg"
+        />
       </header>
 
       <div className="mt-5 flex flex-wrap items-start justify-between gap-4">
@@ -39,15 +38,10 @@ export function ListCard({ list }: { list: FictrioList }) {
           >
             {list.title}
           </Link>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {list.items.length} {getWorksCountLabel(list.items.length)}
-          </p>
         </div>
-        <RatingMark
-          className="shrink-0"
-          value={list.rating.average ?? 0}
-          size="lg"
-        />
+        <p className="shrink-0 rounded-md border bg-background px-3 py-2 text-sm font-medium text-muted-foreground">
+          {list.items.length} {getWorksCountLabel(list.items.length)}
+        </p>
       </div>
 
       {list.description ? (
