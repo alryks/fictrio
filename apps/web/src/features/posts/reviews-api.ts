@@ -78,3 +78,18 @@ export function createReviewComment(
     body: JSON.stringify({ body }),
   });
 }
+
+export function updateComment(commentId: string, body: string, token: string) {
+  return apiRequest<ReviewComment>(`/comments/${commentId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify({ body }),
+  });
+}
+
+export function deleteComment(commentId: string, token: string) {
+  return apiRequest<{ deleted: true }>(`/comments/${commentId}`, {
+    method: "DELETE",
+    token,
+  });
+}
