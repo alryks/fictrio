@@ -18,8 +18,21 @@ export type Review = {
   commentsCount: number;
 };
 
+export type ReviewComment = {
+  id: string;
+  body: string;
+  isHidden: boolean;
+  createdAt: string;
+  updatedAt: string;
+  author: ReviewAuthor;
+};
+
 export type ReviewsResponse = {
   items: Review[];
+};
+
+export type ReviewCommentsResponse = {
+  items: ReviewComment[];
 };
 
 export function getWorkReviews(workId: string) {
@@ -46,5 +59,21 @@ export function deleteReview(reviewId: string, token: string) {
   return apiRequest<{ deleted: true }>(`/reviews/${reviewId}`, {
     method: "DELETE",
     token,
+  });
+}
+
+export function getReviewComments(reviewId: string) {
+  return apiRequest<ReviewCommentsResponse>(`/reviews/${reviewId}/comments`);
+}
+
+export function createReviewComment(
+  reviewId: string,
+  body: string,
+  token: string,
+) {
+  return apiRequest<ReviewComment>(`/reviews/${reviewId}/comments`, {
+    method: "POST",
+    token,
+    body: JSON.stringify({ body }),
   });
 }
