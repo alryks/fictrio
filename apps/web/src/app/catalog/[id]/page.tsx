@@ -5,9 +5,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { RatingMark } from "@/components/ui/rating-mark";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
+import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkRail } from "@/features/works/work-rail";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
@@ -87,9 +87,17 @@ export default function WorkDetailsPage() {
                       </p>
                     ) : null}
                   </div>
-                  <WorkRatingSummary
+                  <AverageRatingSummary
                     average={workQuery.data.rating.average}
                     count={workQuery.data.rating.count}
+                    onClick={() => {
+                      document
+                        .getElementById("work-review-form")
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                    }}
                   />
                 </div>
 
@@ -159,55 +167,6 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
     </div>
-  );
-}
-
-function WorkRatingSummary({
-  average,
-  count,
-}: {
-  average: number | null;
-  count: number;
-}) {
-  function scrollToReviewForm() {
-    document.getElementById("work-review-form")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
-
-  if (average === null) {
-    return (
-      <button
-        aria-label="Перейти к отзыву"
-        className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
-        onClick={scrollToReviewForm}
-        type="button"
-      >
-        <RatingMark value={0} size="lg" />
-        <div className="text-right">
-          <p className="text-xl font-semibold text-primary">0.0/3.0</p>
-          <p className="text-xs text-muted-foreground">0 шт.</p>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      aria-label="Перейти к отзыву"
-      className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
-      onClick={scrollToReviewForm}
-      type="button"
-    >
-      <RatingMark value={average} size="lg" />
-      <div className="text-right">
-        <p className="text-xl font-semibold text-primary">
-          {average.toFixed(1)}/3.0
-        </p>
-        <p className="text-xs text-muted-foreground">{count} шт.</p>
-      </div>
-    </button>
   );
 }
 
