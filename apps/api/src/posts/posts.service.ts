@@ -67,6 +67,20 @@ const publicCommentInclude = {
       displayName: true,
     },
   },
+  parentPost: {
+    select: {
+      rateable: {
+        select: {
+          ratings: {
+            select: {
+              userId: true,
+              value: true,
+            },
+          },
+        },
+      },
+    },
+  },
 } satisfies Prisma.PostInclude;
 
 type PublicComment = Prisma.PostGetPayload<{
@@ -314,6 +328,11 @@ export class PostsService {
   }
 
   private toPublicComment(comment: PublicComment) {
+    const authorRating =
+      comment.parentPost?.rateable?.ratings.find(
+        (rating) => rating.userId === comment.authorUserId,
+      )?.value ?? null;
+
     return {
       id: comment.id,
       body: comment.body,
@@ -321,6 +340,7 @@ export class PostsService {
       createdAt: comment.createdAt,
       updatedAt: comment.updatedAt,
       author: comment.author,
+      rating: authorRating,
     };
   }
 
