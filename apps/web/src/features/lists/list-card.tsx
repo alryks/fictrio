@@ -39,7 +39,7 @@ export function ListCard({ list }: { list: FictrioList }) {
             {list.title}
           </Link>
         </div>
-        <p className="shrink-0 rounded-md border bg-background px-3 py-2 text-sm font-medium text-muted-foreground">
+        <p className="shrink-0 text-sm text-muted-foreground">
           {list.items.length} {getWorksCountLabel(list.items.length)}
         </p>
       </div>
