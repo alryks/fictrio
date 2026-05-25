@@ -151,27 +151,56 @@ export default function ListDetailsPage() {
         {list ? (
           <>
             <section className="rounded-md border bg-card p-5 shadow-sm">
-              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">
-                    @{list.owner.username} · {list.items.length}{" "}
-                    {getWorksCountLabel(list.items.length)}
-                  </p>
-                  <h1 className="mt-1 text-3xl font-semibold text-primary">
-                    {list.title}
-                  </h1>
-                  {list.description ? (
-                    <p className="mt-4 max-w-3xl whitespace-pre-wrap leading-7">
-                      {list.description}
-                    </p>
-                  ) : null}
-                </div>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+                <header className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+                      {list.owner.username.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">
+                        {list.owner.displayName}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        @{list.owner.username} · {formatDate(list.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
+                    <h1 className="text-3xl font-semibold text-primary">
+                      {list.title}
+                    </h1>
+                    <span className="text-muted-foreground">·</span>
+                    <span className="text-sm text-muted-foreground">
+                      {list.items.length}{" "}
+                      {getWorksCountLabel(list.items.length)}
+                    </span>
+                  </div>
+                </header>
+
                 <AverageRatingSummary
                   average={list.rating.average}
                   count={list.rating.count}
                 />
-              </div>
-              <div className="mt-5 flex justify-end">
+
+                <div className="min-w-0">
+                  {list.description ? (
+                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6">
+                      {list.description}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Описание пока не добавлено.
+                    </p>
+                  )}
+                  {message ? (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {message}
+                    </p>
+                  ) : null}
+                </div>
+
                 <RatingControl
                   value={ratingValue}
                   disabled={!isHydrated || !user || ratingMutation.isPending}
@@ -186,18 +215,12 @@ export default function ListDetailsPage() {
                   }}
                 />
               </div>
-              {message ? (
-                <p className="mt-4 text-sm text-muted-foreground">{message}</p>
-              ) : null}
             </section>
 
             <section className="mt-6">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {items.map((item, index) => (
-                  <div
-                    key={item.work.id}
-                    className="rounded-md border bg-card p-3"
-                  >
+                  <div key={item.work.id}>
                     <WorkCard work={item.work} />
                     {isOwner ? (
                       <div className="mt-3 flex gap-2">
@@ -248,4 +271,18 @@ function State({ title, text }: { title: string; text: string }) {
       <p className="mt-2 text-sm text-muted-foreground">{text}</p>
     </section>
   );
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  }).format(date);
 }
