@@ -92,3 +92,13 @@ export function rateList(listId: string, value: number, token: string) {
     body: JSON.stringify({ value }),
   });
 }
+
+export function deleteListRating(listId: string, token: string) {
+  return apiRequest<{ deleted: true; rating: FictrioList["rating"] }>(
+    `/lists/${listId}/rating`,
+    {
+      method: "DELETE",
+      token,
+    },
+  );
+}
