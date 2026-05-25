@@ -6,7 +6,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateReviewDto, UpdateReviewDto } from './posts.dto';
+import {
+  CreateCommentDto,
+  CreateReviewDto,
+  UpdateReviewDto,
+} from './posts.dto';
 
 const publicReviewInclude = {
   author: {
@@ -28,7 +32,11 @@ const publicReviewInclude = {
   },
   _count: {
     select: {
-      comments: true,
+      comments: {
+        where: {
+          isHidden: false,
+        },
+      },
     },
   },
 } satisfies Prisma.PostInclude;
@@ -49,6 +57,20 @@ const publicRatingInclude = {
 
 type PublicRating = Prisma.RatingGetPayload<{
   include: typeof publicRatingInclude;
+}>;
+
+const publicCommentInclude = {
+  author: {
+    select: {
+      id: true,
+      username: true,
+      displayName: true,
+    },
+  },
+} satisfies Prisma.PostInclude;
+
+type PublicComment = Prisma.PostGetPayload<{
+  include: typeof publicCommentInclude;
 }>;
 
 @Injectable()
@@ -155,6 +177,49 @@ export class PostsService {
     };
   }
 
+  async getReviewComments(postId: string) {
+    await this.getPublicReview(postId);
+
+    const comments = await this.prisma.post.findMany({
+      where: {
+        parentPostId: postId,
+        isHidden: false,
+      },
+      include: publicCommentInclude,
+      orderBy: {
+        createdAt: 'asc',
+      },
+    });
+
+    return {
+      items: comments.map((comment) => this.toPublicComment(comment)),
+    };
+  }
+
+  async createReviewComment(
+    postId: string,
+    userId: string,
+    dto: CreateCommentDto,
+  ) {
+    await this.getPublicReview(postId);
+
+    try {
+      const comment = await this.prisma.post.create({
+        data: {
+          authorUserId: userId,
+          parentPostId: postId,
+          body: dto.body,
+        },
+        include: publicCommentInclude,
+      });
+
+      return this.toPublicComment(comment);
+    } catch (error) {
+      this.rethrowPostWriteError(error);
+      throw error;
+    }
+  }
+
   private async getWorkRateable(workId: string) {
     const work = await this.prisma.work.findUnique({
       where: {
@@ -196,6 +261,25 @@ export class PostsService {
     return review;
   }
 
+  private async getPublicReview(postId: string) {
+    const review = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        parentPostId: true,
+        isHidden: true,
+      },
+    });
+
+    if (!review || review.parentPostId !== null || review.isHidden) {
+      throw new NotFoundException('Отзыв не найден');
+    }
+
+    return review;
+  }
+
   private toPublicReview(review: PublicReview) {
     const authorRating =
       review.rateable?.ratings.find(
@@ -226,6 +310,17 @@ export class PostsService {
       author: rating.user,
       rating: rating.value,
       commentsCount: 0,
+    };
+  }
+
+  private toPublicComment(comment: PublicComment) {
+    return {
+      id: comment.id,
+      body: comment.body,
+      isHidden: comment.isHidden,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: comment.author,
     };
   }
 
