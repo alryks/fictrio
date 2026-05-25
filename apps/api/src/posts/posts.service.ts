@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   CreateCommentDto,
   CreateReviewDto,
+  GetPostsPageQueryDto,
   UpdateCommentDto,
   UpdateReviewDto,
 } from './posts.dto';
@@ -92,7 +93,7 @@ type PublicComment = Prisma.PostGetPayload<{
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getWorkReviews(workId: string) {
+  async getWorkReviews(workId: string, query: GetPostsPageQueryDto) {
     const work = await this.getWorkRateable(workId);
 
     const [reviews, ratings] = await this.prisma.$transaction([
@@ -127,13 +128,18 @@ export class PostsService {
       }),
     ]);
 
+    const items = [
+      ...reviews.map((review) => this.toPublicReview(review)),
+      ...ratings.map((rating) => this.toPublicRating(rating)),
+    ].sort(
+      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
+    );
+
     return {
-      items: [
-        ...reviews.map((review) => this.toPublicReview(review)),
-        ...ratings.map((rating) => this.toPublicRating(rating)),
-      ].sort(
-        (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-      ),
+      items: items.slice(query.offset, query.offset + query.limit),
+      total: items.length,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
@@ -192,22 +198,32 @@ export class PostsService {
     };
   }
 
-  async getReviewComments(postId: string) {
+  async getReviewComments(postId: string, query: GetPostsPageQueryDto) {
     await this.getPublicReview(postId);
 
-    const comments = await this.prisma.post.findMany({
-      where: {
-        parentPostId: postId,
-        isHidden: false,
-      },
-      include: publicCommentInclude,
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    const where = {
+      parentPostId: postId,
+      isHidden: false,
+    } satisfies Prisma.PostWhereInput;
+
+    const [comments, total] = await this.prisma.$transaction([
+      this.prisma.post.findMany({
+        where,
+        include: publicCommentInclude,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        take: query.limit,
+        skip: query.offset,
+      }),
+      this.prisma.post.count({ where }),
+    ]);
 
     return {
       items: comments.map((comment) => this.toPublicComment(comment)),
+      total,
+      limit: query.limit,
+      offset: query.offset,
     };
   }
 
