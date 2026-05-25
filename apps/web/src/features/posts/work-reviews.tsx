@@ -13,12 +13,14 @@ import type { WorkDetails } from "@/features/works/works-api";
 import {
   createReviewComment,
   createWorkReview,
+  deleteComment,
   deleteReview,
   getReviewComments,
   getWorkReviews,
   Review,
   ReviewAuthor,
   ReviewComment,
+  updateComment,
   updateReview,
 } from "./reviews-api";
 
@@ -365,20 +367,177 @@ function PostContent({
   );
 }
 
-function CommentList({ comments }: { comments: ReviewComment[] }) {
+function CommentList({
+  comments,
+  reviewId,
+  workId,
+}: {
+  comments: ReviewComment[];
+  reviewId: string;
+  workId: string;
+}) {
   return (
     <div className="divide-y">
       {comments.map((comment) => (
-        <article className="py-3 first:pt-0 last:pb-0" key={comment.id}>
-          <PostContent
-            author={comment.author}
-            body={comment.body}
-            createdAt={comment.createdAt}
-            rating={comment.rating}
-          />
-        </article>
+        <CommentItem
+          comment={comment}
+          key={comment.id}
+          reviewId={reviewId}
+          workId={workId}
+        />
       ))}
     </div>
+  );
+}
+
+function CommentItem({
+  comment,
+  reviewId,
+  workId,
+}: {
+  comment: ReviewComment;
+  reviewId: string;
+  workId: string;
+}) {
+  const queryClient = useQueryClient();
+  const { accessToken, user } = useAuthStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDraft, setEditDraft] = useState(comment.body);
+  const [editMessage, setEditMessage] = useState<string | null>(null);
+  const isOwnComment = user?.id === comment.author.id;
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для редактирования нужно войти в аккаунт");
+      }
+
+      return updateComment(comment.id, editDraft.trim(), accessToken);
+    },
+    onSuccess: async () => {
+      setIsEditing(false);
+      setEditMessage(null);
+      await queryClient.invalidateQueries({
+        queryKey: ["review", reviewId, "comments"],
+      });
+    },
+    onError: (error) => {
+      setEditMessage(
+        error instanceof Error
+          ? error.message
+          : "Не удалось обновить комментарий",
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для удаления нужно войти в аккаунт");
+      }
+
+      return deleteComment(comment.id, accessToken);
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["review", reviewId, "comments"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["work", workId, "reviews"],
+        }),
+      ]);
+    },
+    onError: (error) => {
+      setEditMessage(
+        error instanceof Error ? error.message : "Не удалось удалить комментарий",
+      );
+    },
+  });
+
+  function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setEditMessage(null);
+    updateMutation.mutate();
+  }
+
+  function cancelEdit() {
+    setIsEditing(false);
+    setEditDraft(comment.body);
+    setEditMessage(null);
+  }
+
+  return (
+    <article className="py-3 first:pt-0 last:pb-0">
+      <PostContent
+        author={comment.author}
+        body={comment.body}
+        createdAt={comment.createdAt}
+        rating={comment.rating}
+      />
+
+      {isEditing ? (
+        <form className="mt-3 space-y-2" onSubmit={handleEditSubmit}>
+          <textarea
+            className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+            disabled={updateMutation.isPending}
+            maxLength={2000}
+            onChange={(event) => setEditDraft(event.target.value)}
+            required
+            value={editDraft}
+          />
+          {editMessage ? (
+            <p className="text-sm text-muted-foreground">{editMessage}</p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+              disabled={updateMutation.isPending || editDraft.trim().length === 0}
+              type="submit"
+            >
+              <Send className="size-3.5" />
+              Сохранить
+            </button>
+            <button
+              className="inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+              disabled={updateMutation.isPending}
+              onClick={cancelEdit}
+              type="button"
+            >
+              Отменить
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {isOwnComment && !isEditing ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {editMessage ? (
+            <p className="w-full text-sm text-muted-foreground">
+              {editMessage}
+            </p>
+          ) : null}
+          <button
+            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            disabled={deleteMutation.isPending}
+            onClick={() => setIsEditing(true)}
+            type="button"
+          >
+            <Pencil className="size-3.5" />
+            Редактировать
+          </button>
+          <button
+            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-60"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate()}
+            type="button"
+          >
+            <Trash2 className="size-3.5" />
+            Удалить
+          </button>
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -526,7 +685,11 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
           ) : null}
 
           {commentsQuery.data?.items.length ? (
-            <CommentList comments={commentsQuery.data.items} />
+            <CommentList
+              comments={commentsQuery.data.items}
+              reviewId={review.id}
+              workId={workId}
+            />
           ) : null}
         </div>
       ) : null}
