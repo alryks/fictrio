@@ -7,6 +7,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import type { ComponentProps } from "react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
 import { WorkCard } from "@/features/works/work-card";
 import { getWork, WorkKind } from "@/features/works/works-api";
@@ -142,6 +143,7 @@ export default function WorkDetailsPage() {
               ) : null}
             </article>
 
+            <AddToListPanel workId={workQuery.data.id} />
             <WorkReviews work={workQuery.data} />
           </>
         ) : null}
