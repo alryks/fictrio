@@ -22,6 +22,7 @@ export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const [ratingDraft, setRatingDraft] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export default function ListDetailsPage() {
   });
   const list = listQuery.data;
   const isOwner = Boolean(user && list && user.id === list.owner.id);
-  const ratingValue = list?.userRating ?? list?.rating.average ?? 0;
+  const ratingValue = ratingDraft ?? list?.userRating ?? 0;
   const items = useMemo(() => list?.items ?? [], [list?.items]);
 
   const ratingMutation = useMutation({
@@ -45,8 +46,8 @@ export default function ListDetailsPage() {
 
       return rateList(params.id, value, accessToken);
     },
-    onSuccess: async () => {
-      setMessage("Оценка списка сохранена");
+    onSuccess: async (response) => {
+      setRatingDraft(response.value);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
@@ -68,7 +69,7 @@ export default function ListDetailsPage() {
       return deleteListRating(params.id, accessToken);
     },
     onSuccess: async () => {
-      setMessage("Оценка списка удалена");
+      setRatingDraft(0);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
@@ -194,11 +195,6 @@ export default function ListDetailsPage() {
                       Описание пока не добавлено.
                     </p>
                   )}
-                  {message ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {message}
-                    </p>
-                  ) : null}
                 </div>
 
                 <RatingControl
@@ -206,15 +202,16 @@ export default function ListDetailsPage() {
                   disabled={!isHydrated || !user || ratingMutation.isPending}
                   deleteDisabled={!user || deleteRatingMutation.isPending}
                   onChange={() => {
-                    setMessage(null);
                     ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
                   }}
                   onDelete={() => {
-                    setMessage(null);
                     deleteRatingMutation.mutate();
                   }}
                 />
               </div>
+              {message ? (
+                <p className="mt-4 text-sm text-muted-foreground">{message}</p>
+              ) : null}
             </section>
 
             <section className="mt-6">
