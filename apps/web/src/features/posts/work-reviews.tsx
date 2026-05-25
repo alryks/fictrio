@@ -151,7 +151,10 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   return (
     <section className="mt-6 space-y-6">
-      <div className="rounded-md border bg-card p-4 shadow-sm">
+      <div
+        className="scroll-mt-20 rounded-md border bg-card p-4 shadow-sm"
+        id="work-review-form"
+      >
         <form className="space-y-4" onSubmit={handleReviewSubmit}>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">

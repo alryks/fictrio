@@ -166,20 +166,37 @@ function WorkRatingSummary({
   average: number | null;
   count: number;
 }) {
+  function scrollToReviewForm() {
+    document.getElementById("work-review-form")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }
+
   if (average === null) {
     return (
-      <div className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3">
+      <button
+        aria-label="Перейти к отзыву"
+        className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
+        onClick={scrollToReviewForm}
+        type="button"
+      >
         <RatingMark value={0} size="lg" />
         <div className="text-right">
           <p className="text-xl font-semibold text-primary">0.0/3.0</p>
           <p className="text-xs text-muted-foreground">0 шт.</p>
         </div>
-      </div>
+      </button>
     );
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3">
+    <button
+      aria-label="Перейти к отзыву"
+      className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
+      onClick={scrollToReviewForm}
+      type="button"
+    >
       <RatingMark value={average} size="lg" />
       <div className="text-right">
         <p className="text-xl font-semibold text-primary">
@@ -187,7 +204,7 @@ function WorkRatingSummary({
         </p>
         <p className="text-xs text-muted-foreground">{count} шт.</p>
       </div>
-    </div>
+    </button>
   );
 }
 
