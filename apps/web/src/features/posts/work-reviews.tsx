@@ -493,6 +493,20 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
       {isOpen ? (
         <div className="mt-3 space-y-3 pl-8">
+          <CommentForm
+            commentDraft={commentDraft}
+            commentMessage={commentMessage}
+            isDisabled={!isHydrated || !user || commentMutation.isPending}
+            isPending={
+              !user ||
+              commentMutation.isPending ||
+              commentDraft.trim().length === 0
+            }
+            isUserMissing={!user && isHydrated}
+            onDraftChange={setCommentDraft}
+            onSubmit={handleCommentSubmit}
+          />
+
           {commentsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">
               Загружаем комментарии...
@@ -514,20 +528,6 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
           {commentsQuery.data?.items.length ? (
             <CommentList comments={commentsQuery.data.items} />
           ) : null}
-
-          <CommentForm
-            commentDraft={commentDraft}
-            commentMessage={commentMessage}
-            isDisabled={!isHydrated || !user || commentMutation.isPending}
-            isPending={
-              !user ||
-              commentMutation.isPending ||
-              commentDraft.trim().length === 0
-            }
-            isUserMissing={!user && isHydrated}
-            onDraftChange={setCommentDraft}
-            onSubmit={handleCommentSubmit}
-          />
         </div>
       ) : null}
     </section>
