@@ -152,91 +152,88 @@ export function WorkReviews({ work }: WorkReviewsProps) {
   return (
     <section className="mt-6 space-y-6">
       <div className="rounded-md border bg-card p-4 shadow-sm">
-        <div className="grid gap-5 md:grid-cols-[minmax(0,1fr)_220px]">
-          <form className="space-y-3" onSubmit={handleReviewSubmit}>
-            <div>
+        <form className="space-y-4" onSubmit={handleReviewSubmit}>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
               <h2 className="text-lg font-semibold">Ваш отзыв</h2>
               <p className="mt-1 text-sm text-muted-foreground">
                 Отзыв можно опубликовать после выставления оценки.
               </p>
             </div>
-            <label className="block">
-              <span className="text-sm font-medium">Текст отзыва</span>
-              <textarea
-                className="mt-1 min-h-36 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                disabled={!isHydrated || !user || reviewMutation.isPending}
-                maxLength={5000}
-                onChange={(event) => setReviewDraft(event.target.value)}
-                placeholder="Что стоит обсудить после просмотра или чтения?"
-                required
-                value={reviewBody}
-              />
-            </label>
-            {message ? (
-              <p className="text-sm text-muted-foreground">{message}</p>
-            ) : null}
-            {!user && isHydrated ? (
-              <p className="text-sm text-muted-foreground">
-                Войдите в аккаунт на главной странице, чтобы оценивать и писать
-                отзывы.
-              </p>
-            ) : null}
-            <div className="flex flex-wrap gap-2">
-              <button
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-                disabled={
-                  !user ||
-                  reviewMutation.isPending ||
-                  reviewBody.trim().length === 0
-                }
-                type="submit"
-              >
-                {ownReview ? (
-                  <Pencil className="size-4" />
-                ) : (
-                  <Send className="size-4" />
-                )}
-                {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
-              </button>
-              {ownReview ? (
-                <button
-                  className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
-                  disabled={deleteReviewMutation.isPending}
-                  onClick={() => deleteReviewMutation.mutate()}
-                  type="button"
-                >
-                  <Trash2 className="size-4" />
-                  Удалить отзыв
-                </button>
-              ) : null}
-            </div>
-          </form>
 
-          <div className="rounded-md border bg-background p-4">
-            <h2 className="text-lg font-semibold">Ваша оценка</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Нажатие циклически меняет оценку от 0 до 3.
-            </p>
-            <button
-              aria-label="Изменить оценку"
-              className="mt-5 flex h-28 w-full items-center justify-center rounded-md border bg-card transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
-              disabled={!isHydrated || !user || ratingMutation.isPending}
-              onClick={handleRatingClick}
-              type="button"
-            >
-              <RatingMark value={ratingValue} size="lg" />
-            </button>
-            <button
-              className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
-              disabled={!user || deleteRatingMutation.isPending}
-              onClick={() => deleteRatingMutation.mutate()}
-              type="button"
-            >
-              <Trash2 className="size-4" />
-              Удалить оценку
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                aria-label="Изменить оценку"
+                className="grid size-14 place-items-center rounded-md border bg-background transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
+                disabled={!isHydrated || !user || ratingMutation.isPending}
+                onClick={handleRatingClick}
+                type="button"
+              >
+                <RatingMark value={ratingValue} size="lg" />
+              </button>
+              <button
+                aria-label="Удалить оценку"
+                className="grid size-10 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
+                disabled={!user || deleteRatingMutation.isPending}
+                onClick={() => deleteRatingMutation.mutate()}
+                type="button"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
           </div>
-        </div>
+
+          <label className="block">
+            <span className="text-sm font-medium">Текст отзыва</span>
+            <textarea
+              className="mt-1 min-h-36 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+              disabled={!isHydrated || !user || reviewMutation.isPending}
+              maxLength={5000}
+              onChange={(event) => setReviewDraft(event.target.value)}
+              placeholder="Что стоит обсудить после просмотра или чтения?"
+              required
+              value={reviewBody}
+            />
+          </label>
+          {message ? (
+            <p className="text-sm text-muted-foreground">{message}</p>
+          ) : null}
+          {!user && isHydrated ? (
+            <p className="text-sm text-muted-foreground">
+              Войдите в аккаунт на главной странице, чтобы оценивать и писать
+              отзывы.
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+              disabled={
+                !user ||
+                reviewMutation.isPending ||
+                reviewBody.trim().length === 0
+              }
+              type="submit"
+            >
+              {ownReview ? (
+                <Pencil className="size-4" />
+              ) : (
+                <Send className="size-4" />
+              )}
+              {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
+            </button>
+            {ownReview ? (
+              <button
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+                disabled={deleteReviewMutation.isPending}
+                onClick={() => deleteReviewMutation.mutate()}
+                type="button"
+              >
+                <Trash2 className="size-4" />
+                Удалить отзыв
+              </button>
+            ) : null}
+          </div>
+        </form>
       </div>
 
       <div className="rounded-md border bg-card p-4 shadow-sm">
