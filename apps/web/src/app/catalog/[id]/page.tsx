@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import type { ComponentProps } from "react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
-import { WorkCard } from "@/features/works/work-card";
+import { WorkRail } from "@/features/works/work-rail";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
 const kindLabels: Record<WorkKind, string> = {
@@ -212,32 +211,6 @@ function WorkRatingSummary({
   );
 }
 
-function WorkRail({
-  title,
-  works,
-}: {
-  title: string;
-  works: Array<ComponentProps<typeof WorkCard>["work"]>;
-}) {
-  return (
-    <section>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <span className="text-sm text-muted-foreground">
-          {works.length} {getWorksCountLabel(works.length)}
-        </span>
-      </div>
-      <div className="-mx-5 mt-4 flex gap-4 overflow-x-auto px-5 pb-3">
-        {works.map((work) => (
-          <div key={work.id} className="w-40 shrink-0 sm:w-44">
-            <WorkCard work={work} />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function DetailsState({ title, text }: { title: string; text: string }) {
   return (
     <section className="rounded-md border bg-card p-8 text-center shadow-sm">
@@ -289,19 +262,4 @@ function formatDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(date);
-}
-
-function getWorksCountLabel(count: number) {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-
-  if (mod10 === 1 && mod100 !== 11) {
-    return "элемент";
-  }
-
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "элемента";
-  }
-
-  return "элементов";
 }
