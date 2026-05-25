@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseUUIDPipe,
@@ -76,5 +77,14 @@ export class ListsController {
     @Body() dto: UpsertRatingDto,
   ) {
     return this.listsService.rateList(listId, user.id, dto.value);
+  }
+
+  @Delete(':listId/rating')
+  @UseGuards(JwtAuthGuard)
+  deleteListRating(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.listsService.deleteListRating(listId, user.id);
   }
 }
