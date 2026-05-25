@@ -6,13 +6,15 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ArrowDown, ArrowUp } from "lucide-react";
-import { RatingMark } from "@/components/ui/rating-mark";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
+  deleteListRating,
   getList,
   rateList,
   reorderListItems,
 } from "@/features/lists/lists-api";
+import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
+import { RatingControl } from "@/features/ratings/rating-control";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorksCountLabel } from "@/features/works/work-rail";
 
@@ -36,16 +38,12 @@ export default function ListDetailsPage() {
   const items = useMemo(() => list?.items ?? [], [list?.items]);
 
   const ratingMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (value: number) => {
       if (!accessToken) {
         throw new Error("Для оценки списка нужно войти в аккаунт");
       }
 
-      return rateList(
-        params.id,
-        (Math.floor(ratingValue) + 1) % 4,
-        accessToken,
-      );
+      return rateList(params.id, value, accessToken);
     },
     onSuccess: async () => {
       setMessage("Оценка списка сохранена");
@@ -57,6 +55,28 @@ export default function ListDetailsPage() {
     onError: (error) => {
       setMessage(
         error instanceof Error ? error.message : "Не удалось оценить список",
+      );
+    },
+  });
+
+  const deleteRatingMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для удаления оценки нужно войти в аккаунт");
+      }
+
+      return deleteListRating(params.id, accessToken);
+    },
+    onSuccess: async () => {
+      setMessage("Оценка списка удалена");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
+        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+      ]);
+    },
+    onError: (error) => {
+      setMessage(
+        error instanceof Error ? error.message : "Не удалось удалить оценку",
       );
     },
   });
@@ -146,26 +166,25 @@ export default function ListDetailsPage() {
                     </p>
                   ) : null}
                 </div>
-                <button
-                  aria-label="Оценить список"
-                  className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
+                <AverageRatingSummary
+                  average={list.rating.average}
+                  count={list.rating.count}
+                />
+              </div>
+              <div className="mt-5 flex justify-end">
+                <RatingControl
+                  value={ratingValue}
                   disabled={!isHydrated || !user || ratingMutation.isPending}
-                  onClick={() => {
+                  deleteDisabled={!user || deleteRatingMutation.isPending}
+                  onChange={() => {
                     setMessage(null);
-                    ratingMutation.mutate();
+                    ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
                   }}
-                  type="button"
-                >
-                  <RatingMark value={ratingValue} size="lg" />
-                  <div className="text-right">
-                    <p className="text-xl font-semibold text-primary">
-                      {(list.rating.average ?? 0).toFixed(1)}/3.0
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {list.rating.count} шт.
-                    </p>
-                  </div>
-                </button>
+                  onDelete={() => {
+                    setMessage(null);
+                    deleteRatingMutation.mutate();
+                  }}
+                />
               </div>
               {message ? (
                 <p className="mt-4 text-sm text-muted-foreground">{message}</p>
