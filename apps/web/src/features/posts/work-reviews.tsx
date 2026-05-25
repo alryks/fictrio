@@ -1,7 +1,11 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MessageCircle, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -28,6 +32,9 @@ type WorkReviewsProps = {
   work: WorkDetails;
 };
 
+const REVIEWS_PAGE_SIZE = 10;
+const COMMENTS_PAGE_SIZE = 5;
+
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
@@ -39,21 +46,61 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     hydrate();
   }, [hydrate]);
 
-  const activityQuery = useQuery({
+  const activityQuery = useInfiniteQuery({
     queryKey: ["work", work.id, "reviews"],
-    queryFn: () => getWorkReviews(work.id),
+    queryFn: ({ pageParam }) =>
+      getWorkReviews(work.id, pageParam, REVIEWS_PAGE_SIZE),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.items.length;
+
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
   });
+  const activityItems = useMemo(
+    () => activityQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [activityQuery.data?.pages],
+  );
+  const fetchNextReviewsPage = activityQuery.fetchNextPage;
+  const hasNextReviewsPage = activityQuery.hasNextPage;
+  const isFetchingNextReviewsPage = activityQuery.isFetchingNextPage;
+
+  useEffect(() => {
+    function handleScroll() {
+      const distanceToBottom =
+        document.documentElement.scrollHeight -
+        window.scrollY -
+        window.innerHeight;
+
+      if (
+        distanceToBottom < 500 &&
+        hasNextReviewsPage &&
+        !isFetchingNextReviewsPage
+      ) {
+        void fetchNextReviewsPage();
+      }
+    }
+
+    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [
+    fetchNextReviewsPage,
+    hasNextReviewsPage,
+    isFetchingNextReviewsPage,
+  ]);
 
   const ownReview = useMemo(
     () =>
-      activityQuery.data?.items.find(
+      activityItems.find(
         (item) => item.kind === "review" && item.author.id === user?.id,
       ),
-    [activityQuery.data?.items, user?.id],
+    [activityItems, user?.id],
   );
   const ownRating = useMemo(
-    () => activityQuery.data?.items.find((item) => item.author.id === user?.id),
-    [activityQuery.data?.items, user?.id],
+    () => activityItems.find((item) => item.author.id === user?.id),
+    [activityItems, user?.id],
   );
   const ratingValue = ratingDraft ?? ownRating?.rating ?? work.userRating ?? 0;
   const reviewBody = reviewDraft ?? ownReview?.body ?? "";
@@ -263,14 +310,14 @@ export function WorkReviews({ work }: WorkReviewsProps) {
           </p>
         ) : null}
 
-        {activityQuery.data?.items.length === 0 ? (
+        {activityItems.length === 0 && !activityQuery.isLoading ? (
           <p className="mt-4 text-sm text-muted-foreground">
             Оценок и отзывов пока нет. Станьте первым, кто начнет обсуждение.
           </p>
         ) : null}
 
         <div className="mt-4 space-y-3">
-          {activityQuery.data?.items.map((review) => (
+          {activityItems.map((review) => (
             <ReviewDiscussionCard
               key={review.id}
               review={review}
@@ -278,6 +325,11 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             />
           ))}
         </div>
+        {activityQuery.isFetchingNextPage ? (
+          <p className="mt-4 text-sm text-muted-foreground">
+            Загружаем еще...
+          </p>
+        ) : null}
       </div>
     </section>
   );
@@ -597,11 +649,22 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
-  const commentsQuery = useQuery({
+  const commentsQuery = useInfiniteQuery({
     queryKey: ["review", review.id, "comments"],
-    queryFn: () => getReviewComments(review.id),
+    queryFn: ({ pageParam }) =>
+      getReviewComments(review.id, pageParam, COMMENTS_PAGE_SIZE),
     enabled: isOpen,
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextOffset = lastPage.offset + lastPage.items.length;
+
+      return nextOffset < lastPage.total ? nextOffset : undefined;
+    },
   });
+  const comments = useMemo(
+    () => commentsQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [commentsQuery.data?.pages],
+  );
 
   const commentMutation = useMutation({
     mutationFn: () => {
@@ -681,18 +744,30 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             </p>
           ) : null}
 
-          {commentsQuery.data?.items.length === 0 ? (
+          {comments.length === 0 && !commentsQuery.isLoading ? (
             <p className="text-sm text-muted-foreground">
               Пока нет комментариев.
             </p>
           ) : null}
 
-          {commentsQuery.data?.items.length ? (
+          {comments.length ? (
             <CommentList
-              comments={commentsQuery.data.items}
+              comments={comments}
               reviewId={review.id}
               workId={workId}
             />
+          ) : null}
+          {commentsQuery.hasNextPage ? (
+            <button
+              className="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+              disabled={commentsQuery.isFetchingNextPage}
+              onClick={() => commentsQuery.fetchNextPage()}
+              type="button"
+            >
+              {commentsQuery.isFetchingNextPage
+                ? "Загружаем..."
+                : "Загрузить еще"}
+            </button>
           ) : null}
         </div>
       ) : null}
