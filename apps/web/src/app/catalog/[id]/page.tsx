@@ -5,10 +5,10 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import type { ComponentProps } from "react";
-import { RatingMark } from "@/components/ui/rating-mark";
+import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
-import { WorkCard } from "@/features/works/work-card";
+import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
+import { WorkRail } from "@/features/works/work-rail";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
 const kindLabels: Record<WorkKind, string> = {
@@ -87,9 +87,17 @@ export default function WorkDetailsPage() {
                       </p>
                     ) : null}
                   </div>
-                  <WorkRatingSummary
+                  <AverageRatingSummary
                     average={workQuery.data.rating.average}
                     count={workQuery.data.rating.count}
+                    onClick={() => {
+                      document
+                        .getElementById("work-review-form")
+                        ?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "start",
+                        });
+                    }}
                   />
                 </div>
 
@@ -142,6 +150,7 @@ export default function WorkDetailsPage() {
               ) : null}
             </article>
 
+            <AddToListPanel workId={workQuery.data.id} />
             <WorkReviews work={workQuery.data} />
           </>
         ) : null}
@@ -158,81 +167,6 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
     </div>
-  );
-}
-
-function WorkRatingSummary({
-  average,
-  count,
-}: {
-  average: number | null;
-  count: number;
-}) {
-  function scrollToReviewForm() {
-    document.getElementById("work-review-form")?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
-    });
-  }
-
-  if (average === null) {
-    return (
-      <button
-        aria-label="Перейти к отзыву"
-        className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
-        onClick={scrollToReviewForm}
-        type="button"
-      >
-        <RatingMark value={0} size="lg" />
-        <div className="text-right">
-          <p className="text-xl font-semibold text-primary">0.0/3.0</p>
-          <p className="text-xs text-muted-foreground">0 шт.</p>
-        </div>
-      </button>
-    );
-  }
-
-  return (
-    <button
-      aria-label="Перейти к отзыву"
-      className="flex shrink-0 items-center gap-3 rounded-md border bg-background px-4 py-3 text-left transition hover:border-primary focus-visible:ring-2 focus-visible:ring-ring/50"
-      onClick={scrollToReviewForm}
-      type="button"
-    >
-      <RatingMark value={average} size="lg" />
-      <div className="text-right">
-        <p className="text-xl font-semibold text-primary">
-          {average.toFixed(1)}/3.0
-        </p>
-        <p className="text-xs text-muted-foreground">{count} шт.</p>
-      </div>
-    </button>
-  );
-}
-
-function WorkRail({
-  title,
-  works,
-}: {
-  title: string;
-  works: Array<ComponentProps<typeof WorkCard>["work"]>;
-}) {
-  return (
-    <section>
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold">{title}</h2>
-        <span className="text-sm text-muted-foreground">
-          {works.length} {getWorksCountLabel(works.length)}
-        </span>
-      </div>
-      <div className="-mx-5 mt-4 flex gap-4 overflow-x-auto px-5 pb-3">
-        {works.map((work) => (
-          <div key={work.id} className="w-40 shrink-0 sm:w-44">
-            <WorkCard work={work} />
-          </div>
-        ))}
-      </div>
-    </section>
   );
 }
 
@@ -287,19 +221,4 @@ function formatDate(value: string) {
     month: "long",
     year: "numeric",
   }).format(date);
-}
-
-function getWorksCountLabel(count: number) {
-  const mod10 = count % 10;
-  const mod100 = count % 100;
-
-  if (mod10 === 1 && mod100 !== 11) {
-    return "элемент";
-  }
-
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "элемента";
-  }
-
-  return "элементов";
 }

@@ -13,6 +13,7 @@ import {
   deleteWorkRating,
   upsertWorkRating,
 } from "@/features/ratings/ratings-api";
+import { RatingControl } from "@/features/ratings/rating-control";
 import type { WorkDetails } from "@/features/works/works-api";
 import {
   createReviewComment,
@@ -38,7 +39,9 @@ const COMMENTS_PAGE_SIZE = 5;
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
-  const [ratingDraft, setRatingDraft] = useState<number | null>(null);
+  const [ratingDraft, setRatingDraft] = useState<
+    number | null | undefined
+  >();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -85,11 +88,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     handleScroll();
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, [
-    fetchNextReviewsPage,
-    hasNextReviewsPage,
-    isFetchingNextReviewsPage,
-  ]);
+  }, [fetchNextReviewsPage, hasNextReviewsPage, isFetchingNextReviewsPage]);
 
   const ownReview = useMemo(
     () =>
@@ -102,7 +101,14 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     () => activityItems.find((item) => item.author.id === user?.id),
     [activityItems, user?.id],
   );
-  const ratingValue = ratingDraft ?? ownRating?.rating ?? work.userRating ?? 0;
+  const ratingValue =
+    ratingDraft === undefined
+      ? (ownRating?.rating ?? work.userRating ?? 0)
+      : (ratingDraft ?? 0);
+  const hasRating =
+    ratingDraft === undefined
+      ? ownRating?.rating !== undefined || work.userRating !== null
+      : ratingDraft !== null;
   const reviewBody = reviewDraft ?? ownReview?.body ?? "";
 
   const ratingMutation = useMutation({
@@ -114,14 +120,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return upsertWorkRating(work.id, value, accessToken);
     },
     onSuccess: async (response) => {
-      setMessage(response.value === 0 ? "Оценка сброшена" : "Оценка сохранена");
       setRatingDraft(response.value);
       await invalidateWorkQueries(queryClient, work.id);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось сохранить оценку",
-      );
     },
   });
 
@@ -134,15 +134,9 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return deleteWorkRating(work.id, accessToken);
     },
     onSuccess: async () => {
-      setMessage("Оценка и отзыв удалены");
-      setRatingDraft(0);
+      setRatingDraft(null);
       setReviewDraft("");
       await invalidateWorkQueries(queryClient, work.id);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось удалить оценку",
-      );
     },
   });
 
@@ -217,26 +211,14 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
-              <button
-                aria-label="Изменить оценку"
-                className="grid size-14 place-items-center rounded-md transition hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:opacity-60"
-                disabled={!isHydrated || !user || ratingMutation.isPending}
-                onClick={handleRatingClick}
-                type="button"
-              >
-                <RatingMark value={ratingValue} size="lg" />
-              </button>
-              <button
-                aria-label="Удалить оценку"
-                className="grid size-14 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-60"
-                disabled={!user || deleteRatingMutation.isPending}
-                onClick={() => deleteRatingMutation.mutate()}
-                type="button"
-              >
-                <Trash2 className="size-4" />
-              </button>
-            </div>
+            <RatingControl
+              value={ratingValue}
+              hasValue={hasRating}
+              disabled={!isHydrated || !user || ratingMutation.isPending}
+              deleteDisabled={!user || deleteRatingMutation.isPending}
+              onChange={handleRatingClick}
+              onDelete={() => deleteRatingMutation.mutate()}
+            />
           </div>
 
           <label className="block">
@@ -326,9 +308,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
           ))}
         </div>
         {activityQuery.isFetchingNextPage ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Загружаем еще...
-          </p>
+          <p className="mt-4 text-sm text-muted-foreground">Загружаем еще...</p>
         ) : null}
       </div>
     </section>
@@ -355,7 +335,9 @@ function ReviewDiscussionCard({
   workId: string;
 }) {
   const body =
-    review.kind === "review" && review.body ? review.body : "Поставлена оценка.";
+    review.kind === "review" && review.body
+      ? review.body
+      : "Поставлена оценка.";
   const isMuted = review.kind !== "review";
 
   return (
@@ -503,7 +485,9 @@ function CommentItem({
     },
     onError: (error) => {
       setEditMessage(
-        error instanceof Error ? error.message : "Не удалось удалить комментарий",
+        error instanceof Error
+          ? error.message
+          : "Не удалось удалить комментарий",
       );
     },
   });
@@ -545,7 +529,9 @@ function CommentItem({
           <div className="flex flex-wrap gap-2">
             <button
               className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-              disabled={updateMutation.isPending || editDraft.trim().length === 0}
+              disabled={
+                updateMutation.isPending || editDraft.trim().length === 0
+              }
               type="submit"
             >
               <Send className="size-3.5" />
