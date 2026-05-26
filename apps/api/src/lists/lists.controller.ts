@@ -20,6 +20,7 @@ import {
   CreateListDto,
   GetListsQueryDto,
   ReorderListItemsDto,
+  UpdateListDto,
 } from './lists.dto';
 import { ListsService } from './lists.service';
 
@@ -49,6 +50,16 @@ export class ListsController {
     return this.listsService.create(user.id, dto);
   }
 
+  @Patch(':listId')
+  @UseGuards(JwtAuthGuard)
+  updateList(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: UpdateListDto,
+  ) {
+    return this.listsService.updateList(listId, user.id, dto);
+  }
+
   @Post(':listId/items')
   @UseGuards(JwtAuthGuard)
   addItem(
@@ -57,6 +68,16 @@ export class ListsController {
     @Body() dto: AddListItemDto,
   ) {
     return this.listsService.addItem(listId, user.id, dto);
+  }
+
+  @Delete(':listId/items/:workId')
+  @UseGuards(JwtAuthGuard)
+  removeItem(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @Param('workId', ParseUUIDPipe) workId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.listsService.removeItem(listId, workId, user.id);
   }
 
   @Patch(':listId/items/order')
