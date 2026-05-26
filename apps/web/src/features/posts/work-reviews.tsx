@@ -120,14 +120,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return upsertWorkRating(work.id, value, accessToken);
     },
     onSuccess: async (response) => {
-      setMessage(response.value === 0 ? "Оценка сброшена" : "Оценка сохранена");
       setRatingDraft(response.value);
       await invalidateWorkQueries(queryClient, work.id);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось сохранить оценку",
-      );
     },
   });
 
@@ -140,15 +134,9 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return deleteWorkRating(work.id, accessToken);
     },
     onSuccess: async () => {
-      setMessage("Оценка и отзыв удалены");
       setRatingDraft(null);
       setReviewDraft("");
       await invalidateWorkQueries(queryClient, work.id);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось удалить оценку",
-      );
     },
   });
 
