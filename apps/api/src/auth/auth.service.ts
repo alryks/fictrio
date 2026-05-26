@@ -4,12 +4,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { JwtService, type JwtSignOptions } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, RegisterDto } from './auth.dto';
 import { AccessTokenPayload, AuthenticatedUser } from './auth.types';
+import { getJwtAccessTokenExpiresIn, getJwtSecret } from './jwt-config';
 
 const DEFAULT_USER_ROLE = {
   id: 1,
@@ -149,8 +150,8 @@ export class AuthService {
     };
 
     return this.jwtService.signAsync(payload, {
-      secret: this.getJwtSecret(),
-      expiresIn: this.getJwtExpiresIn(),
+      secret: getJwtSecret(this.configService),
+      expiresIn: getJwtAccessTokenExpiresIn(this.configService),
     });
   }
 
@@ -168,21 +169,6 @@ export class AuthService {
 
   private normalizeUsername(username: string): string {
     return username.trim().toLowerCase();
-  }
-
-  private getJwtSecret(): string {
-    return (
-      this.configService.get<string>('JWT_SECRET') ??
-      'fictrio-development-secret-change-me'
-    );
-  }
-
-  private getJwtExpiresIn(): JwtSignOptions['expiresIn'] {
-    return (
-      (this.configService.get<string>(
-        'JWT_ACCESS_TOKEN_EXPIRES_IN',
-      ) as JwtSignOptions['expiresIn']) ?? '1h'
-    );
   }
 
   private userWithRolesInclude() {
