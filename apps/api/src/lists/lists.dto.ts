@@ -17,10 +17,22 @@ export class GetListsQueryDto {
   static readonly schema = z.object({
     limit: z.coerce.number().int().min(1).max(50).default(12),
     offset: z.coerce.number().int().min(0).default(0),
+    itemsLimit: z.coerce.number().int().min(0).max(20).default(6),
   });
 
   limit!: number;
   offset!: number;
+  itemsLimit!: number;
+}
+
+export class GetListQueryDto {
+  static readonly schema = z.object({
+    itemsLimit: z.coerce.number().int().min(1).max(50).default(12),
+    itemsOffset: z.coerce.number().int().min(0).default(0),
+  });
+
+  itemsLimit!: number;
+  itemsOffset!: number;
 }
 
 export class CreateListDto {
