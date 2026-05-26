@@ -231,7 +231,7 @@ export default function ListDetailsPage() {
         {list ? (
           <>
             <section className="rounded-md border bg-card p-5 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
+              <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
                 <header className="min-w-0">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
@@ -298,6 +298,7 @@ export default function ListDetailsPage() {
                 </header>
 
                 <AverageRatingSummary
+                  className="self-start"
                   average={list.rating.average}
                   count={list.rating.count}
                 />
