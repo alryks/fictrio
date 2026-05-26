@@ -35,6 +35,23 @@ export class CreateListDto {
   visibility!: 'public' | 'friends' | 'private';
 }
 
+export class UpdateListDto {
+  static readonly schema = z
+    .object({
+      title: listTitleSchema.optional(),
+      description: listDescriptionSchema,
+    })
+    .refine(
+      (value) => value.title !== undefined || value.description !== undefined,
+      {
+        message: 'Передайте название или описание списка',
+      },
+    );
+
+  title?: string;
+  description?: string | null;
+}
+
 export class AddListItemDto {
   static readonly schema = z.object({
     workId: z.string().uuid('Некорректный идентификатор произведения'),
