@@ -5,6 +5,7 @@ import { RatingMark } from "@/components/ui/rating-mark";
 
 type RatingControlProps = {
   value: number;
+  hasValue: boolean;
   label?: string;
   disabled?: boolean;
   deleteDisabled?: boolean;
@@ -14,13 +15,14 @@ type RatingControlProps = {
 
 export function RatingControl({
   value,
+  hasValue,
   label = "Ваша оценка",
   disabled = false,
   deleteDisabled = false,
   onChange,
   onDelete,
 }: RatingControlProps) {
-  const isDeleteDisabled = deleteDisabled || value <= 0;
+  const isDeleteDisabled = deleteDisabled || !hasValue;
 
   return (
     <div className="flex shrink-0 flex-col gap-2">
