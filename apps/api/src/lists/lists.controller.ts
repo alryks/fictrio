@@ -18,6 +18,7 @@ import { UpsertRatingDto } from '../ratings/ratings.dto';
 import {
   AddListItemDto,
   CreateListDto,
+  GetListQueryDto,
   GetListsQueryDto,
   ReorderListItemsDto,
   UpdateListDto,
@@ -40,8 +41,11 @@ export class ListsController {
   }
 
   @Get(':listId')
-  findOne(@Param('listId', ParseUUIDPipe) listId: string) {
-    return this.listsService.findOne(listId);
+  findOne(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @Query() query: GetListQueryDto,
+  ) {
+    return this.listsService.findOne(listId, undefined, query);
   }
 
   @Post()
