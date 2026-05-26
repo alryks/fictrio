@@ -351,7 +351,7 @@ export default function ListDetailsPage() {
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-start gap-3">
                   <RatingControl
                     value={ratingValue}
                     disabled={!isHydrated || !user || ratingMutation.isPending}
