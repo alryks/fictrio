@@ -231,8 +231,8 @@ export default function ListDetailsPage() {
         {list ? (
           <>
             <section className="rounded-md border bg-card p-5 shadow-sm">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-                <header className="min-w-0">
+              <div className="space-y-4">
+                <header className="flex min-w-0 flex-wrap items-start justify-between gap-4">
                   <div className="flex min-w-0 items-center gap-3">
                     <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
                       {list.owner.username.slice(0, 2).toUpperCase()}
@@ -247,115 +247,122 @@ export default function ListDetailsPage() {
                     </div>
                   </div>
 
-                  {isEditingDetails ? (
-                    <form
-                      className="mt-4 max-w-3xl space-y-3"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        updateMutation.mutate();
-                      }}
-                    >
-                      <label className="block text-sm font-medium">
-                        Название
-                        <input
-                          className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                          disabled={updateMutation.isPending}
-                          maxLength={255}
-                          onChange={(event) =>
-                            setTitleDraft(event.target.value)
-                          }
-                          required
-                          type="text"
-                          value={titleDraft}
-                        />
-                      </label>
-                      <label className="block text-sm font-medium">
-                        Описание
-                        <textarea
-                          className="mt-1 min-h-28 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                          disabled={updateMutation.isPending}
-                          maxLength={2000}
-                          onChange={(event) =>
-                            setDescriptionDraft(event.target.value)
-                          }
-                          value={descriptionDraft}
-                        />
-                      </label>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-accent disabled:opacity-50"
-                          disabled={updateMutation.isPending}
-                          type="submit"
-                        >
-                          <Save className="size-4" />
-                          Сохранить
-                        </button>
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
-                          disabled={updateMutation.isPending}
-                          onClick={cancelEditingDetails}
-                          type="button"
-                        >
-                          <X className="size-4" />
-                          Отмена
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
-                      <h1 className="text-3xl font-semibold text-primary">
-                        {list.title}
-                      </h1>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-sm text-muted-foreground">
-                        {list.items.length}{" "}
-                        {getWorksCountLabel(list.items.length)}
-                      </span>
-                      {isOwner ? (
-                        <button
-                          className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
-                          onClick={startEditingDetails}
-                          type="button"
-                        >
-                          <Pencil className="size-4" />
-                          <span className="sr-only">
-                            Редактировать список
-                          </span>
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
+                  <AverageRatingSummary
+                    average={list.rating.average}
+                    count={list.rating.count}
+                  />
                 </header>
 
-                <AverageRatingSummary
-                  average={list.rating.average}
-                  count={list.rating.count}
-                />
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+                  <div className="min-w-0">
+                    {isEditingDetails ? (
+                      <form
+                        className="max-w-3xl space-y-3"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          updateMutation.mutate();
+                        }}
+                      >
+                        <label className="block text-sm font-medium">
+                          Название
+                          <input
+                            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                            disabled={updateMutation.isPending}
+                            maxLength={255}
+                            onChange={(event) =>
+                              setTitleDraft(event.target.value)
+                            }
+                            required
+                            type="text"
+                            value={titleDraft}
+                          />
+                        </label>
+                        <label className="block text-sm font-medium">
+                          Описание
+                          <textarea
+                            className="mt-1 min-h-28 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                            disabled={updateMutation.isPending}
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setDescriptionDraft(event.target.value)
+                            }
+                            value={descriptionDraft}
+                          />
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-accent disabled:opacity-50"
+                            disabled={updateMutation.isPending}
+                            type="submit"
+                          >
+                            <Save className="size-4" />
+                            Сохранить
+                          </button>
+                          <button
+                            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                            disabled={updateMutation.isPending}
+                            onClick={cancelEditingDetails}
+                            type="button"
+                          >
+                            <X className="size-4" />
+                            Отмена
+                          </button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
+                          <h1 className="text-3xl font-semibold text-primary">
+                            {list.title}
+                          </h1>
+                          <span className="text-muted-foreground">·</span>
+                          <span className="text-sm text-muted-foreground">
+                            {list.items.length}{" "}
+                            {getWorksCountLabel(list.items.length)}
+                          </span>
+                          {isOwner ? (
+                            <button
+                              className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
+                              onClick={startEditingDetails}
+                              type="button"
+                            >
+                              <Pencil className="size-4" />
+                              <span className="sr-only">
+                                Редактировать список
+                              </span>
+                            </button>
+                          ) : null}
+                        </div>
+                        {list.description ? (
+                          <p className="mt-3 max-w-3xl whitespace-pre-wrap text-sm leading-6">
+                            {list.description}
+                          </p>
+                        ) : (
+                          <p className="mt-3 text-sm text-muted-foreground">
+                            Описание пока не добавлено.
+                          </p>
+                        )}
+                      </>
+                    )}
+                  </div>
 
-                <div className="min-w-0">
-                  {!isEditingDetails && list.description ? (
-                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6">
-                      {list.description}
-                    </p>
-                  ) : !isEditingDetails ? (
-                    <p className="text-sm text-muted-foreground">
-                      Описание пока не добавлено.
-                    </p>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <RatingControl
-                    value={ratingValue}
-                    disabled={!isHydrated || !user || ratingMutation.isPending}
-                    deleteDisabled={!user || deleteRatingMutation.isPending}
-                    onChange={() => {
-                      ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
-                    }}
-                    onDelete={() => {
-                      deleteRatingMutation.mutate();
-                    }}
-                  />
+                  <div className="flex flex-wrap items-center gap-3 md:justify-end">
+                    <RatingControl
+                      value={ratingValue}
+                      disabled={
+                        !isHydrated || !user || ratingMutation.isPending
+                      }
+                      deleteDisabled={!user || deleteRatingMutation.isPending}
+                      onChange={() => {
+                        ratingMutation.mutate(
+                          (Math.floor(ratingValue) + 1) % 4,
+                        );
+                      }}
+                      onDelete={() => {
+                        deleteRatingMutation.mutate();
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
               {message ? (
