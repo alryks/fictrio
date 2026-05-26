@@ -69,6 +69,32 @@ export function addWorkToList(listId: string, workId: string, token: string) {
   });
 }
 
+export function updateList(
+  listId: string,
+  input: {
+    title?: string;
+    description?: string | null;
+  },
+  token: string,
+) {
+  return apiRequest<FictrioList>(`/lists/${listId}`, {
+    method: "PATCH",
+    token,
+    body: JSON.stringify(input),
+  });
+}
+
+export function removeWorkFromList(
+  listId: string,
+  workId: string,
+  token: string,
+) {
+  return apiRequest<FictrioList>(`/lists/${listId}/items/${workId}`, {
+    method: "DELETE",
+    token,
+  });
+}
+
 export function reorderListItems(
   listId: string,
   items: Array<{ workId: string; position: number }>,
