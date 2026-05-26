@@ -5,13 +5,23 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ArrowDown, ArrowUp } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  Pencil,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteListRating,
   getList,
   rateList,
+  removeWorkFromList,
   reorderListItems,
+  updateList,
 } from "@/features/lists/lists-api";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { RatingControl } from "@/features/ratings/rating-control";
@@ -23,6 +33,9 @@ export default function ListDetailsPage() {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
   const [ratingDraft, setRatingDraft] = useState<number | null>(null);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [descriptionDraft, setDescriptionDraft] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,6 +50,34 @@ export default function ListDetailsPage() {
   const isOwner = Boolean(user && list && user.id === list.owner.id);
   const ratingValue = ratingDraft ?? list?.userRating ?? 0;
   const items = useMemo(() => list?.items ?? [], [list?.items]);
+
+  const updateMutation = useMutation({
+    mutationFn: () => {
+      if (!accessToken) {
+        throw new Error("Для редактирования списка нужно войти в аккаунт");
+      }
+
+      return updateList(
+        params.id,
+        {
+          title: titleDraft,
+          description: descriptionDraft || null,
+        },
+        accessToken,
+      );
+    },
+    onSuccess: async (updatedList) => {
+      setIsEditingDetails(false);
+      setMessage("Список обновлен");
+      queryClient.setQueryData(["list", params.id], updatedList);
+      await queryClient.invalidateQueries({ queryKey: ["lists"] });
+    },
+    onError: (error) => {
+      setMessage(
+        error instanceof Error ? error.message : "Не удалось обновить список",
+      );
+    },
+  });
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => {
@@ -99,6 +140,44 @@ export default function ListDetailsPage() {
       );
     },
   });
+
+  const removeMutation = useMutation({
+    mutationFn: (workId: string) => {
+      if (!accessToken) {
+        throw new Error("Для удаления из списка нужно войти в аккаунт");
+      }
+
+      return removeWorkFromList(params.id, workId, accessToken);
+    },
+    onSuccess: async (updatedList) => {
+      setMessage("Произведение удалено из списка");
+      queryClient.setQueryData(["list", params.id], updatedList);
+      await queryClient.invalidateQueries({ queryKey: ["lists"] });
+    },
+    onError: (error) => {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Не удалось удалить произведение",
+      );
+    },
+  });
+
+  function startEditingDetails() {
+    if (!list) {
+      return;
+    }
+
+    setTitleDraft(list.title);
+    setDescriptionDraft(list.description ?? "");
+    setMessage(null);
+    setIsEditingDetails(true);
+  }
+
+  function cancelEditingDetails() {
+    setIsEditingDetails(false);
+    setMessage(null);
+  }
 
   function moveItem(index: number, direction: -1 | 1) {
     const next = [...items];
@@ -186,7 +265,61 @@ export default function ListDetailsPage() {
                 />
 
                 <div className="min-w-0">
-                  {list.description ? (
+                  {isEditingDetails ? (
+                    <form
+                      className="max-w-3xl space-y-3"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateMutation.mutate();
+                      }}
+                    >
+                      <label className="block text-sm font-medium">
+                        Название
+                        <input
+                          className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                          disabled={updateMutation.isPending}
+                          maxLength={255}
+                          onChange={(event) =>
+                            setTitleDraft(event.target.value)
+                          }
+                          required
+                          type="text"
+                          value={titleDraft}
+                        />
+                      </label>
+                      <label className="block text-sm font-medium">
+                        Описание
+                        <textarea
+                          className="mt-1 min-h-28 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                          disabled={updateMutation.isPending}
+                          maxLength={2000}
+                          onChange={(event) =>
+                            setDescriptionDraft(event.target.value)
+                          }
+                          value={descriptionDraft}
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-accent disabled:opacity-50"
+                          disabled={updateMutation.isPending}
+                          type="submit"
+                        >
+                          <Save className="size-4" />
+                          Сохранить
+                        </button>
+                        <button
+                          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                          disabled={updateMutation.isPending}
+                          onClick={cancelEditingDetails}
+                          type="button"
+                        >
+                          <X className="size-4" />
+                          Отмена
+                        </button>
+                      </div>
+                    </form>
+                  ) : list.description ? (
                     <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6">
                       {list.description}
                     </p>
@@ -197,17 +330,29 @@ export default function ListDetailsPage() {
                   )}
                 </div>
 
-                <RatingControl
-                  value={ratingValue}
-                  disabled={!isHydrated || !user || ratingMutation.isPending}
-                  deleteDisabled={!user || deleteRatingMutation.isPending}
-                  onChange={() => {
-                    ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
-                  }}
-                  onDelete={() => {
-                    deleteRatingMutation.mutate();
-                  }}
-                />
+                <div className="flex flex-wrap items-center gap-3">
+                  <RatingControl
+                    value={ratingValue}
+                    disabled={!isHydrated || !user || ratingMutation.isPending}
+                    deleteDisabled={!user || deleteRatingMutation.isPending}
+                    onChange={() => {
+                      ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
+                    }}
+                    onDelete={() => {
+                      deleteRatingMutation.mutate();
+                    }}
+                  />
+                  {isOwner && !isEditingDetails ? (
+                    <button
+                      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
+                      onClick={startEditingDetails}
+                      type="button"
+                    >
+                      <Pencil className="size-4" />
+                      Редактировать
+                    </button>
+                  ) : null}
+                </div>
               </div>
               {message ? (
                 <p className="mt-4 text-sm text-muted-foreground">{message}</p>
@@ -241,6 +386,17 @@ export default function ListDetailsPage() {
                         >
                           <ArrowDown className="size-4" />
                           <span className="sr-only">Ниже</span>
+                        </button>
+                        <button
+                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-50"
+                          disabled={removeMutation.isPending}
+                          onClick={() => removeMutation.mutate(item.work.id)}
+                          type="button"
+                        >
+                          <Trash2 className="size-4" />
+                          <span className="sr-only">
+                            Удалить из списка
+                          </span>
                         </button>
                       </div>
                     ) : null}
