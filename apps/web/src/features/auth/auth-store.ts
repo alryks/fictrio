@@ -1,16 +1,9 @@
 "use client";
 
+import type { PublicUser } from "@fictrio/contracts";
 import { create } from "zustand";
 
-export type AuthUser = {
-  id: string;
-  username: string;
-  email: string;
-  displayName: string;
-  bio: string | null;
-  isActive: boolean;
-  roles: string[];
-};
+export type AuthUser = PublicUser;
 
 type AuthState = {
   accessToken: string | null;

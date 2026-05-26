@@ -1,21 +1,14 @@
+import type {
+  AuthResponse,
+  LoginInput,
+  PublicUser,
+  RegisterInput,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
-import { AuthUser } from "./auth-store";
 
-type AuthResponse = {
-  accessToken: string;
-  tokenType: "Bearer";
-  user: AuthUser;
-};
-
-export type LoginPayload = {
-  username: string;
-  password: string;
-};
-
-export type RegisterPayload = LoginPayload & {
-  email: string;
-  displayName?: string;
-};
+export type AuthUser = PublicUser;
+export type LoginPayload = LoginInput;
+export type RegisterPayload = RegisterInput;
 
 export function login(payload: LoginPayload) {
   return apiRequest<AuthResponse>("/auth/login", {
