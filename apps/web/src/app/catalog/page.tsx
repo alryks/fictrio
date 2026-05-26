@@ -214,7 +214,7 @@ function CatalogContent() {
             </span>
           </label>
 
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div>
               <p className="text-sm font-medium">Тип произведения</p>
               <div className="mt-2 flex flex-wrap gap-2">
@@ -235,37 +235,35 @@ function CatalogContent() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-              <label className="block">
-                <span className="text-sm font-medium">Год от</span>
+            <div>
+              <p className="text-sm font-medium">Год</p>
+              <div className="mt-2 flex gap-2">
                 <input
-                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
                   max={2100}
                   min={1800}
                   onChange={(event) =>
                     updateParams({ yearFrom: event.target.value })
                   }
-                  placeholder="1990"
+                  placeholder="от"
                   type="number"
                   value={yearFrom}
                 />
-              </label>
-
-              <label className="block">
-                <span className="text-sm font-medium">Год до</span>
                 <input
-                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                  className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
                   max={2100}
                   min={1800}
                   onChange={(event) =>
                     updateParams({ yearTo: event.target.value })
                   }
-                  placeholder="2026"
+                  placeholder="до"
                   type="number"
                   value={yearTo}
                 />
-              </label>
+              </div>
+            </div>
 
+            <div className="sm:col-span-2 xl:col-span-1">
               <label className="block">
                 <span className="text-sm font-medium">Оценка от</span>
                 <input
@@ -386,7 +384,7 @@ function getSortBy(searchParams: URLSearchParams) {
 
   return sortOptions.some((option) => option.value === sortBy)
     ? (sortBy as (typeof sortOptions)[number]["value"])
-    : "releaseYear";
+    : "averageRating";
 }
 
 function getSortOrder(searchParams: URLSearchParams) {
