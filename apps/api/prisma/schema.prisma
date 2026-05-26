@@ -315,7 +315,7 @@ model Progress {
   contentWorkId String         @map("content_work_id") @db.Uuid
   status        ProgressStatus
   valueNow      Int            @default(0) @map("value_now")
-  valueMax      Int            @default(-1) @map("value_max")
+  valueMax      Int?           @map("value_max")
   updatedAt     DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
