@@ -45,7 +45,6 @@ export default function ListDetailsPage() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     hydrate();
@@ -128,16 +127,10 @@ export default function ListDetailsPage() {
     },
     onSuccess: async () => {
       setIsEditingDetails(false);
-      setMessage(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
       ]);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось обновить список",
-      );
     },
   });
 
@@ -156,11 +149,6 @@ export default function ListDetailsPage() {
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
       ]);
     },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось оценить список",
-      );
-    },
   });
 
   const deleteRatingMutation = useMutation({
@@ -178,11 +166,6 @@ export default function ListDetailsPage() {
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
       ]);
     },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось удалить оценку",
-      );
-    },
   });
 
   const reorderMutation = useMutation({
@@ -196,11 +179,6 @@ export default function ListDetailsPage() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["list", params.id] });
     },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error ? error.message : "Не удалось изменить порядок",
-      );
-    },
   });
 
   const removeMutation = useMutation({
@@ -212,18 +190,10 @@ export default function ListDetailsPage() {
       return removeWorkFromList(params.id, workId, accessToken);
     },
     onSuccess: async () => {
-      setMessage("Произведение удалено из списка");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
       ]);
-    },
-    onError: (error) => {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Не удалось удалить произведение",
-      );
     },
   });
 
@@ -234,13 +204,11 @@ export default function ListDetailsPage() {
 
     setTitleDraft(list.title);
     setDescriptionDraft(list.description ?? "");
-    setMessage(null);
     setIsEditingDetails(true);
   }
 
   function cancelEditingDetails() {
     setIsEditingDetails(false);
-    setMessage(null);
   }
 
   function moveItem(index: number, direction: -1 | 1) {
@@ -429,9 +397,6 @@ export default function ListDetailsPage() {
                   />
                 </aside>
               </div>
-              {message ? (
-                <p className="mt-4 text-sm text-muted-foreground">{message}</p>
-              ) : null}
             </section>
 
             <section className="mt-6">
