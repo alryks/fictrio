@@ -106,14 +106,14 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
 
   return (
     <section className="mt-6 rounded-md border bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center gap-3">
+        <ListPlus className="size-5 shrink-0 text-primary" />
         <div>
           <h2 className="text-lg font-semibold">Добавить в список</h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Собирайте подборки произведений для публичного обсуждения.
           </p>
         </div>
-        <ListPlus className="size-5 text-primary" />
       </div>
 
       {!user && isHydrated ? (

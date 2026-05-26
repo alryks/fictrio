@@ -6,7 +6,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { MessageCircle, Pencil, Send, Trash2 } from "lucide-react";
+import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
@@ -107,7 +107,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       : (ratingDraft ?? 0);
   const hasRating =
     ratingDraft === undefined
-      ? ownRating?.rating !== undefined || work.userRating !== null
+      ? ownRating?.rating !== undefined || work.userRating != null
       : ratingDraft !== null;
   const reviewBody = reviewDraft ?? ownReview?.body ?? "";
 
@@ -205,7 +205,10 @@ export function WorkReviews({ work }: WorkReviewsProps) {
         <form className="space-y-4" onSubmit={handleReviewSubmit}>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <h2 className="text-lg font-semibold">Ваш отзыв</h2>
+              <div className="flex items-center gap-2">
+                <PenLine className="size-4 shrink-0 text-primary" />
+                <h2 className="text-lg font-semibold">Ваш отзыв</h2>
+              </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 Отзыв можно опубликовать после выставления оценки.
               </p>
@@ -215,7 +218,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               value={ratingValue}
               hasValue={hasRating}
               disabled={!isHydrated || !user || ratingMutation.isPending}
-              deleteDisabled={!user || deleteRatingMutation.isPending}
+              deleteDisabled={!user || !hasRating || deleteRatingMutation.isPending}
               onChange={handleRatingClick}
               onDelete={() => deleteRatingMutation.mutate()}
             />
@@ -275,9 +278,9 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       </div>
 
       <div className="rounded-md border bg-card p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <MessageCircle className="size-4 shrink-0 text-primary" />
           <h2 className="text-lg font-semibold">Отзывы и оценки</h2>
-          <MessageCircle className="size-4 text-primary" />
         </div>
 
         {activityQuery.isLoading ? (
@@ -506,12 +509,26 @@ function CommentItem({
 
   return (
     <article className="py-3 first:pt-0 last:pb-0">
-      <PostContent
-        author={comment.author}
-        body={comment.body}
-        createdAt={comment.createdAt}
-        rating={comment.rating}
-      />
+      <header className="flex h-10 items-start justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+            {comment.author.username.slice(0, 2).toUpperCase()}
+          </div>
+          <div className="min-w-0">
+            <h3 className="truncate text-sm font-semibold">
+              {comment.author.displayName}
+            </h3>
+            <p className="truncate text-xs text-muted-foreground">
+              @{comment.author.username} · {formatDate(comment.createdAt)}
+            </p>
+          </div>
+        </div>
+        {comment.rating !== null ? (
+          <div className="shrink-0 leading-none">
+            <RatingMark value={comment.rating} size="xl" />
+          </div>
+        ) : null}
+      </header>
 
       {isEditing ? (
         <form className="mt-3 space-y-2" onSubmit={handleEditSubmit}>
@@ -545,37 +562,32 @@ function CommentItem({
             >
               Отменить
             </button>
+            <button
+              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-60"
+              disabled={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+              type="button"
+            >
+              <Trash2 className="size-3.5" />
+              Удалить
+            </button>
           </div>
         </form>
-      ) : null}
-
-      {isOwnComment && !isEditing ? (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {editMessage ? (
-            <p className="w-full text-sm text-muted-foreground">
-              {editMessage}
-            </p>
+      ) : (
+        <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
+          {comment.body}
+          {isOwnComment ? (
+            <button
+              className="ml-1.5 inline-grid size-5 shrink-0 translate-y-[1px] place-items-center rounded border text-muted-foreground transition hover:border-primary hover:text-primary"
+              onClick={() => setIsEditing(true)}
+              type="button"
+            >
+              <Pencil className="size-3" />
+              <span className="sr-only">Редактировать</span>
+            </button>
           ) : null}
-          <button
-            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
-            disabled={deleteMutation.isPending}
-            onClick={() => setIsEditing(true)}
-            type="button"
-          >
-            <Pencil className="size-3.5" />
-            Редактировать
-          </button>
-          <button
-            className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-60"
-            disabled={deleteMutation.isPending}
-            onClick={() => deleteMutation.mutate()}
-            type="button"
-          >
-            <Trash2 className="size-3.5" />
-            Удалить
-          </button>
-        </div>
-      ) : null}
+        </p>
+      )}
     </article>
   );
 }
@@ -691,12 +703,11 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   return (
     <section className="mt-4">
       <button
-        className="inline-flex items-center gap-2 text-xs font-medium text-primary transition hover:text-[var(--fictrio-accent)]"
+        className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary"
         onClick={() => setIsOpen((value) => !value)}
         type="button"
       >
-        <MessageCircle className="size-3.5" />
-        {isOpen ? "Скрыть обсуждение" : "Обсудить"}
+        {isOpen ? "Скрыть" : "Комментарии"}
         <span className="text-muted-foreground">({review.commentsCount})</span>
       </button>
 
