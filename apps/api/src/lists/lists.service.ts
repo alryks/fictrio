@@ -9,52 +9,71 @@ import { PrismaService } from '../prisma/prisma.service';
 import {
   AddListItemDto,
   CreateListDto,
+  GetListQueryDto,
   GetListsQueryDto,
   ReorderListItemsDto,
   UpdateListDto,
 } from './lists.dto';
 
-const listInclude = {
-  owner: {
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
+function getListInclude(itemsLimit?: number, itemsOffset = 0) {
+  return {
+    owner: {
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+      },
     },
-  },
-  rateable: {
-    select: {
-      ratings: {
-        select: {
-          userId: true,
-          value: true,
+    rateable: {
+      select: {
+        ratings: {
+          select: {
+            userId: true,
+            value: true,
+          },
         },
       },
     },
-  },
-  items: {
-    include: {
-      work: {
-        include: {
-          rateable: {
-            select: {
-              ratings: {
-                select: {
-                  value: true,
+    _count: {
+      select: {
+        items: true,
+      },
+    },
+    items: {
+      include: {
+        work: {
+          include: {
+            rateable: {
+              select: {
+                ratings: {
+                  select: {
+                    value: true,
+                  },
                 },
               },
             },
           },
         },
       },
+      orderBy: {
+        position: 'asc',
+      },
+      ...(itemsLimit === undefined
+        ? {}
+        : {
+            take: itemsLimit,
+            skip: itemsOffset,
+          }),
     },
-    orderBy: {
-      position: 'asc',
-    },
-  },
-} satisfies Prisma.ListInclude;
+  } satisfies Prisma.ListInclude;
+}
+
+const listInclude = getListInclude();
+
+const listPreviewInclude = getListInclude(6);
 
 type ListWithDetails = Prisma.ListGetPayload<{ include: typeof listInclude }>;
+type PublicListPayload = ListWithDetails;
 
 @Injectable()
 export class ListsService {
@@ -69,7 +88,7 @@ export class ListsService {
     const [lists, total] = await this.prisma.$transaction([
       this.prisma.list.findMany({
         where,
-        include: listInclude,
+        include: getListInclude(query.itemsLimit),
         orderBy: {
           createdAt: 'desc',
         },
@@ -93,7 +112,7 @@ export class ListsService {
         ownerUserId: userId,
         isHidden: false,
       },
-      include: listInclude,
+      include: listPreviewInclude,
       orderBy: {
         updatedAt: 'desc',
       },
@@ -105,12 +124,14 @@ export class ListsService {
     };
   }
 
-  async findOne(id: string, userId?: string) {
+  async findOne(id: string, userId?: string, query?: GetListQueryDto) {
     const list = await this.prisma.list.findUnique({
       where: {
         id,
       },
-      include: listInclude,
+      include: query
+        ? getListInclude(query.itemsLimit, query.itemsOffset)
+        : listInclude,
     });
 
     if (!list || list.isHidden) {
@@ -486,7 +507,7 @@ export class ListsService {
     };
   }
 
-  private toPublicList(list: ListWithDetails, viewerUserId?: string) {
+  private toPublicList(list: PublicListPayload, viewerUserId?: string) {
     return {
       id: list.id,
       title: list.title,
@@ -499,6 +520,7 @@ export class ListsService {
       userRating:
         list.rateable.ratings.find((rating) => rating.userId === viewerUserId)
           ?.value ?? null,
+      itemsTotal: list._count.items,
       items: list.items.map((item) => ({
         position: item.position,
         addedAt: item.addedAt,
