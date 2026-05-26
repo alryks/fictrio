@@ -13,50 +13,53 @@ export function ListCard({ list }: { list: FictrioList }) {
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border bg-card p-5 shadow-sm">
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-        <header className="min-w-0">
-          <div className="flex min-w-0 items-center gap-3">
-            <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-              {list.owner.username.slice(0, 2).toUpperCase()}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">
-                {list.owner.displayName}
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                @{list.owner.username} · {formatDate(list.createdAt)}
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
-            <Link
-              className="text-xl font-semibold text-primary hover:underline"
-              href={`/lists/${list.id}`}
-            >
-              {list.title}
-            </Link>
-            <span className="text-muted-foreground">·</span>
-            <span className="text-sm text-muted-foreground">
-              {list.itemsTotal} {getWorksCountLabel(list.itemsTotal)}
-            </span>
-          </div>
-        </header>
-
-        <AverageRatingSummary
-          average={list.rating.average}
-          count={list.rating.count}
-        />
-
+      <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
+          <header className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+                {list.owner.username.slice(0, 2).toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">
+                  {list.owner.displayName}
+                </p>
+                <p className="truncate text-xs text-muted-foreground">
+                  @{list.owner.username} · {formatDate(list.createdAt)}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
+              <Link
+                className="text-xl font-semibold text-primary hover:underline"
+                href={`/lists/${list.id}`}
+              >
+                {list.title}
+              </Link>
+              <span className="text-muted-foreground">·</span>
+              <span className="text-sm text-muted-foreground">
+                {list.itemsTotal} {getWorksCountLabel(list.itemsTotal)}
+              </span>
+            </div>
+          </header>
+
           {list.description ? (
-            <p className="line-clamp-3 text-sm leading-6">{list.description}</p>
+            <p className="mt-4 line-clamp-3 text-sm leading-6">
+              {list.description}
+            </p>
           ) : (
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-4 text-sm text-muted-foreground">
               Описание пока не добавлено.
             </p>
           )}
         </div>
+
+        <AverageRatingSummary
+          className="self-start md:self-end"
+          average={list.rating.average}
+          count={list.rating.count}
+        />
       </div>
 
       <div className="mt-4 min-w-0">
