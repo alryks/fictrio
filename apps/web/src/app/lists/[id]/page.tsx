@@ -128,7 +128,7 @@ export default function ListDetailsPage() {
     },
     onSuccess: async () => {
       setIsEditingDetails(false);
-      setMessage("Список обновлен");
+      setMessage(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
