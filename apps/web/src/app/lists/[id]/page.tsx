@@ -231,81 +231,75 @@ export default function ListDetailsPage() {
         {list ? (
           <>
             <section className="rounded-md border bg-card p-5 shadow-sm">
-              <div className="grid items-start gap-4 md:grid-cols-[minmax(0,1fr)_auto]">
-                <header className="min-w-0">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-                      {list.owner.username.slice(0, 2).toUpperCase()}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {list.owner.displayName}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        @{list.owner.username} · {formatDate(list.createdAt)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {isEditingDetails ? (
-                    <form
-                      className="mt-4 max-w-3xl"
-                      id="list-details-form"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        updateMutation.mutate();
-                      }}
-                    >
-                      <label className="block text-sm font-medium">
-                        Название
-                        <input
-                          className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                          disabled={updateMutation.isPending}
-                          maxLength={255}
-                          onChange={(event) =>
-                            setTitleDraft(event.target.value)
-                          }
-                          required
-                          type="text"
-                          value={titleDraft}
-                        />
-                      </label>
-                    </form>
-                  ) : (
-                    <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
-                      <h1 className="text-3xl font-semibold text-primary">
-                        {list.title}
-                      </h1>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-sm text-muted-foreground">
-                        {list.items.length}{" "}
-                        {getWorksCountLabel(list.items.length)}
-                      </span>
-                      {isOwner ? (
-                        <button
-                          className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
-                          onClick={startEditingDetails}
-                          type="button"
-                        >
-                          <Pencil className="size-4" />
-                          <span className="sr-only">
-                            Редактировать список
-                          </span>
-                        </button>
-                      ) : null}
-                    </div>
-                  )}
-                </header>
-
-                <AverageRatingSummary
-                  className="self-start"
-                  average={list.rating.average}
-                  count={list.rating.count}
-                />
-
+              <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="min-w-0">
+                  <header className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
+                        {list.owner.username.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {list.owner.displayName}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          @{list.owner.username} · {formatDate(list.createdAt)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {isEditingDetails ? (
+                      <form
+                        className="mt-4 max-w-3xl"
+                        id="list-details-form"
+                        onSubmit={(event) => {
+                          event.preventDefault();
+                          updateMutation.mutate();
+                        }}
+                      >
+                        <label className="block text-sm font-medium">
+                          Название
+                          <input
+                            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
+                            disabled={updateMutation.isPending}
+                            maxLength={255}
+                            onChange={(event) =>
+                              setTitleDraft(event.target.value)
+                            }
+                            required
+                            type="text"
+                            value={titleDraft}
+                          />
+                        </label>
+                      </form>
+                    ) : (
+                      <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
+                        <h1 className="text-3xl font-semibold text-primary">
+                          {list.title}
+                        </h1>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-sm text-muted-foreground">
+                          {list.items.length}{" "}
+                          {getWorksCountLabel(list.items.length)}
+                        </span>
+                        {isOwner ? (
+                          <button
+                            className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
+                            onClick={startEditingDetails}
+                            type="button"
+                          >
+                            <Pencil className="size-4" />
+                            <span className="sr-only">
+                              Редактировать список
+                            </span>
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                  </header>
+
                   {isEditingDetails ? (
-                    <div className="max-w-3xl space-y-3">
+                    <div className="mt-4 max-w-3xl space-y-3">
                       <label className="block text-sm font-medium">
                         Описание
                         <textarea
@@ -341,17 +335,22 @@ export default function ListDetailsPage() {
                       </div>
                     </div>
                   ) : list.description ? (
-                    <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6">
+                    <p className="mt-4 max-w-3xl whitespace-pre-wrap text-sm leading-6">
                       {list.description}
                     </p>
                   ) : (
-                    <p className="text-sm text-muted-foreground">
+                    <p className="mt-4 text-sm text-muted-foreground">
                       Описание пока не добавлено.
                     </p>
                   )}
                 </div>
 
-                <div className="flex flex-wrap items-start gap-3">
+                <aside className="flex shrink-0 flex-col items-start gap-3 md:items-end">
+                  <AverageRatingSummary
+                    className="self-start md:self-end"
+                    average={list.rating.average}
+                    count={list.rating.count}
+                  />
                   <RatingControl
                     value={ratingValue}
                     disabled={!isHydrated || !user || ratingMutation.isPending}
@@ -363,7 +362,7 @@ export default function ListDetailsPage() {
                       deleteRatingMutation.mutate();
                     }}
                   />
-                </div>
+                </aside>
               </div>
               {message ? (
                 <p className="mt-4 text-sm text-muted-foreground">{message}</p>
