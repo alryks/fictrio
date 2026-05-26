@@ -3,8 +3,12 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   ArrowDown,
   ArrowLeft,
@@ -28,10 +32,13 @@ import { RatingControl } from "@/features/ratings/rating-control";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorksCountLabel } from "@/features/works/work-rail";
 
+const listItemsPageSize = 12;
+
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ratingDraft, setRatingDraft] = useState<number | null>(null);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -42,14 +49,60 @@ export default function ListDetailsPage() {
     hydrate();
   }, [hydrate]);
 
-  const listQuery = useQuery({
+  const listQuery = useInfiniteQuery({
     queryKey: ["list", params.id],
-    queryFn: () => getList(params.id),
+    queryFn: ({ pageParam }) =>
+      getList(params.id, pageParam, listItemsPageSize),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, allPages) => {
+      const loadedCount = allPages.reduce(
+        (count, page) => count + page.items.length,
+        0,
+      );
+
+      return loadedCount < lastPage.itemsTotal ? loadedCount : undefined;
+    },
   });
-  const list = listQuery.data;
+  const list = listQuery.data?.pages[0];
   const isOwner = Boolean(user && list && user.id === list.owner.id);
   const ratingValue = ratingDraft ?? list?.userRating ?? 0;
-  const items = useMemo(() => list?.items ?? [], [list?.items]);
+  const fetchNextListItemsPage = listQuery.fetchNextPage;
+  const hasNextListItemsPage = listQuery.hasNextPage;
+  const isFetchingNextListItemsPage = listQuery.isFetchingNextPage;
+  const canReorderItems = isOwner && !hasNextListItemsPage;
+  const items = useMemo(
+    () => listQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [listQuery.data?.pages],
+  );
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+
+    if (!target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (
+          entries[0]?.isIntersecting &&
+          hasNextListItemsPage &&
+          !isFetchingNextListItemsPage
+        ) {
+          void fetchNextListItemsPage();
+        }
+      },
+      { rootMargin: "320px" },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [
+    fetchNextListItemsPage,
+    hasNextListItemsPage,
+    isFetchingNextListItemsPage,
+  ]);
 
   const updateMutation = useMutation({
     mutationFn: () => {
@@ -66,11 +119,13 @@ export default function ListDetailsPage() {
         accessToken,
       );
     },
-    onSuccess: async (updatedList) => {
+    onSuccess: async () => {
       setIsEditingDetails(false);
       setMessage("Список обновлен");
-      queryClient.setQueryData(["list", params.id], updatedList);
-      await queryClient.invalidateQueries({ queryKey: ["lists"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
+        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+      ]);
     },
     onError: (error) => {
       setMessage(
@@ -149,10 +204,12 @@ export default function ListDetailsPage() {
 
       return removeWorkFromList(params.id, workId, accessToken);
     },
-    onSuccess: async (updatedList) => {
+    onSuccess: async () => {
       setMessage("Произведение удалено из списка");
-      queryClient.setQueryData(["list", params.id], updatedList);
-      await queryClient.invalidateQueries({ queryKey: ["lists"] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
+        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+      ]);
     },
     onError: (error) => {
       setMessage(
@@ -279,8 +336,8 @@ export default function ListDetailsPage() {
                         </h1>
                         <span className="text-muted-foreground">·</span>
                         <span className="text-sm text-muted-foreground">
-                          {list.items.length}{" "}
-                          {getWorksCountLabel(list.items.length)}
+                          {list.itemsTotal}{" "}
+                          {getWorksCountLabel(list.itemsTotal)}
                         </span>
                         {isOwner ? (
                           <button
@@ -378,7 +435,11 @@ export default function ListDetailsPage() {
                       <div className="mt-3 flex gap-2">
                         <button
                           className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
-                          disabled={index === 0 || reorderMutation.isPending}
+                          disabled={
+                            !canReorderItems ||
+                            index === 0 ||
+                            reorderMutation.isPending
+                          }
                           onClick={() => moveItem(index, -1)}
                           type="button"
                         >
@@ -388,6 +449,7 @@ export default function ListDetailsPage() {
                         <button
                           className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
                           disabled={
+                            !canReorderItems ||
                             index === items.length - 1 ||
                             reorderMutation.isPending
                           }
@@ -417,6 +479,13 @@ export default function ListDetailsPage() {
               {items.length === 0 ? (
                 <p className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
                   В этом списке пока нет произведений.
+                </p>
+              ) : null}
+
+              <div ref={loadMoreRef} className="h-8" />
+              {isFetchingNextListItemsPage ? (
+                <p className="text-sm text-muted-foreground">
+                  Загружаем еще...
                 </p>
               ) : null}
             </section>
