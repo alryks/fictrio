@@ -11,6 +11,7 @@ import {
   CreateListDto,
   GetListsQueryDto,
   ReorderListItemsDto,
+  UpdateListDto,
 } from './lists.dto';
 
 const listInclude = {
@@ -149,6 +150,25 @@ export class ListsService {
     return this.toPublicList(list, userId);
   }
 
+  async updateList(listId: string, userId: string, dto: UpdateListDto) {
+    await this.assertOwnedList(listId, userId);
+
+    const list = await this.prisma.list.update({
+      where: {
+        id: listId,
+      },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description || null }
+          : {}),
+      },
+      include: listInclude,
+    });
+
+    return this.toPublicList(list, userId);
+  }
+
   async addItem(listId: string, userId: string, dto: AddListItemDto) {
     await this.assertOwnedList(listId, userId);
     await this.assertWorkExists(dto.workId);
@@ -188,6 +208,27 @@ export class ListsService {
 
       throw error;
     }
+
+    return this.findOne(listId, userId);
+  }
+
+  async removeItem(listId: string, workId: string, userId: string) {
+    await this.assertOwnedList(listId, userId);
+
+    await this.prisma.$transaction(async (tx) => {
+      const deleted = await tx.listItem.deleteMany({
+        where: {
+          listId,
+          workId,
+        },
+      });
+
+      if (deleted.count === 0) {
+        throw new NotFoundException('Элемент списка не найден');
+      }
+
+      await this.compactItemPositions(tx, listId);
+    });
 
     return this.findOne(listId, userId);
   }
@@ -244,6 +285,55 @@ export class ListsService {
     });
 
     return this.findOne(listId, userId);
+  }
+
+  private async compactItemPositions(
+    tx: Prisma.TransactionClient,
+    listId: string,
+  ) {
+    const items = await tx.listItem.findMany({
+      where: {
+        listId,
+      },
+      select: {
+        workId: true,
+      },
+      orderBy: {
+        position: 'asc',
+      },
+    });
+
+    await Promise.all(
+      items.map((item, index) =>
+        tx.listItem.update({
+          where: {
+            listId_workId: {
+              listId,
+              workId: item.workId,
+            },
+          },
+          data: {
+            position: -(index + 1),
+          },
+        }),
+      ),
+    );
+
+    await Promise.all(
+      items.map((item, index) =>
+        tx.listItem.update({
+          where: {
+            listId_workId: {
+              listId,
+              workId: item.workId,
+            },
+          },
+          data: {
+            position: index,
+          },
+        }),
+      ),
+    );
   }
 
   async rateList(listId: string, userId: string, value: number) {
