@@ -39,7 +39,9 @@ export default function ListDetailsPage() {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
-  const [ratingDraft, setRatingDraft] = useState<number | null>(null);
+  const [ratingDraft, setRatingDraft] = useState<
+    number | null | undefined
+  >();
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
@@ -65,7 +67,12 @@ export default function ListDetailsPage() {
   });
   const list = listQuery.data?.pages[0];
   const isOwner = Boolean(user && list && user.id === list.owner.id);
-  const ratingValue = ratingDraft ?? list?.userRating ?? 0;
+  const ratingValue =
+    ratingDraft === undefined ? (list?.userRating ?? 0) : (ratingDraft ?? 0);
+  const hasRating =
+    ratingDraft === undefined
+      ? list?.userRating !== null && list?.userRating !== undefined
+      : ratingDraft !== null;
   const fetchNextListItemsPage = listQuery.fetchNextPage;
   const hasNextListItemsPage = listQuery.hasNextPage;
   const isFetchingNextListItemsPage = listQuery.isFetchingNextPage;
@@ -165,7 +172,7 @@ export default function ListDetailsPage() {
       return deleteListRating(params.id, accessToken);
     },
     onSuccess: async () => {
-      setRatingDraft(0);
+      setRatingDraft(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
         queryClient.invalidateQueries({ queryKey: ["lists"] }),
@@ -410,6 +417,7 @@ export default function ListDetailsPage() {
                   />
                   <RatingControl
                     value={ratingValue}
+                    hasValue={hasRating}
                     disabled={!isHydrated || !user || ratingMutation.isPending}
                     deleteDisabled={!user || deleteRatingMutation.isPending}
                     onChange={() => {
