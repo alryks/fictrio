@@ -20,6 +20,7 @@ export type FictrioList = {
     count: number;
   };
   userRating: number | null;
+  itemsTotal: number;
   items: Array<{
     position: number;
     addedAt: string;
@@ -34,16 +35,20 @@ export type ListsResponse = {
   offset?: number;
 };
 
-export function getPublicLists(offset = 0, limit = 12) {
-  return apiRequest<ListsResponse>(`/lists?offset=${offset}&limit=${limit}`);
+export function getPublicLists(offset = 0, limit = 12, itemsLimit = 6) {
+  return apiRequest<ListsResponse>(
+    `/lists?offset=${offset}&limit=${limit}&itemsLimit=${itemsLimit}`,
+  );
 }
 
 export function getMyLists(token: string) {
   return apiRequest<ListsResponse>("/lists/mine", { token });
 }
 
-export function getList(id: string) {
-  return apiRequest<FictrioList>(`/lists/${id}`);
+export function getList(id: string, itemsOffset = 0, itemsLimit = 12) {
+  return apiRequest<FictrioList>(
+    `/lists/${id}?itemsOffset=${itemsOffset}&itemsLimit=${itemsLimit}`,
+  );
 }
 
 export function createList(
