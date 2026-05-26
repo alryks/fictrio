@@ -247,27 +247,9 @@ export default function ListDetailsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
-                    <h1 className="text-3xl font-semibold text-primary">
-                      {list.title}
-                    </h1>
-                    <span className="text-muted-foreground">·</span>
-                    <span className="text-sm text-muted-foreground">
-                      {list.items.length}{" "}
-                      {getWorksCountLabel(list.items.length)}
-                    </span>
-                  </div>
-                </header>
-
-                <AverageRatingSummary
-                  average={list.rating.average}
-                  count={list.rating.count}
-                />
-
-                <div className="min-w-0">
                   {isEditingDetails ? (
                     <form
-                      className="max-w-3xl space-y-3"
+                      className="mt-4 max-w-3xl space-y-3"
                       onSubmit={(event) => {
                         event.preventDefault();
                         updateMutation.mutate();
@@ -319,15 +301,47 @@ export default function ListDetailsPage() {
                         </button>
                       </div>
                     </form>
-                  ) : list.description ? (
+                  ) : (
+                    <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
+                      <h1 className="text-3xl font-semibold text-primary">
+                        {list.title}
+                      </h1>
+                      <span className="text-muted-foreground">·</span>
+                      <span className="text-sm text-muted-foreground">
+                        {list.items.length}{" "}
+                        {getWorksCountLabel(list.items.length)}
+                      </span>
+                      {isOwner ? (
+                        <button
+                          className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
+                          onClick={startEditingDetails}
+                          type="button"
+                        >
+                          <Pencil className="size-4" />
+                          <span className="sr-only">
+                            Редактировать список
+                          </span>
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </header>
+
+                <AverageRatingSummary
+                  average={list.rating.average}
+                  count={list.rating.count}
+                />
+
+                <div className="min-w-0">
+                  {!isEditingDetails && list.description ? (
                     <p className="max-w-3xl whitespace-pre-wrap text-sm leading-6">
                       {list.description}
                     </p>
-                  ) : (
+                  ) : !isEditingDetails ? (
                     <p className="text-sm text-muted-foreground">
                       Описание пока не добавлено.
                     </p>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
@@ -342,16 +356,6 @@ export default function ListDetailsPage() {
                       deleteRatingMutation.mutate();
                     }}
                   />
-                  {isOwner && !isEditingDetails ? (
-                    <button
-                      className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-                      onClick={startEditingDetails}
-                      type="button"
-                    >
-                      <Pencil className="size-4" />
-                      Редактировать
-                    </button>
-                  ) : null}
                 </div>
               </div>
               {message ? (
