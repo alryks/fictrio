@@ -39,7 +39,9 @@ const COMMENTS_PAGE_SIZE = 5;
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
   const { accessToken, user, isHydrated, hydrate } = useAuthStore();
-  const [ratingDraft, setRatingDraft] = useState<number | null>(null);
+  const [ratingDraft, setRatingDraft] = useState<
+    number | null | undefined
+  >();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -99,7 +101,14 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     () => activityItems.find((item) => item.author.id === user?.id),
     [activityItems, user?.id],
   );
-  const ratingValue = ratingDraft ?? ownRating?.rating ?? work.userRating ?? 0;
+  const ratingValue =
+    ratingDraft === undefined
+      ? (ownRating?.rating ?? work.userRating ?? 0)
+      : (ratingDraft ?? 0);
+  const hasRating =
+    ratingDraft === undefined
+      ? ownRating?.rating !== undefined || work.userRating !== null
+      : ratingDraft !== null;
   const reviewBody = reviewDraft ?? ownReview?.body ?? "";
 
   const ratingMutation = useMutation({
@@ -132,7 +141,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     },
     onSuccess: async () => {
       setMessage("Оценка и отзыв удалены");
-      setRatingDraft(0);
+      setRatingDraft(null);
       setReviewDraft("");
       await invalidateWorkQueries(queryClient, work.id);
     },
@@ -216,6 +225,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
             <RatingControl
               value={ratingValue}
+              hasValue={hasRating}
               disabled={!isHydrated || !user || ratingMutation.isPending}
               deleteDisabled={!user || deleteRatingMutation.isPending}
               onChange={handleRatingClick}
