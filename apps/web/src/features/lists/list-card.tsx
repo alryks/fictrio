@@ -56,7 +56,7 @@ export function ListCard({ list }: { list: FictrioList }) {
         </div>
 
         <AverageRatingSummary
-          className="self-start md:self-end"
+          className="self-start"
           average={list.rating.average}
           count={list.rating.count}
         />
