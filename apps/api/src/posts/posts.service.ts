@@ -47,19 +47,26 @@ type PublicReview = Prisma.PostGetPayload<{
   include: typeof publicReviewInclude;
 }>;
 
-const publicRatingInclude = {
-  user: {
-    select: {
-      id: true,
-      username: true,
-      displayName: true,
-    },
-  },
-} satisfies Prisma.RatingInclude;
+/**
+ * Row shape returned by the UNION ALL between reviews and bare ratings
+ * inside getWorkReviews. The two branches share a common projection so
+ * the result can be mapped to the public activity item shape directly.
+ */
+type ActivityRow = {
+  id: string;
+  kind: 'review' | 'rating';
+  body: string | null;
+  isHidden: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+  authorId: string;
+  username: string;
+  displayName: string;
+  rating: number | null;
+  commentsCount: number;
+};
 
-type PublicRating = Prisma.RatingGetPayload<{
-  include: typeof publicRatingInclude;
-}>;
+type TotalRow = { total: bigint };
 
 const publicCommentInclude = {
   author: {
@@ -95,51 +102,109 @@ export class PostsService {
 
   async getWorkReviews(workId: string, query: GetPostsPageQueryDto) {
     const work = await this.getWorkRateable(workId);
+    const { rateableId } = work;
 
-    const [reviews, ratings] = await this.prisma.$transaction([
-      this.prisma.post.findMany({
-        where: {
-          rateableId: work.rateableId,
-          parentPostId: null,
-          isHidden: false,
-        },
-        include: publicReviewInclude,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      this.prisma.rating.findMany({
-        where: {
-          rateableId: work.rateableId,
-          user: {
-            posts: {
-              none: {
-                rateableId: work.rateableId,
-                parentPostId: null,
-                isHidden: false,
-              },
-            },
-          },
-        },
-        include: publicRatingInclude,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
+    const [rows, totalRows] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<ActivityRow[]>`
+        SELECT
+          p.id,
+          'review'::text AS kind,
+          p.body,
+          p.is_hidden                    AS "isHidden",
+          p.created_at                   AS "createdAt",
+          p.updated_at                   AS "updatedAt",
+          p.author_user_id               AS "authorId",
+          u.username,
+          u.display_name                 AS "displayName",
+          (SELECT r.value
+             FROM ratings r
+            WHERE r.user_id = p.author_user_id
+              AND r.rateable_id = p.rateable_id) AS rating,
+          (SELECT COUNT(*)::int
+             FROM posts c
+            WHERE c.parent_post_id = p.id
+              AND c.is_hidden = false)          AS "commentsCount"
+        FROM posts p
+        JOIN users u ON u.id = p.author_user_id
+        WHERE p.rateable_id    = ${rateableId}::uuid
+          AND p.parent_post_id IS NULL
+          AND p.is_hidden      = false
+
+        UNION ALL
+
+        SELECT
+          r.id,
+          'rating'::text                 AS kind,
+          NULL                           AS body,
+          false                          AS "isHidden",
+          r.created_at                   AS "createdAt",
+          r.updated_at                   AS "updatedAt",
+          r.user_id                      AS "authorId",
+          u.username,
+          u.display_name                 AS "displayName",
+          r.value                        AS rating,
+          0                              AS "commentsCount"
+        FROM ratings r
+        JOIN users u ON u.id = r.user_id
+        WHERE r.rateable_id = ${rateableId}::uuid
+          AND NOT EXISTS (
+            SELECT 1
+              FROM posts p
+             WHERE p.author_user_id = r.user_id
+               AND p.rateable_id    = r.rateable_id
+               AND p.parent_post_id IS NULL
+               AND p.is_hidden      = false
+          )
+
+        ORDER BY "createdAt" DESC, id
+        LIMIT ${query.limit}
+        OFFSET ${query.offset}
+      `,
+      this.prisma.$queryRaw<TotalRow[]>`
+        SELECT
+          (SELECT COUNT(*)
+             FROM posts p
+            WHERE p.rateable_id    = ${rateableId}::uuid
+              AND p.parent_post_id IS NULL
+              AND p.is_hidden      = false)
+          +
+          (SELECT COUNT(*)
+             FROM ratings r
+            WHERE r.rateable_id = ${rateableId}::uuid
+              AND NOT EXISTS (
+                SELECT 1
+                  FROM posts p
+                 WHERE p.author_user_id = r.user_id
+                   AND p.rateable_id    = r.rateable_id
+                   AND p.parent_post_id IS NULL
+                   AND p.is_hidden      = false
+              )) AS total
+      `,
     ]);
 
-    const items = [
-      ...reviews.map((review) => this.toPublicReview(review)),
-      ...ratings.map((rating) => this.toPublicRating(rating)),
-    ].sort(
-      (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
-    );
-
     return {
-      items: items.slice(query.offset, query.offset + query.limit),
-      total: items.length,
+      items: rows.map((row) => this.toActivityItem(row)),
+      total: Number(totalRows[0]?.total ?? 0),
       limit: query.limit,
       offset: query.offset,
+    };
+  }
+
+  private toActivityItem(row: ActivityRow) {
+    return {
+      id: row.id,
+      kind: row.kind,
+      body: row.body,
+      isHidden: row.isHidden,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      author: {
+        id: row.authorId,
+        username: row.username,
+        displayName: row.displayName,
+      },
+      rating: row.rating,
+      commentsCount: row.commentsCount,
     };
   }
 
@@ -387,20 +452,6 @@ export class PostsService {
       author: review.author,
       rating: authorRating,
       commentsCount: review._count.comments,
-    };
-  }
-
-  private toPublicRating(rating: PublicRating) {
-    return {
-      id: rating.id,
-      kind: 'rating' as const,
-      body: null,
-      isHidden: false,
-      createdAt: rating.createdAt,
-      updatedAt: rating.updatedAt,
-      author: rating.user,
-      rating: rating.value,
-      commentsCount: 0,
     };
   }
 
