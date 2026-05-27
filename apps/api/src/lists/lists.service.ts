@@ -194,31 +194,41 @@ export class ListsService {
     await this.assertOwnedList(listId, userId);
     await this.assertWorkExists(dto.workId);
 
-    const position = dto.position ?? (await this.getNextPosition(listId));
-
     try {
       await this.prisma.$transaction(async (tx) => {
+        // Serialize concurrent additions to the same list so the
+        // position computed below is still valid at insert time.
+        await tx.$executeRaw`
+          SELECT 1 FROM lists WHERE id = ${listId}::uuid FOR UPDATE
+        `;
+
+        const insertPosition =
+          dto.position ?? (await this.getNextPositionTx(tx, listId));
+
         if (dto.position !== undefined) {
-          await tx.listItem.updateMany({
-            where: {
-              listId,
-              position: {
-                gte: dto.position,
-              },
-            },
-            data: {
-              position: {
-                increment: 1,
-              },
-            },
-          });
+          // The (list_id, position) UNIQUE index is checked row-by-row
+          // so a direct `position = position + 1` would collide with the
+          // neighbouring row mid-statement. Stash affected positions in
+          // disjoint negatives, then restore as `position + 1`.
+          await tx.$executeRaw`
+            UPDATE list_items
+            SET position = -position - 1
+            WHERE list_id = ${listId}::uuid
+              AND position >= ${dto.position}::int
+          `;
+          await tx.$executeRaw`
+            UPDATE list_items
+            SET position = -position
+            WHERE list_id = ${listId}::uuid
+              AND position < 0
+          `;
         }
 
         await tx.listItem.create({
           data: {
             listId,
             workId: dto.workId,
-            position,
+            position: insertPosition,
           },
         });
       });
@@ -231,6 +241,17 @@ export class ListsService {
     }
 
     return this.findOne(listId, userId);
+  }
+
+  private async getNextPositionTx(
+    tx: Prisma.TransactionClient,
+    listId: string,
+  ) {
+    const aggregate = await tx.listItem.aggregate({
+      where: { listId },
+      _max: { position: true },
+    });
+    return (aggregate._max.position ?? -1) + 1;
   }
 
   async removeItem(listId: string, workId: string, userId: string) {
@@ -451,19 +472,6 @@ export class ListsService {
     if (!work) {
       throw new NotFoundException('Произведение не найдено');
     }
-  }
-
-  private async getNextPosition(listId: string) {
-    const aggregate = await this.prisma.listItem.aggregate({
-      where: {
-        listId,
-      },
-      _max: {
-        position: true,
-      },
-    });
-
-    return (aggregate._max.position ?? -1) + 1;
   }
 
   private async getRatingStats(rateableId: string) {
