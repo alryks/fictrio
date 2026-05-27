@@ -13,11 +13,7 @@ import { LoginDto, RegisterDto } from './auth.dto';
 import { AccessTokenPayload, AuthenticatedUser } from './auth.types';
 import { getJwtAccessTokenExpiresIn, getJwtSecret } from './jwt-config';
 
-const DEFAULT_USER_ROLE = {
-  id: 1,
-  code: 'user',
-  name: 'Авторизованный пользователь',
-};
+const DEFAULT_USER_ROLE_CODE = 'user';
 
 const ONE_HOUR_SECONDS = 60 * 60;
 
@@ -57,31 +53,19 @@ export class AuthService {
     const passwordHash = await argon2.hash(dto.password);
 
     try {
-      const user = await this.prisma.$transaction(async (tx) => {
-        const role = await tx.role.upsert({
-          where: { code: DEFAULT_USER_ROLE.code },
-          create: DEFAULT_USER_ROLE,
-          update: {
-            name: DEFAULT_USER_ROLE.name,
-          },
-        });
-
-        const createdUser = await tx.user.create({
-          data: {
-            username,
-            email,
-            passwordHash,
-            displayName,
-            roles: {
-              create: {
-                roleId: role.id,
-              },
+      const user = await this.prisma.user.create({
+        data: {
+          username,
+          email,
+          passwordHash,
+          displayName,
+          roles: {
+            create: {
+              role: { connect: { code: DEFAULT_USER_ROLE_CODE } },
             },
           },
-          include: this.userWithRolesInclude(),
-        });
-
-        return createdUser;
+        },
+        include: this.userWithRolesInclude(),
       });
 
       return this.toAuthSession(user);
