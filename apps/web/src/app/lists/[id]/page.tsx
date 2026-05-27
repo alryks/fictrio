@@ -34,10 +34,16 @@ import { getWorksCountLabel } from "@/features/works/work-rail";
 
 const listItemsPageSize = 12;
 
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
+
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const { user, isHydrated } = useAuthStore();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
@@ -45,10 +51,6 @@ export default function ListDetailsPage() {
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
 
   const listQuery = useInfiniteQuery({
     queryKey: ["list", params.id],
@@ -112,18 +114,11 @@ export default function ListDetailsPage() {
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для редактирования списка нужно войти в аккаунт");
-      }
-
-      return updateList(
-        params.id,
-        {
-          title: titleDraft,
-          description: descriptionDraft || null,
-        },
-        accessToken,
-      );
+      requireUser(user, "редактирования списка");
+      return updateList(params.id, {
+        title: titleDraft,
+        description: descriptionDraft || null,
+      });
     },
     onSuccess: async () => {
       setIsEditingDetails(false);
@@ -136,11 +131,8 @@ export default function ListDetailsPage() {
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => {
-      if (!accessToken) {
-        throw new Error("Для оценки списка нужно войти в аккаунт");
-      }
-
-      return rateList(params.id, value, accessToken);
+      requireUser(user, "оценки списка");
+      return rateList(params.id, value);
     },
     onSuccess: async (response) => {
       setRatingDraft(response.value);
@@ -153,11 +145,8 @@ export default function ListDetailsPage() {
 
   const deleteRatingMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления оценки нужно войти в аккаунт");
-      }
-
-      return deleteListRating(params.id, accessToken);
+      requireUser(user, "удаления оценки");
+      return deleteListRating(params.id);
     },
     onSuccess: async () => {
       setRatingDraft(null);
@@ -170,11 +159,8 @@ export default function ListDetailsPage() {
 
   const reorderMutation = useMutation({
     mutationFn: (nextItems: Array<{ workId: string; position: number }>) => {
-      if (!accessToken) {
-        throw new Error("Для изменения порядка нужно войти в аккаунт");
-      }
-
-      return reorderListItems(params.id, nextItems, accessToken);
+      requireUser(user, "изменения порядка");
+      return reorderListItems(params.id, nextItems);
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["list", params.id] });
@@ -183,11 +169,8 @@ export default function ListDetailsPage() {
 
   const removeMutation = useMutation({
     mutationFn: (workId: string) => {
-      if (!accessToken) {
-        throw new Error("Для удаления из списка нужно войти в аккаунт");
-      }
-
-      return removeWorkFromList(params.id, workId, accessToken);
+      requireUser(user, "удаления из списка");
+      return removeWorkFromList(params.id, workId);
     },
     onSuccess: async () => {
       await Promise.all([

@@ -6,51 +6,22 @@ import { create } from "zustand";
 export type AuthUser = PublicUser;
 
 type AuthState = {
-  accessToken: string | null;
   user: AuthUser | null;
   isHydrated: boolean;
-  setSession: (accessToken: string, user: AuthUser) => void;
-  clearSession: () => void;
-  hydrate: () => void;
+  setUser: (user: AuthUser | null) => void;
+  markHydrated: () => void;
 };
 
-const storageKey = "fictrio.auth";
-
-type StoredSession = {
-  accessToken: string;
-  user: AuthUser;
-};
-
+/**
+ * Auth store keeps only the public user profile. The JWT lives in an
+ * HttpOnly cookie managed by the server, so the client has no direct
+ * knowledge of the token. Hydration is driven by the providers calling
+ * /auth/me on mount; until that resolves, isHydrated stays false so the
+ * UI can render a loading shell without flashing the signed-out state.
+ */
 export const useAuthStore = create<AuthState>((set) => ({
-  accessToken: null,
   user: null,
   isHydrated: false,
-  setSession: (accessToken, user) => {
-    localStorage.setItem(storageKey, JSON.stringify({ accessToken, user }));
-    set({ accessToken, user, isHydrated: true });
-  },
-  clearSession: () => {
-    localStorage.removeItem(storageKey);
-    set({ accessToken: null, user: null, isHydrated: true });
-  },
-  hydrate: () => {
-    const rawSession = localStorage.getItem(storageKey);
-
-    if (!rawSession) {
-      set({ isHydrated: true });
-      return;
-    }
-
-    try {
-      const session = JSON.parse(rawSession) as StoredSession;
-      set({
-        accessToken: session.accessToken,
-        user: session.user,
-        isHydrated: true,
-      });
-    } catch {
-      localStorage.removeItem(storageKey);
-      set({ accessToken: null, user: null, isHydrated: true });
-    }
-  },
+  setUser: (user) => set({ user, isHydrated: true }),
+  markHydrated: () => set({ isHydrated: true }),
 }));

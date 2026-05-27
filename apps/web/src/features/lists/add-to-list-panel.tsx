@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListPlus } from "lucide-react";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -10,36 +10,29 @@ type AddToListPanelProps = {
   workId: string;
 };
 
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
+
 export function AddToListPanel({ workId }: AddToListPanelProps) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const { user, isHydrated } = useAuthStore();
   const [selectedListId, setSelectedListId] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
   const myListsQuery = useQuery({
     queryKey: ["lists", "mine"],
-    queryFn: () => {
-      if (!accessToken) {
-        throw new Error("Для работы со списками нужно войти в аккаунт");
-      }
-
-      return getMyLists(accessToken);
-    },
-    enabled: Boolean(accessToken),
+    queryFn: getMyLists,
+    enabled: Boolean(user),
   });
 
   const addMutation = useMutation({
     mutationFn: (listId: string) => {
-      if (!accessToken) {
-        throw new Error("Для добавления в список нужно войти в аккаунт");
-      }
-
-      return addWorkToList(listId, workId, accessToken);
+      requireUser(user, "добавления в список");
+      return addWorkToList(listId, workId);
     },
     onSuccess: async () => {
       setMessage("Произведение добавлено в список");
@@ -59,19 +52,12 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
 
   const createAndAddMutation = useMutation({
     mutationFn: async () => {
-      if (!accessToken) {
-        throw new Error("Для создания списка нужно войти в аккаунт");
-      }
-
-      const list = await createList(
-        {
-          title: title.trim(),
-          visibility: "public",
-        },
-        accessToken,
-      );
-
-      return addWorkToList(list.id, workId, accessToken);
+      requireUser(user, "создания списка");
+      const list = await createList({
+        title: title.trim(),
+        visibility: "public",
+      });
+      return addWorkToList(list.id, workId);
     },
     onSuccess: async (list) => {
       setTitle("");

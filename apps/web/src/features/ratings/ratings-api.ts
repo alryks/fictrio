@@ -6,17 +6,15 @@ import { apiRequest } from "@/lib/api";
 
 export type { UpsertRatingResponse };
 
-export function upsertWorkRating(workId: string, value: number, token: string) {
+export function upsertWorkRating(workId: string, value: number) {
   return apiRequest<UpsertRatingResponse>(`/works/${workId}/rating`, {
     method: "PUT",
-    token,
     body: JSON.stringify({ value }),
   });
 }
 
-export function deleteWorkRating(workId: string, token: string) {
+export function deleteWorkRating(workId: string) {
   return apiRequest<DeleteRatingResponse>(`/works/${workId}/rating`, {
     method: "DELETE",
-    token,
   });
 }

@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import type { AuthResponse, PublicUser } from '@fictrio/contracts';
 import { Prisma } from '@prisma/client';
 import * as argon2 from 'argon2';
 import { PrismaService } from '../prisma/prisma.service';
@@ -18,20 +19,17 @@ const DEFAULT_USER_ROLE = {
   name: 'Авторизованный пользователь',
 };
 
-type PublicUser = {
-  id: string;
-  username: string;
-  email: string;
-  displayName: string;
-  bio: string | null;
-  isActive: boolean;
-  roles: string[];
-};
+const ONE_HOUR_SECONDS = 60 * 60;
 
-type AuthResponse = {
+/**
+ * Result returned from sign-in/sign-up. The controller is responsible for
+ * setting the access token as an HttpOnly cookie — the token never leaves
+ * the server through the response body.
+ */
+export type AuthSession = {
+  response: AuthResponse;
   accessToken: string;
-  tokenType: 'Bearer';
-  user: PublicUser;
+  maxAgeSeconds: number;
 };
 
 type UserWithRoles = Prisma.UserGetPayload<{
@@ -52,7 +50,7 @@ export class AuthService {
     private readonly configService: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthResponse> {
+  async register(dto: RegisterDto): Promise<AuthSession> {
     const username = this.normalizeUsername(dto.username);
     const email = dto.email.trim().toLowerCase();
     const displayName = dto.displayName?.trim() || username;
@@ -86,7 +84,7 @@ export class AuthService {
         return createdUser;
       });
 
-      return this.toAuthResponse(user);
+      return this.toAuthSession(user);
     } catch (error) {
       if (this.isUniqueConstraintError(error)) {
         throw new ConflictException(
@@ -98,7 +96,7 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto): Promise<AuthResponse> {
+  async login(dto: LoginDto): Promise<AuthSession> {
     const username = this.normalizeUsername(dto.username);
     const user = await this.prisma.user.findUnique({
       where: { username },
@@ -118,7 +116,7 @@ export class AuthService {
       throw new UnauthorizedException('Неверное имя пользователя или пароль');
     }
 
-    return this.toAuthResponse(user);
+    return this.toAuthSession(user);
   }
 
   async getProfile(user: AuthenticatedUser): Promise<PublicUser> {
@@ -134,25 +132,66 @@ export class AuthService {
     return this.toPublicUser(foundUser);
   }
 
-  private async toAuthResponse(user: UserWithRoles): Promise<AuthResponse> {
+  private async toAuthSession(user: UserWithRoles): Promise<AuthSession> {
+    const { token, maxAgeSeconds } = await this.signAccessToken(user);
     return {
-      accessToken: await this.signAccessToken(user),
-      tokenType: 'Bearer',
-      user: this.toPublicUser(user),
+      response: { user: this.toPublicUser(user) },
+      accessToken: token,
+      maxAgeSeconds,
     };
   }
 
-  private async signAccessToken(user: UserWithRoles): Promise<string> {
+  private async signAccessToken(
+    user: UserWithRoles,
+  ): Promise<{ token: string; maxAgeSeconds: number }> {
     const payload: AccessTokenPayload = {
       sub: user.id,
       username: user.username,
       roles: user.roles.map((userRole) => userRole.role.code),
     };
 
-    return this.jwtService.signAsync(payload, {
+    const expiresIn = getJwtAccessTokenExpiresIn(this.configService);
+    const token = await this.jwtService.signAsync(payload, {
       secret: getJwtSecret(this.configService),
-      expiresIn: getJwtAccessTokenExpiresIn(this.configService),
+      expiresIn,
     });
+
+    return { token, maxAgeSeconds: this.parseExpiresIn(expiresIn) };
+  }
+
+  private parseExpiresIn(value: string | number | undefined): number {
+    if (typeof value === 'number') {
+      return value;
+    }
+    if (!value) {
+      return ONE_HOUR_SECONDS;
+    }
+
+    const match = /^(\d+)(ms|s|m|h|d|w|y)?$/.exec(value);
+    if (!match) {
+      return ONE_HOUR_SECONDS;
+    }
+
+    const amount = Number(match[1]);
+    const unit = match[2] ?? 's';
+    switch (unit) {
+      case 'ms':
+        return Math.floor(amount / 1000);
+      case 's':
+        return amount;
+      case 'm':
+        return amount * 60;
+      case 'h':
+        return amount * 60 * 60;
+      case 'd':
+        return amount * 60 * 60 * 24;
+      case 'w':
+        return amount * 60 * 60 * 24 * 7;
+      case 'y':
+        return amount * 60 * 60 * 24 * 365;
+      default:
+        return ONE_HOUR_SECONDS;
+    }
   }
 
   private toPublicUser(user: UserWithRoles): PublicUser {

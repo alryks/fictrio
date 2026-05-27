@@ -29,6 +29,12 @@ import {
   updateReview,
 } from "./reviews-api";
 
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
+
 type WorkReviewsProps = {
   work: WorkDetails;
 };
@@ -38,16 +44,12 @@ const COMMENTS_PAGE_SIZE = 5;
 
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const { user, isHydrated } = useAuthStore();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
 
   const activityQuery = useInfiniteQuery({
     queryKey: ["work", work.id, "reviews"],
@@ -113,11 +115,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => {
-      if (!accessToken) {
-        throw new Error("Для оценки нужно войти в аккаунт");
-      }
-
-      return upsertWorkRating(work.id, value, accessToken);
+      requireUser(user, "оценки");
+      return upsertWorkRating(work.id, value);
     },
     onSuccess: async (response) => {
       setRatingDraft(response.value);
@@ -127,11 +126,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const deleteRatingMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления оценки нужно войти в аккаунт");
-      }
-
-      return deleteWorkRating(work.id, accessToken);
+      requireUser(user, "удаления оценки");
+      return deleteWorkRating(work.id);
     },
     onSuccess: async () => {
       setRatingDraft(null);
@@ -142,13 +138,10 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const reviewMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для отзыва нужно войти в аккаунт");
-      }
-
+      requireUser(user, "отзыва");
       return ownReview
-        ? updateReview(ownReview.id, reviewBody.trim(), accessToken)
-        : createWorkReview(work.id, reviewBody.trim(), accessToken);
+        ? updateReview(ownReview.id, reviewBody.trim())
+        : createWorkReview(work.id, reviewBody.trim());
     },
     onSuccess: async () => {
       setMessage(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
@@ -165,11 +158,11 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const deleteReviewMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken || !ownReview) {
+      requireUser(user, "удаления отзыва");
+      if (!ownReview) {
         throw new Error("Отзыв не найден");
       }
-
-      return deleteReview(ownReview.id, accessToken);
+      return deleteReview(ownReview.id);
     },
     onSuccess: async () => {
       setMessage("Отзыв удален");
@@ -438,7 +431,7 @@ function CommentItem({
   workId: string;
 }) {
   const queryClient = useQueryClient();
-  const { accessToken, user } = useAuthStore();
+  const { user } = useAuthStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
   const [editMessage, setEditMessage] = useState<string | null>(null);
@@ -446,11 +439,8 @@ function CommentItem({
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для редактирования нужно войти в аккаунт");
-      }
-
-      return updateComment(comment.id, editDraft.trim(), accessToken);
+      requireUser(user, "редактирования");
+      return updateComment(comment.id, editDraft.trim());
     },
     onSuccess: async () => {
       setIsEditing(false);
@@ -470,11 +460,8 @@ function CommentItem({
 
   const deleteMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления нужно войти в аккаунт");
-      }
-
-      return deleteComment(comment.id, accessToken);
+      requireUser(user, "удаления");
+      return deleteComment(comment.id);
     },
     onSuccess: async () => {
       await Promise.all([
@@ -642,7 +629,7 @@ function CommentForm({
 
 function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated } = useAuthStore();
+  const { user, isHydrated } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
@@ -666,11 +653,8 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
   const commentMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для комментария нужно войти в аккаунт");
-      }
-
-      return createReviewComment(review.id, commentDraft.trim(), accessToken);
+      requireUser(user, "комментария");
+      return createReviewComment(review.id, commentDraft.trim());
     },
     onSuccess: async () => {
       setCommentDraft("");

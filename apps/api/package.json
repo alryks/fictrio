@@ -27,6 +27,7 @@
     "seed": "bun --preload ./src/config/register-database-url.ts prisma/import-content.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@fastify/cors": "^11.2.0",
     "@fictrio/contracts": "workspace:*",
     "@nestjs/common": "^11.0.1",
@@ -36,6 +37,7 @@
     "@nestjs/platform-fastify": "^11.1.21",
     "@prisma/client": "^6.19.0",
     "argon2": "^0.44.0",
+    "fastify": "^5.8.5",
     "ioredis": "^5.10.1",
     "pg": "^8.21.0",
     "reflect-metadata": "^0.2.2",

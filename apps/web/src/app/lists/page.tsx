@@ -2,21 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@/features/auth/auth-store";
 import { getPublicLists } from "@/features/lists/lists-api";
 import { ListCard } from "@/features/lists/list-card";
 
 const pageSize = 12;
 
 export default function ListsPage() {
-  const { hydrate } = useAuthStore();
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
   const listsQuery = useInfiniteQuery({
     queryKey: ["lists", "public"],
     queryFn: ({ pageParam }) => getPublicLists(pageParam, pageSize),
