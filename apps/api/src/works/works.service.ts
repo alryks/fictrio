@@ -298,7 +298,18 @@ export class WorksService {
     }
 
     if (query.search) {
-      and.push(Prisma.sql`w.title ILIKE ${`%${query.search}%`}`);
+      // Uses the `works_search_gin_idx` GIN index on
+      // to_tsvector('russian', coalesce(title)||' '||coalesce(original_title)||' '||coalesce(description)).
+      // websearch_to_tsquery handles user input safely (quoted phrases,
+      // OR keywords, exclusions) without exposing tsquery syntax.
+      and.push(Prisma.sql`
+        to_tsvector(
+          'russian',
+          coalesce(w.title, '') || ' ' ||
+          coalesce(w.original_title, '') || ' ' ||
+          coalesce(w.description, '')
+        ) @@ websearch_to_tsquery('russian', ${query.search})
+      `);
     }
 
     return Prisma.sql`WHERE ${Prisma.join(and, ' AND ')}`;
