@@ -29,18 +29,20 @@ export function RatingControl({
     <div className="flex shrink-0 flex-col gap-2">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <div className="flex items-center gap-2">
-        <button
+        <Button
           aria-label="Изменить оценку"
-          className="grid size-10 place-items-center rounded-md transition hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="size-10 hover:bg-muted/60"
           disabled={disabled}
           onClick={onChange}
+          size="icon"
           type="button"
+          variant="ghost"
         >
           <RatingMark value={value} size="xl" />
-        </button>
+        </Button>
         <Button
           aria-label="Удалить оценку"
-          className="h-10 w-9"
+          className="size-10"
           disabled={isDeleteDisabled}
           onClick={onDelete}
           size="icon"
