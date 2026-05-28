@@ -10,6 +10,8 @@ import {
 import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
+import { UserBadge } from "@/components/user-badge";
+import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteListRating,
@@ -22,7 +24,6 @@ import {
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { RatingControl } from "@/features/ratings/rating-control";
 import { WorkCard } from "@/features/works/work-card";
-import { getWorksCountLabel } from "@/features/works/work-rail";
 
 const listItemsPageSize = 12;
 
@@ -222,9 +223,7 @@ export default function ListDetailsPage() {
                 <div className="min-w-0">
                   <header className="min-w-0">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-                        {list.owner.username.slice(0, 2).toUpperCase()}
-                      </div>
+                      <UserBadge name={list.owner.username} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">
                           {list.owner.displayName}
@@ -422,18 +421,4 @@ export default function ListDetailsPage() {
       </main>
     </div>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

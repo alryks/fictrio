@@ -1,4 +1,5 @@
 import { SiteHeader } from "@/components/layout/site-header";
+import { UserBadge } from "@/components/user-badge";
 import { AuthPanel } from "@/features/auth/auth-panel";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { Bell, BookOpen, Film, MessageCircle, Search, Tv } from "lucide-react";
@@ -178,7 +179,7 @@ function FeedEvent({ item }: { item: FeedItem }) {
       <article className="rounded-md border bg-card p-5 shadow-sm">
         <ListPreviewCard list={item.list} />
         <div className="mt-5 flex gap-3 border-t pt-4">
-          <UserAvatar name={item.user} />
+          <UserBadge name={item.user} size="md" />
           <div className="min-w-0 flex-1">
             <p className="text-sm">
               <span className="font-semibold">{item.user}</span>{" "}
@@ -204,7 +205,7 @@ function FeedEvent({ item }: { item: FeedItem }) {
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-4">
           <div className="flex min-w-0 items-center gap-3">
-            <UserAvatar name={item.user} />
+            <UserBadge name={item.user} size="md" />
             <div className="min-w-0">
               <p className="text-sm">
                 <span className="font-semibold">{item.user}</span>{" "}
@@ -231,14 +232,6 @@ function FeedEvent({ item }: { item: FeedItem }) {
         )}
       </div>
     </article>
-  );
-}
-
-function UserAvatar({ name }: { name: string }) {
-  return (
-    <div className="grid size-11 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-      {name.slice(0, 2).toUpperCase()}
-    </div>
   );
 }
 

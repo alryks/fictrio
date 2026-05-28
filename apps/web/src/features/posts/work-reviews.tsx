@@ -8,6 +8,8 @@ import {
 } from "@tanstack/react-query";
 import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { UserBadge } from "@/components/user-badge";
+import { formatDate } from "@/lib/format";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteWorkRating,
@@ -369,9 +371,7 @@ function PostContent({
     <>
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {author.displayName}
@@ -498,9 +498,7 @@ function CommentItem({
     <article className="py-3 first:pt-0 last:pb-0">
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {comment.author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={comment.author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {comment.author.displayName}
@@ -754,18 +752,4 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       ) : null}
     </section>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

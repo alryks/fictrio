@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
+import { UserBadge } from "@/components/user-badge";
 import { ApiError } from "@/lib/api";
 import { login, logout, register } from "./auth-api";
 import { useAuthStore } from "./auth-store";
@@ -80,9 +81,7 @@ export function AuthPanel() {
     return (
       <section className="rounded-md border bg-card p-4 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
-            {user.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={user.username} size="md" tone="primary" />
           <div className="min-w-0">
             <h2 className="truncate font-semibold">{user.displayName}</h2>
             <p className="truncate text-sm text-muted-foreground">
