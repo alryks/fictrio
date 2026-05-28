@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/layout/site-header";
+import { StateCard } from "@/components/state-card";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
@@ -30,14 +31,16 @@ export default function WorkDetailsPage() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {workQuery.isLoading ? (
-          <DetailsState
+          <StateCard
+            as="h1"
             title="Загрузка карточки"
             text="Получаем данные произведения из API."
           />
         ) : null}
 
         {workQuery.isError ? (
-          <DetailsState
+          <StateCard
+            as="h1"
             title="Карточка недоступна"
             text={workQuery.error.message}
           />
@@ -145,15 +148,6 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
     </div>
-  );
-}
-
-function DetailsState({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="rounded-md border bg-card p-8 text-center shadow-sm">
-      <h1 className="font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-    </section>
   );
 }
 

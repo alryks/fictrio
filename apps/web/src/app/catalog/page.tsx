@@ -5,6 +5,7 @@ import { Suspense, useEffect, useRef } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
+import { StateCard } from "@/components/state-card";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorks, WorkKind } from "@/features/works/works-api";
 
@@ -38,7 +39,8 @@ export default function CatalogPage() {
   return (
     <Suspense
       fallback={
-        <CatalogState
+        <StateCard
+          className="mt-5"
           title="Загрузка каталога"
           text="Подготавливаем фильтры и параметры поиска."
         />
@@ -283,21 +285,24 @@ function CatalogContent() {
         </section>
 
         {worksQuery.isLoading ? (
-          <CatalogState
+          <StateCard
+            className="mt-5"
             title="Загрузка каталога"
             text="Получаем произведения из API."
           />
         ) : null}
 
         {worksQuery.isError ? (
-          <CatalogState
+          <StateCard
+            className="mt-5"
             title="Не удалось загрузить каталог"
             text={worksQuery.error.message}
           />
         ) : null}
 
         {!worksQuery.isLoading && !worksQuery.isError && items.length === 0 ? (
-          <CatalogState
+          <StateCard
+            className="mt-5"
             title="Ничего не найдено"
             text="Измените поисковый запрос, тип или год."
           />
@@ -314,7 +319,8 @@ function CatalogContent() {
         <div ref={loadMoreRef} className="h-8" />
 
         {isFetchingNextPage ? (
-          <CatalogState
+          <StateCard
+            className="mt-5"
             title="Загружаем еще"
             text="Подбираем следующую порцию произведений."
           />
@@ -354,13 +360,4 @@ function getSortOrder(searchParams: URLSearchParams) {
   const sortOrder = searchParams.get("sortOrder");
 
   return sortOrder === "asc" || sortOrder === "desc" ? sortOrder : "desc";
-}
-
-function CatalogState({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="mt-5 rounded-md border bg-card p-8 text-center shadow-sm">
-      <h2 className="font-semibold">{title}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-    </section>
-  );
 }

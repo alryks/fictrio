@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
+import { StateCard } from "@/components/state-card";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteListRating,
@@ -208,10 +209,10 @@ export default function ListDetailsPage() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (
-          <State title="Загрузка списка" text="Получаем подборку из API." />
+          <StateCard as="h1" title="Загрузка списка" text="Получаем подборку из API." />
         ) : null}
         {listQuery.isError ? (
-          <State title="Список недоступен" text={listQuery.error.message} />
+          <StateCard as="h1" title="Список недоступен" text={listQuery.error.message} />
         ) : null}
 
         {list ? (
@@ -420,15 +421,6 @@ export default function ListDetailsPage() {
         ) : null}
       </main>
     </div>
-  );
-}
-
-function State({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="rounded-md border bg-card p-8 text-center shadow-sm">
-      <h1 className="font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-    </section>
   );
 }
 
