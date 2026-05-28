@@ -2,6 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/form-field";
 import { UserBadge } from "@/components/user-badge";
 import { ApiError } from "@/lib/api";
 import { login, logout, register } from "./auth-api";
@@ -71,15 +75,15 @@ export function AuthPanel() {
 
   if (!isHydrated) {
     return (
-      <div className="h-[232px] rounded-md border bg-card p-4 shadow-sm">
+      <Card className="h-[232px] p-4">
         <p className="text-sm text-muted-foreground">Загрузка сессии...</p>
-      </div>
+      </Card>
     );
   }
 
   if (user) {
     return (
-      <section className="rounded-md border bg-card p-4 shadow-sm">
+      <Card className="p-4">
         <div className="flex items-center gap-3">
           <UserBadge name={user.username} size="md" tone="primary" />
           <div className="min-w-0">
@@ -99,20 +103,21 @@ export function AuthPanel() {
             </span>
           ))}
         </div>
-        <button
-          className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary hover:text-primary"
+        <Button
+          variant="outline"
+          className="mt-4 h-10 w-full"
           onClick={handleLogout}
           type="button"
         >
           <LogOut className="size-4" />
           Выйти
-        </button>
-      </section>
+        </Button>
+      </Card>
     );
   }
 
   return (
-    <section className="rounded-md border bg-card p-4 shadow-sm">
+    <Card className="p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold">
           {mode === "login" ? "Вход" : "Регистрация"}
@@ -124,90 +129,67 @@ export function AuthPanel() {
         )}
       </div>
       <form className="mt-4 space-y-3" onSubmit={handleSubmit} noValidate>
-        <label className="block">
-          <span className="text-sm font-medium">Имя пользователя</span>
-          <input
-            aria-invalid={Boolean(fieldErrors.username)}
-            className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30 aria-[invalid=true]:border-destructive"
-            minLength={3}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            value={username}
-          />
-          {fieldErrors.username ? (
-            <span className="mt-1 block text-xs text-destructive">
-              {fieldErrors.username}
-            </span>
-          ) : null}
-        </label>
+        <FormField label="Имя пользователя" error={fieldErrors.username}>
+          {(field) => (
+            <Input
+              {...field}
+              minLength={3}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+              value={username}
+            />
+          )}
+        </FormField>
         {mode === "register" ? (
           <>
-            <label className="block">
-              <span className="text-sm font-medium">Почта</span>
-              <input
-                aria-invalid={Boolean(fieldErrors.email)}
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30 aria-[invalid=true]:border-destructive"
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                type="email"
-                value={email}
-              />
-              {fieldErrors.email ? (
-                <span className="mt-1 block text-xs text-destructive">
-                  {fieldErrors.email}
-                </span>
-              ) : null}
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium">Отображаемое имя</span>
-              <input
-                aria-invalid={Boolean(fieldErrors.displayName)}
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30 aria-[invalid=true]:border-destructive"
-                onChange={(event) => setDisplayName(event.target.value)}
-                value={displayName}
-              />
-              {fieldErrors.displayName ? (
-                <span className="mt-1 block text-xs text-destructive">
-                  {fieldErrors.displayName}
-                </span>
-              ) : null}
-            </label>
+            <FormField label="Почта" error={fieldErrors.email}>
+              {(field) => (
+                <Input
+                  {...field}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                  type="email"
+                  value={email}
+                />
+              )}
+            </FormField>
+            <FormField label="Отображаемое имя" error={fieldErrors.displayName}>
+              {(field) => (
+                <Input
+                  {...field}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  value={displayName}
+                />
+              )}
+            </FormField>
           </>
         ) : null}
-        <label className="block">
-          <span className="text-sm font-medium">Пароль</span>
-          <input
-            aria-invalid={Boolean(fieldErrors.password)}
-            className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30 aria-[invalid=true]:border-destructive"
-            minLength={8}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-          {fieldErrors.password ? (
-            <span className="mt-1 block text-xs text-destructive">
-              {fieldErrors.password}
-            </span>
-          ) : null}
-        </label>
+        <FormField label="Пароль" error={fieldErrors.password}>
+          {(field) => (
+            <Input
+              {...field}
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          )}
+        </FormField>
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>
         ) : null}
-        <button
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-          disabled={isSubmitting}
-          type="submit"
-        >
+        <Button type="submit" className="h-10 w-full" disabled={isSubmitting}>
           {isSubmitting
             ? "Отправка..."
             : mode === "login"
               ? "Войти"
               : "Создать аккаунт"}
-        </button>
+        </Button>
       </form>
-      <button
-        className="mt-3 text-sm text-primary hover:underline"
+      <Button
+        variant="link"
+        className="mt-3 h-auto p-0"
         onClick={() => {
           setMode(mode === "login" ? "register" : "login");
           setMessage(null);
@@ -216,7 +198,7 @@ export function AuthPanel() {
         type="button"
       >
         {mode === "login" ? "Создать новый аккаунт" : "У меня уже есть аккаунт"}
-      </button>
-    </section>
+      </Button>
+    </Card>
   );
 }

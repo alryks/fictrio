@@ -6,6 +6,17 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FormField } from "@/components/form-field";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorks, WorkKind } from "@/features/works/works-api";
 
@@ -162,22 +173,24 @@ function CatalogContent() {
           </p>
         </div>
 
-        <section className="mt-5 grid gap-4 rounded-md border bg-card p-4 shadow-sm">
-          <label className="block">
-            <span className="text-sm font-medium">Поиск</span>
-            <span className="relative mt-1 block">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                className="h-10 w-full rounded-md border bg-background pl-9 pr-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) =>
-                  updateParams({ search: event.target.value })
-                }
-                placeholder="Название произведения"
-                type="search"
-                value={search}
-              />
-            </span>
-          </label>
+        <Card className="mt-5 grid gap-4 p-4">
+          <FormField label="Поиск">
+            {(field) => (
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  {...field}
+                  className="pl-9"
+                  onChange={(event) =>
+                    updateParams({ search: event.target.value })
+                  }
+                  placeholder="Название произведения"
+                  type="search"
+                  value={search}
+                />
+              </div>
+            )}
+          </FormField>
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <div>
@@ -203,8 +216,7 @@ function CatalogContent() {
             <div>
               <p className="text-sm font-medium">Год</p>
               <div className="mt-2 flex gap-2">
-                <input
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                <Input
                   max={2100}
                   min={1800}
                   onChange={(event) =>
@@ -214,8 +226,7 @@ function CatalogContent() {
                   type="number"
                   value={yearFrom}
                 />
-                <input
-                  className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+                <Input
                   max={2100}
                   min={1800}
                   onChange={(event) =>
@@ -229,60 +240,67 @@ function CatalogContent() {
             </div>
 
             <div className="sm:col-span-2 xl:col-span-1">
-              <label className="block">
-                <span className="text-sm font-medium">Оценка от</span>
-                <input
-                  className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                  max={3}
-                  min={0}
-                  onChange={(event) =>
-                    updateParams({ minRating: event.target.value })
-                  }
-                  placeholder="2.0"
-                  step="0.1"
-                  type="number"
-                  value={minRating}
-                />
-              </label>
+              <FormField label="Оценка от">
+                {(field) => (
+                  <Input
+                    {...field}
+                    max={3}
+                    min={0}
+                    onChange={(event) =>
+                      updateParams({ minRating: event.target.value })
+                    }
+                    placeholder="2.0"
+                    step="0.1"
+                    type="number"
+                    value={minRating}
+                  />
+                )}
+              </FormField>
             </div>
           </div>
 
           <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-medium">Сортировка</span>
-              <select
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) =>
-                  updateParams({ sortBy: event.target.value })
-                }
-                value={sortBy}
-              >
-                {sortOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FormField label="Сортировка">
+              {(field) => (
+                <Select
+                  value={sortBy}
+                  onValueChange={(value) => updateParams({ sortBy: value })}
+                >
+                  <SelectTrigger id={field.id}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
 
-            <label className="block">
-              <span className="text-sm font-medium">Порядок</span>
-              <select
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) =>
-                  updateParams({ sortOrder: event.target.value })
-                }
-                value={sortOrder}
-              >
-                {sortOrderOptions.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <FormField label="Порядок">
+              {(field) => (
+                <Select
+                  value={sortOrder}
+                  onValueChange={(value) => updateParams({ sortOrder: value })}
+                >
+                  <SelectTrigger id={field.id}>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sortOrderOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
           </div>
-        </section>
+        </Card>
 
         {worksQuery.isLoading ? (
           <StateCard
@@ -328,13 +346,14 @@ function CatalogContent() {
 
         {hasNextPage && !isFetchingNextPage ? (
           <div className="mt-5 flex justify-center">
-            <button
-              className="inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary"
+            <Button
+              variant="outline"
+              className="h-10"
               onClick={() => void fetchNextPage()}
               type="button"
             >
               Загрузить еще
-            </button>
+            </Button>
           </div>
         ) : null}
       </main>

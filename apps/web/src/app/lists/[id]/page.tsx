@@ -11,6 +11,10 @@ import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
 import { UserBadge } from "@/components/user-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
@@ -243,20 +247,21 @@ export default function ListDetailsPage() {
                           updateMutation.mutate();
                         }}
                       >
-                        <label className="block text-sm font-medium">
-                          Название
-                          <input
-                            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                            disabled={updateMutation.isPending}
-                            maxLength={255}
-                            onChange={(event) =>
-                              setTitleDraft(event.target.value)
-                            }
-                            required
-                            type="text"
-                            value={titleDraft}
-                          />
-                        </label>
+                        <FormField label="Название">
+                          {(field) => (
+                            <Input
+                              {...field}
+                              disabled={updateMutation.isPending}
+                              maxLength={255}
+                              onChange={(event) =>
+                                setTitleDraft(event.target.value)
+                              }
+                              required
+                              type="text"
+                              value={titleDraft}
+                            />
+                          )}
+                        </FormField>
                       </form>
                     ) : (
                       <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
@@ -269,8 +274,10 @@ export default function ListDetailsPage() {
                           {getWorksCountLabel(list.itemsTotal)}
                         </span>
                         {isOwner ? (
-                          <button
-                            className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
                             onClick={startEditingDetails}
                             type="button"
                           >
@@ -278,7 +285,7 @@ export default function ListDetailsPage() {
                             <span className="sr-only">
                               Редактировать список
                             </span>
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     )}
@@ -286,38 +293,39 @@ export default function ListDetailsPage() {
 
                   {isEditingDetails ? (
                     <div className="mt-4 max-w-3xl space-y-3">
-                      <label className="block text-sm font-medium">
-                        Описание
-                        <textarea
-                          className="mt-1 min-h-28 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                          disabled={updateMutation.isPending}
-                          form="list-details-form"
-                          maxLength={2000}
-                          onChange={(event) =>
-                            setDescriptionDraft(event.target.value)
-                          }
-                          value={descriptionDraft}
-                        />
-                      </label>
+                      <FormField label="Описание">
+                        {(field) => (
+                          <Textarea
+                            {...field}
+                            className="min-h-28"
+                            disabled={updateMutation.isPending}
+                            form="list-details-form"
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setDescriptionDraft(event.target.value)
+                            }
+                            value={descriptionDraft}
+                          />
+                        )}
+                      </FormField>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-accent disabled:opacity-50"
+                        <Button
                           disabled={updateMutation.isPending}
                           form="list-details-form"
                           type="submit"
                         >
                           <Save className="size-4" />
                           Сохранить
-                        </button>
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="outline"
                           disabled={updateMutation.isPending}
                           onClick={cancelEditingDetails}
                           type="button"
                         >
                           <X className="size-4" />
                           Отмена
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : list.description ? (
@@ -360,8 +368,10 @@ export default function ListDetailsPage() {
                     <WorkCard work={item.work} />
                     {isOwner ? (
                       <div className="mt-3 flex gap-2">
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-9"
                           disabled={
                             !canReorderItems ||
                             index === 0 ||
@@ -372,9 +382,11 @@ export default function ListDetailsPage() {
                         >
                           <ArrowUp className="size-4" />
                           <span className="sr-only">Выше</span>
-                        </button>
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-9"
                           disabled={
                             !canReorderItems ||
                             index === items.length - 1 ||
@@ -385,18 +397,18 @@ export default function ListDetailsPage() {
                         >
                           <ArrowDown className="size-4" />
                           <span className="sr-only">Ниже</span>
-                        </button>
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="size-9"
                           disabled={removeMutation.isPending}
                           onClick={() => removeMutation.mutate(item.work.id)}
                           type="button"
                         >
                           <Trash2 className="size-4" />
-                          <span className="sr-only">
-                            Удалить из списка
-                          </span>
-                        </button>
+                          <span className="sr-only">Удалить из списка</span>
+                        </Button>
                       </div>
                     ) : null}
                   </div>

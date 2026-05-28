@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/layout/site-header";
+import { Button } from "@/components/ui/button";
 import { getPublicLists } from "@/features/lists/lists-api";
 import { ListCard } from "@/features/lists/list-card";
 
@@ -67,14 +68,15 @@ export default function ListsPage() {
           </div>
 
           {listsQuery.hasNextPage ? (
-            <button
-              className="mt-5 inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            <Button
+              variant="outline"
+              className="mt-5 h-10"
               disabled={listsQuery.isFetchingNextPage}
               onClick={() => listsQuery.fetchNextPage()}
               type="button"
             >
               {listsQuery.isFetchingNextPage ? "Загрузка..." : "Показать еще"}
-            </button>
+            </Button>
           ) : null}
         </section>
       </main>
