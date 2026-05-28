@@ -6,7 +6,7 @@
  *   ["works"]                      — catalog list (all filter variants)
  *   ["work", id]                   — single work card
  *   ["work", id, "reviews"]        — a work's reviews + ratings feed
- *   ["lists"]                      — public lists collection
+ *   ["lists", "public", filters]   — public lists collection
  *   ["lists", "mine"]              — current user's lists
  *   ["list", id]                   — single list
  *   ["review"]                     — every review's comment threads

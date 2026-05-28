@@ -21,9 +21,7 @@ export default function PublicUserProfilePage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <SiteHeader
-        active={user?.username === username ? "profile" : undefined}
-      />
+      <SiteHeader />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {profileQuery.isLoading ? <Skeleton className="h-56 w-full" /> : null}

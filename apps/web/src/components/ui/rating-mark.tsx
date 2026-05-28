@@ -8,8 +8,6 @@ type RatingMarkProps = {
   value: number;
   className?: string;
   size?: RatingMarkSize;
-  label?: string;
-  onValueChange?: (value: number) => void;
 };
 
 const sizeClassNames: Record<RatingMarkSize, string> = {
@@ -56,16 +54,11 @@ function getSegmentFill(value: number, segmentIndexFromTop: number) {
   return clamp(value - segmentIndexFromBottom, 0, 1);
 }
 
-export function RatingMark({
-  value,
-  className,
-  size = "md",
-  label,
-  onValueChange,
-}: RatingMarkProps) {
+export function RatingMark({ value, className, size = "md" }: RatingMarkProps) {
   const normalizedValue = clamp(value, 0, 3);
-  const accessibleLabel =
-    label ?? `Оценка ${normalizedValue.toFixed(1).replace(".", ",")} из 3`;
+  const accessibleLabel = `Оценка ${normalizedValue
+    .toFixed(1)
+    .replace(".", ",")} из 3`;
   const mark = (
     <span
       className={cn(
@@ -100,22 +93,9 @@ export function RatingMark({
     </span>
   );
 
-  if (!onValueChange) {
-    return (
-      <span className="inline-flex items-center" aria-label={accessibleLabel}>
-        {mark}
-      </span>
-    );
-  }
-
   return (
-    <button
-      type="button"
-      className="inline-flex items-center gap-2 rounded-md outline-none transition focus-visible:ring-2 focus-visible:ring-ring/50"
-      aria-label={accessibleLabel}
-      onClick={() => onValueChange((Math.floor(normalizedValue) + 1) % 4)}
-    >
+    <span className="inline-flex items-center" aria-label={accessibleLabel}>
       {mark}
-    </button>
+    </span>
   );
 }
