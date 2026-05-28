@@ -6,6 +6,11 @@ import {
 } from '@nestjs/common';
 import { ListVisibility, Prisma, RateableKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { isUniqueConstraintError } from '../common/prisma-errors';
+import {
+  aggregateRateableRating,
+  averageFromValues,
+} from '../common/rating-stats';
 import {
   AddListItemDto,
   CreateListDto,
@@ -73,7 +78,6 @@ const listInclude = getListInclude();
 const listPreviewInclude = getListInclude(6);
 
 type ListWithDetails = Prisma.ListGetPayload<{ include: typeof listInclude }>;
-type PublicListPayload = ListWithDetails;
 type ListPreviewWorkRow = {
   id: string;
   kind: string;
@@ -117,8 +121,8 @@ export class ListsService {
   async findPublic(query: GetListsQueryDto) {
     const whereSql = this.buildPublicListWhereSql(query);
     const havingSql = this.buildPublicListHavingSql(query);
-    const pagedOrderSql = this.buildPublicListOrderSql(query, 'fl', 'l');
-    const finalOrderSql = this.buildPublicListOrderSql(query, 'p', 'l');
+    const pagedOrderSql = this.buildPublicListOrderSql(query, 'fl');
+    const finalOrderSql = this.buildPublicListOrderSql(query, 'p');
 
     const [lists, totalRows] = await this.prisma.$transaction([
       this.prisma.$queryRaw<PublicListRow[]>`
@@ -324,27 +328,7 @@ export class ListsService {
           SELECT 1 FROM lists WHERE id = ${listId}::uuid FOR UPDATE
         `;
 
-        const insertPosition =
-          dto.position ?? (await this.getNextPositionTx(tx, listId));
-
-        if (dto.position !== undefined) {
-          // The (list_id, position) UNIQUE index is checked row-by-row
-          // so a direct `position = position + 1` would collide with the
-          // neighbouring row mid-statement. Stash affected positions in
-          // disjoint negatives, then restore as `position + 1`.
-          await tx.$executeRaw`
-            UPDATE list_items
-            SET position = -position - 1
-            WHERE list_id = ${listId}::uuid
-              AND position >= ${dto.position}::int
-          `;
-          await tx.$executeRaw`
-            UPDATE list_items
-            SET position = -position
-            WHERE list_id = ${listId}::uuid
-              AND position < 0
-          `;
-        }
+        const insertPosition = await this.getNextPositionTx(tx, listId);
 
         await tx.listItem.create({
           data: {
@@ -355,7 +339,7 @@ export class ListsService {
         });
       });
     } catch (error) {
-      if (this.isUniqueConstraintError(error)) {
+      if (isUniqueConstraintError(error)) {
         throw new ConflictException('Произведение уже есть в списке');
       }
 
@@ -521,7 +505,7 @@ export class ListsService {
     return {
       id: rating.id,
       value: rating.value,
-      rating: await this.getRatingStats(list.rateableId),
+      rating: await aggregateRateableRating(this.prisma, list.rateableId),
     };
   }
 
@@ -554,7 +538,7 @@ export class ListsService {
 
     return {
       deleted: true,
-      rating: await this.getRatingStats(list.rateableId),
+      rating: await aggregateRateableRating(this.prisma, list.rateableId),
     };
   }
 
@@ -596,29 +580,7 @@ export class ListsService {
     }
   }
 
-  private async getRatingStats(rateableId: string) {
-    const aggregate = await this.prisma.rating.aggregate({
-      where: {
-        rateableId,
-      },
-      _avg: {
-        value: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
-
-    return {
-      average:
-        aggregate._avg.value === null
-          ? null
-          : Number(aggregate._avg.value.toFixed(2)),
-      count: aggregate._count.id,
-    };
-  }
-
-  private toPublicList(list: PublicListPayload, viewerUserId?: string) {
+  private toPublicList(list: ListWithDetails, viewerUserId?: string) {
     return {
       id: list.id,
       title: list.title,
@@ -627,7 +589,7 @@ export class ListsService {
       createdAt: list.createdAt,
       updatedAt: list.updatedAt,
       owner: list.owner,
-      rating: this.getInlineRatingStats(list.rateable.ratings),
+      rating: averageFromValues(list.rateable.ratings),
       userRating:
         list.rateable.ratings.find((rating) => rating.userId === viewerUserId)
           ?.value ?? null,
@@ -643,7 +605,7 @@ export class ListsService {
           description: item.work.description,
           releaseYear: item.work.releaseYear,
           imageUrl: item.work.imageUrl,
-          rating: this.getInlineRatingStats(item.work.rateable.ratings),
+          rating: averageFromValues(item.work.rateable.ratings),
           meta: {},
         },
       })),
@@ -689,12 +651,11 @@ export class ListsService {
   private buildPublicListOrderSql(
     query: GetListsQueryDto,
     ratingAlias: 'fl' | 'p',
-    listAlias: 'l',
   ) {
     const direction =
       query.sortOrder === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
     const ratings = Prisma.raw(ratingAlias);
-    const list = Prisma.raw(listAlias);
+    const list = Prisma.raw('l');
 
     if (query.sortBy === 'averageRating') {
       return Prisma.sql`ORDER BY ${ratings}.average_rating ${direction} NULLS LAST, ${list}.created_at DESC, ${list}.id`;
@@ -748,28 +709,5 @@ export class ListsService {
         },
       })),
     };
-  }
-
-  private getInlineRatingStats(ratings: Array<{ value: number }>) {
-    if (ratings.length === 0) {
-      return {
-        average: null,
-        count: 0,
-      };
-    }
-
-    const sum = ratings.reduce((acc, rating) => acc + rating.value, 0);
-
-    return {
-      average: Number((sum / ratings.length).toFixed(2)),
-      count: ratings.length,
-    };
-  }
-
-  private isUniqueConstraintError(error: unknown) {
-    return (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    );
   }
 }

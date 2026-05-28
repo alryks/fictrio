@@ -2,7 +2,9 @@ import { z } from "zod";
 import {
   isoDateTimeSchema,
   pageEnvelopeSchema,
+  publicUserRefSchema,
   ratingStatsSchema,
+  type PublicUserRef,
 } from "./common.js";
 import { listVisibilitySchema } from "./enums.js";
 import { workListItemSchema } from "./works.js";
@@ -69,7 +71,6 @@ export type UpdateListInput = z.infer<typeof updateListInputSchema>;
 
 export const addListItemInputSchema = z.object({
   workId: z.string().uuid("Некорректный идентификатор произведения"),
-  position: z.coerce.number().int().min(0).optional(),
 });
 export type AddListItemInput = z.infer<typeof addListItemInputSchema>;
 
@@ -85,12 +86,7 @@ export const reorderListItemsInputSchema = z.object({
 });
 export type ReorderListItemsInput = z.infer<typeof reorderListItemsInputSchema>;
 
-export const listOwnerSchema = z.object({
-  id: z.string().uuid(),
-  username: z.string(),
-  displayName: z.string(),
-});
-export type ListOwner = z.infer<typeof listOwnerSchema>;
+export type ListOwner = PublicUserRef;
 
 export const listItemEntrySchema = z.object({
   position: z.number().int(),
@@ -106,7 +102,7 @@ export const fictrioListSchema = z.object({
   visibility: listVisibilitySchema,
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
-  owner: listOwnerSchema,
+  owner: publicUserRefSchema,
   rating: ratingStatsSchema,
   userRating: z.number().int().nullable(),
   itemsTotal: z.number().int().nonnegative(),
