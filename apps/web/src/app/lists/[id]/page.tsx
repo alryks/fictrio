@@ -187,7 +187,7 @@ export default function ListDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <SiteHeader back={{ href: "/lists", label: "Списки" }} />
+      <SiteHeader active="lists" />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (

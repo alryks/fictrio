@@ -1,6 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { RatingMark } from "@/components/ui/rating-mark";
 
 type RatingControlProps = {
@@ -37,15 +38,17 @@ export function RatingControl({
         >
           <RatingMark value={value} size="xl" />
         </button>
-        <button
+        <Button
           aria-label="Удалить оценку"
-          className="grid size-10 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:border-muted disabled:bg-muted/40 disabled:text-muted-foreground/40 disabled:opacity-100"
+          className="size-10"
           disabled={isDeleteDisabled}
           onClick={onDelete}
+          size="icon"
           type="button"
+          variant="destructive"
         >
           <Trash2 className="size-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
