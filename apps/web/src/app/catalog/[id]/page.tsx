@@ -29,7 +29,7 @@ export default function WorkDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <SiteHeader back={{ href: "/catalog", label: "Каталог" }} />
+      <SiteHeader active="catalog" />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {workQuery.isLoading ? (

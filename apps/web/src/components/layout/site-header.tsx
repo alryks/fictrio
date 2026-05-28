@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type NavKey = "feed" | "catalog" | "lists" | "profile";
@@ -20,15 +19,13 @@ const navItems: NavItem[] = [
 ];
 
 type SiteHeaderProps = {
-  /** Highlights the matching nav item. Omit on detail pages that use `back`. */
+  /** Highlights the matching nav item. */
   active?: NavKey;
-  /** Renders a back link in place of the nav (detail pages). */
-  back?: { href: string; label: string };
   /** Extra content pinned to the right (e.g. search box on the feed). */
   rightSlot?: ReactNode;
 };
 
-export function SiteHeader({ active, back, rightSlot }: SiteHeaderProps) {
+export function SiteHeader({ active, rightSlot }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
@@ -37,37 +34,25 @@ export function SiteHeader({ active, back, rightSlot }: SiteHeaderProps) {
           <span className="text-xl font-semibold text-primary">Fictrio</span>
         </Link>
 
-        {back ? null : (
-          <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
-            {navItems.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                aria-current={active === item.key ? "page" : undefined}
-                className={cn(
-                  "rounded-md px-3 py-2 transition",
-                  active === item.key
-                    ? "text-primary"
-                    : "hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        )}
+        <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
+          {navItems.map((item) => (
+            <Link
+              key={item.key}
+              href={item.href}
+              aria-current={active === item.key ? "page" : undefined}
+              className={cn(
+                "rounded-md px-3 py-2 transition",
+                active === item.key
+                  ? "text-primary"
+                  : "hover:bg-accent hover:text-accent-foreground",
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
 
         {rightSlot ? <div className="ml-auto flex min-w-0">{rightSlot}</div> : null}
-
-        {back ? (
-          <Link
-            className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-            href={back.href}
-          >
-            <ArrowLeft className="size-4" />
-            {back.label}
-          </Link>
-        ) : null}
       </div>
     </header>
   );
