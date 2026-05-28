@@ -14,7 +14,7 @@ import { UserBadge } from "@/components/user-badge";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteWorkRating,
   upsertWorkRating,
@@ -50,7 +50,7 @@ const COMMENTS_PAGE_SIZE = 5;
 
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
@@ -216,7 +216,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             <RatingControl
               value={ratingValue}
               hasValue={hasRating}
-              disabled={!isHydrated || !user || ratingMutation.isPending}
+              disabled={isLoading || !user || ratingMutation.isPending}
               deleteDisabled={!user || !hasRating || deleteRatingMutation.isPending}
               onChange={handleRatingClick}
               onDelete={() => deleteRatingMutation.mutate()}
@@ -228,7 +228,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               <Textarea
                 {...field}
                 className="min-h-36"
-                disabled={!isHydrated || !user || reviewMutation.isPending}
+                disabled={isLoading || !user || reviewMutation.isPending}
                 maxLength={5000}
                 onChange={(event) => setReviewDraft(event.target.value)}
                 placeholder="Что стоит обсудить после просмотра или чтения?"
@@ -240,7 +240,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
           {message ? (
             <p className="text-sm text-muted-foreground">{message}</p>
           ) : null}
-          {!user && isHydrated ? (
+          {!user && !isLoading ? (
             <p className="text-sm text-muted-foreground">
               Войдите в аккаунт на главной странице, чтобы оценивать и писать
               отзывы.
@@ -438,7 +438,7 @@ function CommentItem({
   workId: string;
 }) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
   const [editMessage, setEditMessage] = useState<string | null>(null);
@@ -635,7 +635,7 @@ function CommentForm({
 
 function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
@@ -707,13 +707,13 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             <CommentForm
               commentDraft={commentDraft}
               commentMessage={commentMessage}
-              isDisabled={!isHydrated || !user || commentMutation.isPending}
+              isDisabled={isLoading || !user || commentMutation.isPending}
               isPending={
                 !user ||
                 commentMutation.isPending ||
                 commentDraft.trim().length === 0
               }
-              isUserMissing={!user && isHydrated}
+              isUserMissing={!user && !isLoading}
               onDraftChange={setCommentDraft}
               onSubmit={handleCommentSubmit}
             />

@@ -17,6 +17,8 @@
  * ["work", id, "reviews"].
  */
 export const qk = {
+  /** Current authenticated user (or null). Backed by GET /auth/me. */
+  session: ["session"] as const,
   works: {
     all: ["works"] as const,
     list: (filters: unknown) => ["works", filters] as const,

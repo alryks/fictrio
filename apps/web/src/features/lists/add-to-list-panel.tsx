@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { useSession } from "@/features/auth/use-session";
 import { addWorkToList, createList, getMyLists } from "./lists-api";
 
 type AddToListPanelProps = {
@@ -30,7 +30,7 @@ function requireUser(user: unknown, action: string): asserts user {
 
 export function AddToListPanel({ workId }: AddToListPanelProps) {
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [selectedListId, setSelectedListId] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState<string | null>(null);
@@ -114,7 +114,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
         </div>
       </div>
 
-      {!user && isHydrated ? (
+      {!user && !isLoading ? (
         <p className="mt-4 text-sm text-muted-foreground">
           Войдите в аккаунт на главной странице, чтобы создавать списки.
         </p>

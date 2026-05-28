@@ -17,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteListRating,
   getList,
@@ -41,7 +41,7 @@ function requireUser(user: unknown, action: string): asserts user {
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
@@ -349,7 +349,7 @@ export default function ListDetailsPage() {
                   <RatingControl
                     value={ratingValue}
                     hasValue={hasRating}
-                    disabled={!isHydrated || !user || ratingMutation.isPending}
+                    disabled={isLoading || !user || ratingMutation.isPending}
                     deleteDisabled={!user || deleteRatingMutation.isPending}
                     onChange={() => {
                       ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
