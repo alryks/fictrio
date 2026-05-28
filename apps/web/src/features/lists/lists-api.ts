@@ -21,7 +21,7 @@ export function getPublicLists(offset = 0, limit = 12, itemsLimit = 6) {
 }
 
 export function getMyLists() {
-  return apiRequest<MyListsResponse>("/lists/mine");
+  return apiRequest<MyListsResponse>("/me/lists");
 }
 
 export function getList(id: string, itemsOffset = 0, itemsLimit = 12) {

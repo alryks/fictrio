@@ -34,12 +34,6 @@ export class ListsController {
     return this.listsService.findPublic(query);
   }
 
-  @Get('mine')
-  @UseGuards(JwtAuthGuard)
-  findMine(@CurrentUser() user: AuthenticatedUser) {
-    return this.listsService.findMine(user.id);
-  }
-
   @Get(':listId')
   findOne(
     @Param('listId', ParseUUIDPipe) listId: string,
