@@ -10,7 +10,7 @@ import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { UserBadge } from "@/components/user-badge";
+import { UserLink } from "@/components/user-link";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
@@ -52,9 +52,7 @@ const COMMENTS_PAGE_SIZE = 5;
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
   const { user, isLoading } = useSession();
-  const [ratingDraft, setRatingDraft] = useState<
-    number | null | undefined
-  >();
+  const [ratingDraft, setRatingDraft] = useState<number | null | undefined>();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
@@ -199,7 +197,9 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               value={ratingValue}
               hasValue={hasRating}
               disabled={isLoading || !user || ratingMutation.isPending}
-              deleteDisabled={!user || !hasRating || deleteRatingMutation.isPending}
+              deleteDisabled={
+                !user || !hasRating || deleteRatingMutation.isPending
+              }
               onChange={handleRatingClick}
               onDelete={() => deleteRatingMutation.mutate()}
             />
@@ -360,17 +360,7 @@ function PostContent({
   return (
     <>
       <header className="flex h-10 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <UserBadge name={author.username} />
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold">
-              {author.displayName}
-            </h3>
-            <p className="truncate text-xs text-muted-foreground">
-              @{author.username} · {formatDate(createdAt)}
-            </p>
-          </div>
-        </div>
+        <UserLink user={author} meta={formatDate(createdAt)} />
         {rating === null ? null : (
           <div className="shrink-0 leading-none">
             <RatingMark value={rating} size="xl" />
@@ -487,17 +477,7 @@ function CommentItem({
   return (
     <article className="py-3 first:pt-0 last:pb-0">
       <header className="flex h-10 items-start justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <UserBadge name={comment.author.username} />
-          <div className="min-w-0">
-            <h3 className="truncate text-sm font-semibold">
-              {comment.author.displayName}
-            </h3>
-            <p className="truncate text-xs text-muted-foreground">
-              @{comment.author.username} · {formatDate(comment.createdAt)}
-            </p>
-          </div>
-        </div>
+        <UserLink user={comment.author} meta={formatDate(comment.createdAt)} />
         {comment.rating !== null ? (
           <div className="shrink-0 leading-none">
             <RatingMark value={comment.rating} size="xl" />

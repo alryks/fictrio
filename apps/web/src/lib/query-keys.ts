@@ -31,6 +31,9 @@ export const qk = {
     mine: ["lists", "mine"] as const,
     detail: (id: string) => ["list", id] as const,
   },
+  users: {
+    profile: (username: string) => ["user", username] as const,
+  },
   reviews: {
     all: ["review"] as const,
     comments: (reviewId: string) => ["review", reviewId, "comments"] as const,

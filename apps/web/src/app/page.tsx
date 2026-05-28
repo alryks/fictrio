@@ -1,5 +1,5 @@
 import { SiteHeader } from "@/components/layout/site-header";
-import { UserBadge } from "@/components/user-badge";
+import { UserLink } from "@/components/user-link";
 import { AuthPanel } from "@/features/auth/auth-panel";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { Bell, BookOpen, Film, MessageCircle, Search, Tv } from "lucide-react";
@@ -179,8 +179,11 @@ function FeedEvent({ item }: { item: FeedItem }) {
       <article className="rounded-md border bg-card p-5 shadow-sm">
         <ListPreviewCard list={item.list} />
         <div className="mt-5 flex gap-3 border-t pt-4">
-          <UserBadge name={item.user} size="md" />
           <div className="min-w-0 flex-1">
+            <UserLink
+              user={{ username: item.user, displayName: item.user }}
+              className="mb-3"
+            />
             <p className="text-sm">
               <span className="font-semibold">{item.user}</span>{" "}
               <span className="text-muted-foreground">создала список</span>{" "}
@@ -204,19 +207,22 @@ function FeedEvent({ item }: { item: FeedItem }) {
 
       <div className="min-w-0">
         <div className="flex items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-3">
-            <UserBadge name={item.user} size="md" />
-            <div className="min-w-0">
-              <p className="text-sm">
-                <span className="font-semibold">{item.user}</span>{" "}
-                <span className="text-muted-foreground">{action}</span>
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {item.work.kind} · {item.work.year}
-              </p>
-            </div>
+          <div className="min-w-0">
+            <UserLink
+              user={{ username: item.user, displayName: item.user }}
+              meta={`${item.work.kind} · ${item.work.year}`}
+            />
           </div>
           <RatingMark value={item.rating} size="lg" className="shrink-0" />
+        </div>
+
+        <div className="mt-3 min-w-0">
+          <div className="min-w-0">
+            <p className="text-sm">
+              <span className="font-semibold">{item.user}</span>{" "}
+              <span className="text-muted-foreground">{action}</span>
+            </p>
+          </div>
         </div>
 
         {item.type === "review" ? (

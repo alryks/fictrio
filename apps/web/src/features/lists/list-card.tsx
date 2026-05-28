@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { UserBadge } from "@/components/user-badge";
+import { UserLink } from "@/components/user-link";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkCard } from "@/features/works/work-card";
@@ -17,17 +17,7 @@ export function ListCard({ list }: { list: FictrioList }) {
       <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
           <header className="min-w-0">
-            <div className="flex min-w-0 items-center gap-3">
-              <UserBadge name={list.owner.username} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold">
-                  {list.owner.displayName}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  @{list.owner.username} · {formatDate(list.createdAt)}
-                </p>
-              </div>
-            </div>
+            <UserLink user={list.owner} meta={formatDate(list.createdAt)} />
 
             <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
               <Link

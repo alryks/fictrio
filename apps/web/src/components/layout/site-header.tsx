@@ -48,6 +48,7 @@ export function SiteHeader({ active, rightSlot }: SiteHeaderProps) {
               aria-current={active === item.key ? "page" : undefined}
               className={cn(
                 "rounded-md px-3 py-2 transition",
+                "flex h-10 items-center",
                 active === item.key
                   ? "text-primary"
                   : "hover:bg-accent hover:text-accent-foreground",

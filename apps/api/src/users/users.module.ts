@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
+import { UsersController } from './users.controller';
+import { UsersService } from './users.service';
 
-// TODO: реализовать UsersController/UsersService для публичных профилей
-// пользователей и страницы подписчиков (этап 13 PLAN.md).
-@Module({})
+@Module({
+  controllers: [UsersController],
+  providers: [UsersService],
+})
 export class UsersModule {}
