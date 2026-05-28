@@ -1,3 +1,5 @@
+import type { ApiErrorBody, FieldIssue } from "@fictrio/contracts";
+
 export const apiBaseUrl =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:3001";
@@ -5,16 +7,18 @@ export const apiBaseUrl =
 const CSRF_COOKIE_NAME = "fictrio_csrf";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
-export type ApiErrorBody = {
-  message?: unknown;
-};
-
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly issues: FieldIssue[] = [],
   ) {
     super(message);
+  }
+
+  /** Returns the first validation message for a given field, if any. */
+  fieldError(path: string): string | undefined {
+    return this.issues.find((issue) => issue.path === path)?.message;
   }
 }
 
@@ -43,7 +47,8 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    throw new ApiError(await getErrorMessage(response), response.status);
+    const { message, issues } = await getErrorDetails(response);
+    throw new ApiError(message, response.status, issues);
   }
 
   if (response.status === 204) {
@@ -72,11 +77,18 @@ function getCsrfTokenFromCookie(): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
-async function getErrorMessage(response: Response): Promise<string> {
+async function getErrorDetails(
+  response: Response,
+): Promise<{ message: string; issues: FieldIssue[] }> {
   try {
     const body = (await response.json()) as ApiErrorBody;
-    return typeof body.message === "string" ? body.message : "Ошибка запроса";
+    const issues = body.details ?? [];
+    const message =
+      typeof body.message === "string"
+        ? body.message
+        : (issues[0]?.message ?? "Ошибка запроса");
+    return { message, issues };
   } catch {
-    return "Ошибка запроса";
+    return { message: "Ошибка запроса", issues: [] };
   }
 }
