@@ -1,15 +1,16 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { resolveSessionUser, type RequestWithSession } from './session';
 
+/**
+ * Attaches the authenticated user to the request when a valid session
+ * cookie is present, but never rejects the request. Used on endpoints
+ * that are public yet behave differently for the owner (e.g. viewing a
+ * private list you own).
+ */
 @Injectable()
-export class JwtAuthGuard implements CanActivate {
+export class OptionalJwtAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -17,16 +18,7 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<RequestWithSession>();
-    const user = await resolveSessionUser(
-      request,
-      this.jwtService,
-      this.configService,
-    );
-
-    if (!user) {
-      throw new UnauthorizedException('Требуется авторизация');
-    }
-
+    await resolveSessionUser(request, this.jwtService, this.configService);
     return true;
   }
 }
