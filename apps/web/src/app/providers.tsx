@@ -2,6 +2,7 @@
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactNode, useEffect, useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
 import { ApiError, bootstrapCsrfToken } from "@/lib/api";
 import { getMe } from "@/features/auth/auth-api";
 import { useAuthStore } from "@/features/auth/auth-store";
@@ -23,6 +24,7 @@ export function Providers({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       <SessionBootstrap />
       {children}
+      <Toaster position="top-center" />
     </QueryClientProvider>
   );
 }
