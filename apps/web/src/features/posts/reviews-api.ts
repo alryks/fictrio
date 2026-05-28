@@ -1,46 +1,17 @@
+import type {
+  DeletedResponse,
+  PublicUserRef,
+  Review,
+  ReviewComment,
+  ReviewCommentsPage,
+  ReviewsPage,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type ReviewAuthor = {
-  id: string;
-  username: string;
-  displayName: string;
-};
-
-export type Review = {
-  id: string;
-  kind: "review" | "rating";
-  body: string | null;
-  isHidden: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: ReviewAuthor;
-  rating: number | null;
-  commentsCount: number;
-};
-
-export type ReviewComment = {
-  id: string;
-  body: string;
-  isHidden: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: ReviewAuthor;
-  rating: number | null;
-};
-
-export type ReviewsResponse = {
-  items: Review[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export type ReviewCommentsResponse = {
-  items: ReviewComment[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+export type ReviewAuthor = PublicUserRef;
+export type { Review, ReviewComment };
+export type ReviewsResponse = ReviewsPage;
+export type ReviewCommentsResponse = ReviewCommentsPage;
 
 export function getWorkReviews(workId: string, offset = 0, limit = 10) {
   return apiRequest<ReviewsResponse>(
@@ -65,7 +36,7 @@ export function updateReview(reviewId: string, body: string, token: string) {
 }
 
 export function deleteReview(reviewId: string, token: string) {
-  return apiRequest<{ deleted: true }>(`/reviews/${reviewId}`, {
+  return apiRequest<DeletedResponse>(`/reviews/${reviewId}`, {
     method: "DELETE",
     token,
   });
@@ -98,7 +69,7 @@ export function updateComment(commentId: string, body: string, token: string) {
 }
 
 export function deleteComment(commentId: string, token: string) {
-  return apiRequest<{ deleted: true }>(`/comments/${commentId}`, {
+  return apiRequest<DeletedResponse>(`/comments/${commentId}`, {
     method: "DELETE",
     token,
   });

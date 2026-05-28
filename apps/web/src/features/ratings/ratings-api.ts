@@ -1,13 +1,10 @@
+import type {
+  DeleteRatingResponse,
+  UpsertRatingResponse,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type UpsertRatingResponse = {
-  id: string;
-  value: number;
-  rating: {
-    average: number | null;
-    count: number;
-  };
-};
+export type { UpsertRatingResponse };
 
 export function upsertWorkRating(workId: string, value: number, token: string) {
   return apiRequest<UpsertRatingResponse>(`/works/${workId}/rating`, {
@@ -18,11 +15,8 @@ export function upsertWorkRating(workId: string, value: number, token: string) {
 }
 
 export function deleteWorkRating(workId: string, token: string) {
-  return apiRequest<{ deleted: true; rating: UpsertRatingResponse["rating"] }>(
-    `/works/${workId}/rating`,
-    {
-      method: "DELETE",
-      token,
-    },
-  );
+  return apiRequest<DeleteRatingResponse>(`/works/${workId}/rating`, {
+    method: "DELETE",
+    token,
+  });
 }
