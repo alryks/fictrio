@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -17,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
   deleteListRating,
@@ -42,7 +43,6 @@ export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { user, isLoading } = useSession();
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
@@ -72,7 +72,6 @@ export default function ListDetailsPage() {
     ratingDraft === undefined
       ? list?.userRating !== null && list?.userRating !== undefined
       : ratingDraft !== null;
-  const fetchNextListItemsPage = listQuery.fetchNextPage;
   const hasNextListItemsPage = listQuery.hasNextPage;
   const isFetchingNextListItemsPage = listQuery.isFetchingNextPage;
   const canReorderItems = isOwner && !hasNextListItemsPage;
@@ -81,34 +80,11 @@ export default function ListDetailsPage() {
     [listQuery.data?.pages],
   );
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          hasNextListItemsPage &&
-          !isFetchingNextListItemsPage
-        ) {
-          void fetchNextListItemsPage();
-        }
-      },
-      { rootMargin: "320px" },
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [
-    fetchNextListItemsPage,
-    hasNextListItemsPage,
-    isFetchingNextListItemsPage,
-  ]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: hasNextListItemsPage,
+    isFetchingNextPage: isFetchingNextListItemsPage,
+    fetchNextPage: listQuery.fetchNextPage,
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => {

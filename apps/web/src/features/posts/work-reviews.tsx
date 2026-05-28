@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -14,6 +14,7 @@ import { UserBadge } from "@/components/user-badge";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
   deleteWorkRating,
@@ -72,31 +73,12 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     () => activityQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [activityQuery.data?.pages],
   );
-  const fetchNextReviewsPage = activityQuery.fetchNextPage;
-  const hasNextReviewsPage = activityQuery.hasNextPage;
-  const isFetchingNextReviewsPage = activityQuery.isFetchingNextPage;
-
-  useEffect(() => {
-    function handleScroll() {
-      const distanceToBottom =
-        document.documentElement.scrollHeight -
-        window.scrollY -
-        window.innerHeight;
-
-      if (
-        distanceToBottom < 500 &&
-        hasNextReviewsPage &&
-        !isFetchingNextReviewsPage
-      ) {
-        void fetchNextReviewsPage();
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [fetchNextReviewsPage, hasNextReviewsPage, isFetchingNextReviewsPage]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: activityQuery.hasNextPage,
+    isFetchingNextPage: activityQuery.isFetchingNextPage,
+    fetchNextPage: activityQuery.fetchNextPage,
+    rootMargin: "500px 0px",
+  });
 
   const ownReview = useMemo(
     () =>
@@ -312,6 +294,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             />
           ))}
         </div>
+        <div ref={loadMoreRef} className="h-px" />
         {activityQuery.isFetchingNextPage ? (
           <p className="mt-4 text-sm text-muted-foreground">Загружаем еще...</p>
         ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorks, WorkKind } from "@/features/works/works-api";
 
@@ -74,7 +75,6 @@ function CatalogContent() {
   const minRating = searchParams.get("minRating") ?? "";
   const sortBy = getSortBy(searchParams);
   const sortOrder = getSortOrder(searchParams);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const worksQuery = useInfiniteQuery({
     queryKey: qk.works.list({
@@ -112,26 +112,12 @@ function CatalogContent() {
   const hasNextPage = worksQuery.hasNextPage;
   const isFetchingNextPage = worksQuery.isFetchingNextPage;
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasNextPage) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting && !isFetchingNextPage && hasNextPage) {
-          void fetchNextPage();
-        }
-      },
-      { rootMargin: "600px 0px" },
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    rootMargin: "600px 0px",
+  });
 
   function updateParams(updates: Record<string, string | string[] | null>) {
     const nextParams = new URLSearchParams(searchParams.toString());
