@@ -1,12 +1,12 @@
 import type {
   AuthResponse,
   LoginInput,
-  PublicUser,
   RegisterInput,
+  SelfUser,
 } from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type AuthUser = PublicUser;
+export type AuthUser = SelfUser;
 export type LoginPayload = LoginInput;
 export type RegisterPayload = RegisterInput;
 

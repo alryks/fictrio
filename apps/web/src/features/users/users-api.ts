@@ -1,6 +1,6 @@
 import type {
-  PublicUser,
   PublicUserProfile,
+  SelfUser,
   UpdateMyProfileInput,
 } from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
@@ -14,7 +14,7 @@ export function getUserProfile(username: string) {
 }
 
 export function updateMyProfile(input: UpdateMyProfileInput) {
-  return apiRequest<PublicUser>("/users/me", {
+  return apiRequest<SelfUser>("/users/me", {
     method: "PATCH",
     body: JSON.stringify(input),
   });
