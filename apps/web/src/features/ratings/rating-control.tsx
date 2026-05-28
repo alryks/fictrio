@@ -42,7 +42,7 @@ export function RatingControl({
         </Button>
         <Button
           aria-label="Удалить оценку"
-          className="size-10"
+          className="size-10 border-0"
           disabled={isDeleteDisabled}
           onClick={onDelete}
           size="icon"
