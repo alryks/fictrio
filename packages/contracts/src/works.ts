@@ -1,32 +1,34 @@
-import { z } from 'zod';
+import { z } from "zod";
 import {
   pageEnvelopeSchema,
   paginationSchema,
   ratingStatsSchema,
-} from './common.js';
-import { workKindSchema } from './enums.js';
+} from "./common.js";
+import { workKindSchema } from "./enums.js";
 
 const yearSchema = z.coerce.number().int().min(1800).max(2100);
 
 const workKindArraySchema = z
-  .preprocess(
-    (value) => {
-      if (Array.isArray(value)) {
-        return value;
-      }
-      if (typeof value === 'string') {
-        return value.split(',').filter(Boolean);
-      }
+  .preprocess((value) => {
+    if (Array.isArray(value)) {
       return value;
-    },
-    z.array(workKindSchema),
-  )
+    }
+    if (typeof value === "string") {
+      return value.split(",").filter(Boolean);
+    }
+    return value;
+  }, z.array(workKindSchema))
   .optional();
 
-const sortBySchema = z.enum(['title', 'releaseYear', 'averageRating']);
+const sortBySchema = z.enum([
+  "title",
+  "releaseYear",
+  "averageRating",
+  "ratingCount",
+]);
 export type WorksSortBy = z.infer<typeof sortBySchema>;
 
-const sortOrderSchema = z.enum(['asc', 'desc']);
+const sortOrderSchema = z.enum(["asc", "desc"]);
 export type SortOrder = z.infer<typeof sortOrderSchema>;
 
 export const getWorksQuerySchema = z
@@ -38,8 +40,9 @@ export const getWorksQuerySchema = z
     yearFrom: yearSchema.optional(),
     yearTo: yearSchema.optional(),
     minRating: z.coerce.number().min(0).max(3).optional(),
-    sortBy: sortBySchema.default('releaseYear'),
-    sortOrder: sortOrderSchema.default('desc'),
+    minRatingsCount: z.coerce.number().int().min(0).optional(),
+    sortBy: sortBySchema.default("releaseYear"),
+    sortOrder: sortOrderSchema.default("desc"),
     limit: z.coerce.number().int().min(1).max(50).default(24),
     offset: z.coerce.number().int().min(0).default(0),
   })
@@ -59,8 +62,8 @@ export const getWorksQuerySchema = z
       query.yearTo === undefined ||
       query.yearFrom <= query.yearTo,
     {
-      message: 'Начальный год не может быть больше конечного',
-      path: ['yearFrom'],
+      message: "Начальный год не может быть больше конечного",
+      path: ["yearFrom"],
     },
   );
 export type GetWorksQuery = z.infer<typeof getWorksQuerySchema>;

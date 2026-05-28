@@ -320,11 +320,21 @@ export class WorksService {
   }
 
   private buildListHavingSql(query: GetWorksQueryDto) {
-    if (query.minRating === undefined || query.minRating <= 0) {
+    const and: Prisma.Sql[] = [];
+
+    if (query.minRating !== undefined && query.minRating > 0) {
+      and.push(Prisma.sql`AVG(r.value) >= ${query.minRating}`);
+    }
+
+    if (query.minRatingsCount !== undefined && query.minRatingsCount > 0) {
+      and.push(Prisma.sql`COUNT(r.id) >= ${query.minRatingsCount}`);
+    }
+
+    if (and.length === 0) {
       return Prisma.empty;
     }
 
-    return Prisma.sql`HAVING AVG(r.value) >= ${query.minRating}`;
+    return Prisma.sql`HAVING ${Prisma.join(and, ' AND ')}`;
   }
 
   private buildOrderSql(query: GetWorksQueryDto) {
@@ -337,6 +347,10 @@ export class WorksService {
 
     if (query.sortBy === 'averageRating') {
       return Prisma.sql`ORDER BY AVG(r.value) ${direction} NULLS LAST, w.title ASC`;
+    }
+
+    if (query.sortBy === 'ratingCount') {
+      return Prisma.sql`ORDER BY COUNT(r.id) ${direction}, AVG(r.value) DESC NULLS LAST, w.title ASC`;
     }
 
     return Prisma.sql`ORDER BY w.release_year ${direction} NULLS LAST, w.title ASC`;

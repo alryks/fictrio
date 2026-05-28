@@ -74,33 +74,155 @@ const listPreviewInclude = getListInclude(6);
 
 type ListWithDetails = Prisma.ListGetPayload<{ include: typeof listInclude }>;
 type PublicListPayload = ListWithDetails;
+type ListPreviewWorkRow = {
+  id: string;
+  kind: string;
+  title: string;
+  originalTitle: string | null;
+  description: string | null;
+  releaseYear: number | null;
+  imageUrl: string | null;
+  rating: {
+    average: number | null;
+    count: number;
+  };
+  meta: Record<string, never>;
+};
+type ListPreviewItemRow = {
+  position: number;
+  addedAt: string;
+  work: ListPreviewWorkRow;
+};
+type PublicListRow = {
+  id: string;
+  title: string;
+  description: string | null;
+  visibility: ListVisibility;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string;
+  ownerUsername: string;
+  ownerDisplayName: string;
+  averageRating: number | null;
+  ratingCount: bigint;
+  itemsTotal: number;
+  items: ListPreviewItemRow[];
+};
+type CountRow = { count: bigint };
 
 @Injectable()
 export class ListsService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findPublic(query: GetListsQueryDto) {
-    const where = {
-      visibility: ListVisibility.public,
-      isHidden: false,
-    } satisfies Prisma.ListWhereInput;
+    const whereSql = this.buildPublicListWhereSql(query);
+    const havingSql = this.buildPublicListHavingSql(query);
+    const pagedOrderSql = this.buildPublicListOrderSql(query, 'fl', 'l');
+    const finalOrderSql = this.buildPublicListOrderSql(query, 'p', 'l');
 
-    const [lists, total] = await this.prisma.$transaction([
-      this.prisma.list.findMany({
-        where,
-        include: getListInclude(query.itemsLimit),
-        orderBy: {
-          createdAt: 'desc',
-        },
-        take: query.limit,
-        skip: query.offset,
-      }),
-      this.prisma.list.count({ where }),
+    const [lists, totalRows] = await this.prisma.$transaction([
+      this.prisma.$queryRaw<PublicListRow[]>`
+        WITH filtered_lists AS (
+          SELECT
+            l.id,
+            AVG(r.value)::float AS average_rating,
+            COUNT(r.id)         AS rating_count
+          FROM lists l
+          JOIN rateables rt ON rt.id = l.rateable_id
+          LEFT JOIN ratings r ON r.rateable_id = rt.id
+          ${whereSql}
+          GROUP BY l.id
+          ${havingSql}
+        ),
+        paged_lists AS (
+          SELECT fl.*
+          FROM filtered_lists fl
+          JOIN lists l ON l.id = fl.id
+          ${pagedOrderSql}
+          LIMIT ${query.limit}
+          OFFSET ${query.offset}
+        )
+        SELECT
+          l.id,
+          l.title,
+          l.description,
+          l.visibility,
+          l.created_at           AS "createdAt",
+          l.updated_at           AS "updatedAt",
+          u.id                   AS "ownerId",
+          u.username             AS "ownerUsername",
+          u.display_name         AS "ownerDisplayName",
+          p.average_rating       AS "averageRating",
+          p.rating_count         AS "ratingCount",
+          (
+            SELECT COUNT(*)::int
+            FROM list_items li_total
+            WHERE li_total.list_id = l.id
+          ) AS "itemsTotal",
+          COALESCE(
+            (
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'position', preview_items.position,
+                  'addedAt', preview_items.added_at,
+                  'work', jsonb_build_object(
+                    'id', w.id,
+                    'kind', w.kind,
+                    'title', w.title,
+                    'originalTitle', w.original_title,
+                    'description', w.description,
+                    'releaseYear', w.release_year,
+                    'imageUrl', w.image_url,
+                    'rating', jsonb_build_object(
+                      'average', work_ratings.average_rating,
+                      'count', work_ratings.rating_count
+                    ),
+                    'meta', '{}'::jsonb
+                  )
+                )
+                ORDER BY preview_items.position
+              )
+              FROM (
+                SELECT li.position, li.added_at, li.work_id
+                FROM list_items li
+                WHERE li.list_id = l.id
+                ORDER BY li.position
+                LIMIT ${query.itemsLimit}
+              ) preview_items
+              JOIN works w ON w.id = preview_items.work_id
+              JOIN rateables wrt ON wrt.id = w.rateable_id
+              LEFT JOIN LATERAL (
+                SELECT
+                  AVG(wr.value)::float AS average_rating,
+                  COUNT(wr.id)::int    AS rating_count
+                FROM ratings wr
+                WHERE wr.rateable_id = wrt.id
+              ) work_ratings ON true
+            ),
+            '[]'::jsonb
+          ) AS items
+        FROM paged_lists p
+        JOIN lists l ON l.id = p.id
+        JOIN users u ON u.id = l.owner_user_id
+        ${finalOrderSql}
+      `,
+      this.prisma.$queryRaw<CountRow[]>`
+        SELECT COUNT(*) AS count
+        FROM (
+          SELECT l.id
+          FROM lists l
+          JOIN rateables rt ON rt.id = l.rateable_id
+          LEFT JOIN ratings r ON r.rateable_id = rt.id
+          ${whereSql}
+          GROUP BY l.id
+          ${havingSql}
+        ) filtered_lists
+      `,
     ]);
 
     return {
-      items: lists.map((list) => this.toPublicList(list)),
-      total,
+      items: lists.map((list) => this.toPublicListRow(list)),
+      total: Number(totalRows[0]?.count ?? 0),
       limit: query.limit,
       offset: query.offset,
     };
@@ -523,6 +645,106 @@ export class ListsService {
           imageUrl: item.work.imageUrl,
           rating: this.getInlineRatingStats(item.work.rateable.ratings),
           meta: {},
+        },
+      })),
+    };
+  }
+
+  private buildPublicListWhereSql(query: GetListsQueryDto) {
+    const and: Prisma.Sql[] = [
+      Prisma.sql`l.visibility = ${ListVisibility.public}::list_visibility`,
+      Prisma.sql`l.is_hidden = false`,
+    ];
+
+    if (query.search) {
+      and.push(Prisma.sql`
+        to_tsvector(
+          'russian',
+          coalesce(l.title, '') || ' ' || coalesce(l.description, '')
+        ) @@ websearch_to_tsquery('russian', ${query.search})
+      `);
+    }
+
+    return Prisma.sql`WHERE ${Prisma.join(and, ' AND ')}`;
+  }
+
+  private buildPublicListHavingSql(query: GetListsQueryDto) {
+    const and: Prisma.Sql[] = [];
+
+    if (query.minRating !== undefined && query.minRating > 0) {
+      and.push(Prisma.sql`AVG(r.value) >= ${query.minRating}`);
+    }
+
+    if (query.minRatingsCount !== undefined && query.minRatingsCount > 0) {
+      and.push(Prisma.sql`COUNT(r.id) >= ${query.minRatingsCount}`);
+    }
+
+    if (and.length === 0) {
+      return Prisma.empty;
+    }
+
+    return Prisma.sql`HAVING ${Prisma.join(and, ' AND ')}`;
+  }
+
+  private buildPublicListOrderSql(
+    query: GetListsQueryDto,
+    ratingAlias: 'fl' | 'p',
+    listAlias: 'l',
+  ) {
+    const direction =
+      query.sortOrder === 'asc' ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+    const ratings = Prisma.raw(ratingAlias);
+    const list = Prisma.raw(listAlias);
+
+    if (query.sortBy === 'averageRating') {
+      return Prisma.sql`ORDER BY ${ratings}.average_rating ${direction} NULLS LAST, ${list}.created_at DESC, ${list}.id`;
+    }
+
+    if (query.sortBy === 'ratingCount') {
+      return Prisma.sql`ORDER BY ${ratings}.rating_count ${direction}, ${ratings}.average_rating DESC NULLS LAST, ${list}.created_at DESC, ${list}.id`;
+    }
+
+    if (query.sortBy === 'createdAt') {
+      return Prisma.sql`ORDER BY ${list}.created_at ${direction}, ${list}.id`;
+    }
+
+    return Prisma.sql`ORDER BY ${list}.updated_at ${direction}, ${list}.id`;
+  }
+
+  private toPublicListRow(list: PublicListRow) {
+    return {
+      id: list.id,
+      title: list.title,
+      description: list.description,
+      visibility: list.visibility,
+      createdAt: list.createdAt,
+      updatedAt: list.updatedAt,
+      owner: {
+        id: list.ownerId,
+        username: list.ownerUsername,
+        displayName: list.ownerDisplayName,
+      },
+      rating: {
+        average:
+          list.averageRating === null
+            ? null
+            : Number(list.averageRating.toFixed(2)),
+        count: Number(list.ratingCount),
+      },
+      userRating: null,
+      itemsTotal: list.itemsTotal,
+      items: list.items.map((item) => ({
+        position: item.position,
+        addedAt: item.addedAt,
+        work: {
+          ...item.work,
+          rating: {
+            average:
+              item.work.rating.average === null
+                ? null
+                : Number(item.work.rating.average.toFixed(2)),
+            count: item.work.rating.count,
+          },
         },
       })),
     };

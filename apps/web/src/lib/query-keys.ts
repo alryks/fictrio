@@ -27,7 +27,7 @@ export const qk = {
   },
   lists: {
     all: ["lists"] as const,
-    public: ["lists", "public"] as const,
+    public: (filters: unknown) => ["lists", "public", filters] as const,
     mine: ["lists", "mine"] as const,
     detail: (id: string) => ["list", id] as const,
   },

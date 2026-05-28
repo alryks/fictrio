@@ -35,6 +35,7 @@ const sortOptions = [
   { value: "title", label: "Название" },
   { value: "releaseYear", label: "Дата выхода" },
   { value: "averageRating", label: "Средняя оценка" },
+  { value: "ratingCount", label: "Количество оценок" },
 ] as const;
 
 const sortOrderOptions = [
@@ -73,6 +74,7 @@ function CatalogContent() {
   const yearFrom = searchParams.get("yearFrom") ?? "";
   const yearTo = searchParams.get("yearTo") ?? "";
   const minRating = searchParams.get("minRating") ?? "";
+  const minRatingsCount = searchParams.get("minRatingsCount") ?? "";
   const sortBy = getSortBy(searchParams);
   const sortOrder = getSortOrder(searchParams);
 
@@ -83,6 +85,7 @@ function CatalogContent() {
       yearFrom,
       yearTo,
       minRating,
+      minRatingsCount,
       sortBy,
       sortOrder,
     }),
@@ -94,6 +97,7 @@ function CatalogContent() {
         yearFrom,
         yearTo,
         minRating,
+        minRatingsCount,
         sortBy,
         sortOrder,
         limit: catalogPageSize,
@@ -232,22 +236,32 @@ function CatalogContent() {
             </div>
 
             <div className="sm:col-span-2 xl:col-span-1">
-              <FormField label="Оценка от">
-                {(field) => (
-                  <Input
-                    {...field}
-                    max={3}
-                    min={0}
-                    onChange={(event) =>
-                      updateParams({ minRating: event.target.value })
-                    }
-                    placeholder="2.0"
-                    step="0.1"
-                    type="number"
-                    value={minRating}
-                  />
-                )}
-              </FormField>
+              <p className="text-sm font-medium">Оценка</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+                <Input
+                  aria-label="Минимальная средняя оценка"
+                  max={3}
+                  min={0}
+                  onChange={(event) =>
+                    updateParams({ minRating: event.target.value })
+                  }
+                  placeholder="Минимальная средняя"
+                  step="0.1"
+                  type="number"
+                  value={minRating}
+                />
+                <Input
+                  aria-label="Количество оценок"
+                  min={0}
+                  onChange={(event) =>
+                    updateParams({ minRatingsCount: event.target.value })
+                  }
+                  placeholder="Количество оценок"
+                  step="1"
+                  type="number"
+                  value={minRatingsCount}
+                />
+              </div>
             </div>
           </div>
 

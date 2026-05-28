@@ -1,26 +1,42 @@
-import { z } from 'zod';
+import { z } from "zod";
 import {
   isoDateTimeSchema,
   pageEnvelopeSchema,
   ratingStatsSchema,
-} from './common.js';
-import { listVisibilitySchema } from './enums.js';
-import { workListItemSchema } from './works.js';
+} from "./common.js";
+import { listVisibilitySchema } from "./enums.js";
+import { workListItemSchema } from "./works.js";
 
 const listTitleSchema = z
   .string()
   .trim()
-  .min(1, 'Название списка обязательно')
-  .max(255, 'Название списка должно содержать не более 255 символов');
+  .min(1, "Название списка обязательно")
+  .max(255, "Название списка должно содержать не более 255 символов");
 
 const listDescriptionSchema = z
   .string()
   .trim()
-  .max(2000, 'Описание списка должно содержать не более 2000 символов')
+  .max(2000, "Описание списка должно содержать не более 2000 символов")
   .nullable()
   .optional();
 
+const listSortBySchema = z.enum([
+  "averageRating",
+  "ratingCount",
+  "createdAt",
+  "updatedAt",
+]);
+export type ListsSortBy = z.infer<typeof listSortBySchema>;
+
+const sortOrderSchema = z.enum(["asc", "desc"]);
+export type ListsSortOrder = z.infer<typeof sortOrderSchema>;
+
 export const getListsQuerySchema = z.object({
+  search: z.string().trim().max(255).optional(),
+  minRating: z.coerce.number().min(0).max(3).optional(),
+  minRatingsCount: z.coerce.number().int().min(0).optional(),
+  sortBy: listSortBySchema.default("updatedAt"),
+  sortOrder: sortOrderSchema.default("desc"),
   limit: z.coerce.number().int().min(1).max(50).default(12),
   offset: z.coerce.number().int().min(0).default(0),
   itemsLimit: z.coerce.number().int().min(0).max(20).default(6),
@@ -36,7 +52,7 @@ export type GetListQuery = z.infer<typeof getListQuerySchema>;
 export const createListInputSchema = z.object({
   title: listTitleSchema,
   description: listDescriptionSchema,
-  visibility: listVisibilitySchema.default('public'),
+  visibility: listVisibilitySchema.default("public"),
 });
 export type CreateListInput = z.infer<typeof createListInputSchema>;
 
@@ -47,12 +63,12 @@ export const updateListInputSchema = z
   })
   .refine(
     (value) => value.title !== undefined || value.description !== undefined,
-    { message: 'Передайте название или описание списка' },
+    { message: "Передайте название или описание списка" },
   );
 export type UpdateListInput = z.infer<typeof updateListInputSchema>;
 
 export const addListItemInputSchema = z.object({
-  workId: z.string().uuid('Некорректный идентификатор произведения'),
+  workId: z.string().uuid("Некорректный идентификатор произведения"),
   position: z.coerce.number().int().min(0).optional(),
 });
 export type AddListItemInput = z.infer<typeof addListItemInputSchema>;
@@ -61,11 +77,11 @@ export const reorderListItemsInputSchema = z.object({
   items: z
     .array(
       z.object({
-        workId: z.string().uuid('Некорректный идентификатор произведения'),
+        workId: z.string().uuid("Некорректный идентификатор произведения"),
         position: z.coerce.number().int().min(0),
       }),
     )
-    .min(1, 'Передайте хотя бы один элемент списка'),
+    .min(1, "Передайте хотя бы один элемент списка"),
 });
 export type ReorderListItemsInput = z.infer<typeof reorderListItemsInputSchema>;
 
