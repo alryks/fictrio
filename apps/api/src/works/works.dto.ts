@@ -15,9 +15,7 @@ export class GetWorksQueryDto {
   static readonly schema = getWorksQuerySchema;
 
   search?: string;
-  kind?: WorkKind;
   kinds?: WorkKind[];
-  year?: number;
   yearFrom?: number;
   yearTo?: number;
   minRating?: number;

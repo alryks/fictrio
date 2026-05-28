@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { BookOpen, Film, Layers3, Tv } from "lucide-react";
+import { PosterPlaceholder } from "@/components/poster-placeholder";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { WorkKind, WorkListItem } from "@/features/works/works-api";
 
@@ -32,13 +33,9 @@ export function WorkCard({ work }: { work: WorkListItem }) {
       className="group block w-full min-w-[160px] overflow-hidden rounded-md border bg-card shadow-sm outline-none transition hover:border-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/50"
       href={`/catalog/${work.id}`}
     >
-      <article
-        className="relative aspect-[2/3] bg-linear-to-br from-[#3838a8] via-[#6666cc] to-[#9f9fdf] bg-cover bg-center"
-        style={
-          work.imageUrl
-            ? { backgroundImage: `url(${work.imageUrl})` }
-            : undefined
-        }
+      <PosterPlaceholder
+        imageUrl={work.imageUrl}
+        className="relative aspect-[2/3]"
       >
         <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.42),transparent_48%)]" />
 
@@ -63,7 +60,7 @@ export function WorkCard({ work }: { work: WorkListItem }) {
             {work.description ?? "Описание пока не добавлено."}
           </p>
         </div>
-      </article>
+      </PosterPlaceholder>
     </Link>
   );
 }

@@ -38,7 +38,7 @@ export const loginInputSchema = z.object({
 });
 export type LoginInput = z.infer<typeof loginInputSchema>;
 
-export const publicUserSchema = z.object({
+export const selfUserSchema = z.object({
   id: z.string().uuid(),
   username: z.string(),
   email: z.string().email(),
@@ -47,7 +47,7 @@ export const publicUserSchema = z.object({
   isActive: z.boolean(),
   roles: z.array(z.string()),
 });
-export type PublicUser = z.infer<typeof publicUserSchema>;
+export type SelfUser = z.infer<typeof selfUserSchema>;
 
 /**
  * Response returned from /auth/login and /auth/register. The JWT itself
@@ -56,7 +56,7 @@ export type PublicUser = z.infer<typeof publicUserSchema>;
  * populate its session state.
  */
 export const authResponseSchema = z.object({
-  user: publicUserSchema,
+  user: selfUserSchema,
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
 

@@ -3,7 +3,9 @@
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/layout/site-header";
+import { PosterPlaceholder } from "@/components/poster-placeholder";
 import { StateCard } from "@/components/state-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
@@ -33,11 +35,15 @@ export default function WorkDetailsPage() {
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {workQuery.isLoading ? (
-          <StateCard
-            as="h1"
-            title="Загрузка карточки"
-            text="Получаем данные произведения из API."
-          />
+          <div className="grid gap-6 rounded-md border bg-card p-5 shadow-sm md:grid-cols-[240px_minmax(0,1fr)]">
+            <Skeleton className="aspect-[2/3] w-full" />
+            <div className="space-y-4">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-9 w-2/3" />
+              <Skeleton className="h-24 w-full" />
+              <Skeleton className="h-24 w-full max-w-sm" />
+            </div>
+          </div>
         ) : null}
 
         {workQuery.isError ? (
@@ -144,12 +150,12 @@ export default function WorkDetailsPage() {
 
 function Poster({ imageUrl }: { imageUrl: string | null }) {
   return (
-    <div
-      className="relative aspect-[2/3] overflow-hidden rounded-md bg-linear-to-br from-[#3838a8] via-[#6666cc] to-[#9f9fdf] bg-cover bg-center"
-      style={imageUrl ? { backgroundImage: `url(${imageUrl})` } : undefined}
+    <PosterPlaceholder
+      imageUrl={imageUrl}
+      className="relative aspect-[2/3] overflow-hidden rounded-md"
     >
       <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(24,24,36,0.12),transparent_58%)]" />
-    </div>
+    </PosterPlaceholder>
   );
 }
 

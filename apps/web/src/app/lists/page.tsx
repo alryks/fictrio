@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
@@ -236,13 +237,7 @@ function ListsContent() {
             </div>
           </Card>
 
-          {listsQuery.isLoading ? (
-            <StateCard
-              className="mt-5"
-              title="Загрузка списков"
-              text="Получаем публичные списки из API."
-            />
-          ) : null}
+          {listsQuery.isLoading ? <ListsSkeleton /> : null}
           {listsQuery.isError ? (
             <StateCard
               className="mt-5"
@@ -266,13 +261,7 @@ function ListsContent() {
 
           <div ref={loadMoreRef} className="h-8" />
 
-          {isFetchingNextPage ? (
-            <StateCard
-              className="mt-5"
-              title="Загружаем еще"
-              text="Получаем следующую порцию списков."
-            />
-          ) : null}
+          {isFetchingNextPage ? <ListsSkeleton /> : null}
 
           {hasNextPage && !isFetchingNextPage ? (
             <Button
@@ -286,6 +275,16 @@ function ListsContent() {
           ) : null}
         </section>
       </main>
+    </div>
+  );
+}
+
+function ListsSkeleton() {
+  return (
+    <div className="mt-5 grid min-w-0 gap-4">
+      {Array.from({ length: 4 }).map((_, index) => (
+        <Skeleton key={index} className="h-44 w-full" />
+      ))}
     </div>
   );
 }

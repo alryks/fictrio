@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -15,6 +16,7 @@ import {
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
+import { requireUser } from "@/lib/require-user";
 import { useSession } from "@/features/auth/use-session";
 import { addWorkToList, createList, getMyLists } from "./lists-api";
 
@@ -22,18 +24,11 @@ type AddToListPanelProps = {
   workId: string;
 };
 
-function requireUser(user: unknown, action: string): asserts user {
-  if (!user) {
-    throw new Error(`Для ${action} нужно войти в аккаунт`);
-  }
-}
-
 export function AddToListPanel({ workId }: AddToListPanelProps) {
   const queryClient = useQueryClient();
   const { user, isLoading } = useSession();
   const [selectedListId, setSelectedListId] = useState("");
   const [title, setTitle] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
 
   const myListsQuery = useQuery({
     queryKey: qk.lists.mine,
@@ -47,14 +42,14 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
       return addWorkToList(listId, workId);
     },
     onSuccess: async () => {
-      setMessage("Произведение добавлено в список");
+      toast.success("Произведение добавлено в список");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
         queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {
-      setMessage(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Не удалось добавить произведение",
@@ -74,14 +69,14 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
     onSuccess: async (list) => {
       setTitle("");
       setSelectedListId(list.id);
-      setMessage("Список создан, произведение добавлено");
+      toast.success("Список создан, произведение добавлено");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
         queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {
-      setMessage(
+      toast.error(
         error instanceof Error ? error.message : "Не удалось создать список",
       );
     },
@@ -89,7 +84,6 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
 
   function handleAddSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
 
     if (selectedListId) {
       addMutation.mutate(selectedListId);
@@ -98,7 +92,6 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
 
   function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
     createAndAddMutation.mutate();
   }
 
@@ -178,10 +171,6 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
             </Button>
           </form>
         </div>
-      ) : null}
-
-      {message ? (
-        <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       ) : null}
     </Card>
   );

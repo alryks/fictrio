@@ -1,11 +1,11 @@
 import {
-  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { mapPostWriteError } from '../common/prisma-errors';
 import {
   CreateCommentDto,
   CreateReviewDto,
@@ -20,16 +20,6 @@ const publicReviewInclude = {
       id: true,
       username: true,
       displayName: true,
-    },
-  },
-  rateable: {
-    select: {
-      ratings: {
-        select: {
-          userId: true,
-          value: true,
-        },
-      },
     },
   },
   _count: {
@@ -78,16 +68,7 @@ const publicCommentInclude = {
   },
   parentPost: {
     select: {
-      rateable: {
-        select: {
-          ratings: {
-            select: {
-              userId: true,
-              value: true,
-            },
-          },
-        },
-      },
+      rateableId: true,
     },
   },
 } satisfies Prisma.PostInclude;
@@ -221,14 +202,14 @@ export class PostsService {
         include: publicReviewInclude,
       });
 
-      return this.toPublicReview(review);
+      return await this.toPublicReview(review);
     } catch (error) {
-      this.rethrowPostWriteError(error);
+      mapPostWriteError(error);
     }
   }
 
   async updateReview(postId: string, userId: string, dto: UpdateReviewDto) {
-    const review = await this.getEditableReview(postId, userId);
+    const review = await this.getEditablePost(postId, userId, 'review');
 
     try {
       const updatedReview = await this.prisma.post.update({
@@ -241,14 +222,14 @@ export class PostsService {
         include: publicReviewInclude,
       });
 
-      return this.toPublicReview(updatedReview);
+      return await this.toPublicReview(updatedReview);
     } catch (error) {
-      this.rethrowPostWriteError(error);
+      mapPostWriteError(error);
     }
   }
 
   async deleteReview(postId: string, userId: string) {
-    const review = await this.getEditableReview(postId, userId);
+    const review = await this.getEditablePost(postId, userId, 'review');
 
     await this.prisma.post.delete({
       where: {
@@ -283,7 +264,9 @@ export class PostsService {
     ]);
 
     return {
-      items: comments.map((comment) => this.toPublicComment(comment)),
+      items: await Promise.all(
+        comments.map((comment) => this.toPublicComment(comment)),
+      ),
       total,
       limit: query.limit,
       offset: query.offset,
@@ -307,14 +290,14 @@ export class PostsService {
         include: publicCommentInclude,
       });
 
-      return this.toPublicComment(comment);
+      return await this.toPublicComment(comment);
     } catch (error) {
-      this.rethrowPostWriteError(error);
+      mapPostWriteError(error);
     }
   }
 
   async updateComment(postId: string, userId: string, dto: UpdateCommentDto) {
-    const comment = await this.getEditableComment(postId, userId);
+    const comment = await this.getEditablePost(postId, userId, 'comment');
 
     try {
       const updatedComment = await this.prisma.post.update({
@@ -327,14 +310,14 @@ export class PostsService {
         include: publicCommentInclude,
       });
 
-      return this.toPublicComment(updatedComment);
+      return await this.toPublicComment(updatedComment);
     } catch (error) {
-      this.rethrowPostWriteError(error);
+      mapPostWriteError(error);
     }
   }
 
   async deleteComment(postId: string, userId: string) {
-    const comment = await this.getEditableComment(postId, userId);
+    const comment = await this.getEditablePost(postId, userId, 'comment');
 
     await this.prisma.post.delete({
       where: {
@@ -365,8 +348,12 @@ export class PostsService {
     return work;
   }
 
-  private async getEditableReview(postId: string, userId: string) {
-    const review = await this.prisma.post.findUnique({
+  private async getEditablePost(
+    postId: string,
+    userId: string,
+    kind: 'review' | 'comment',
+  ) {
+    const post = await this.prisma.post.findUnique({
       where: {
         id: postId,
       },
@@ -377,40 +364,27 @@ export class PostsService {
       },
     });
 
-    if (!review || review.parentPostId !== null) {
-      throw new NotFoundException('Отзыв не найден');
-    }
+    const isReview = kind === 'review';
+    // A review is a top-level post (no parent); a comment has a parent.
+    const wrongShape = isReview
+      ? post?.parentPostId !== null
+      : post?.parentPostId === null;
 
-    if (review.authorUserId !== userId) {
-      throw new ForbiddenException('Можно изменять только собственный отзыв');
-    }
-
-    return review;
-  }
-
-  private async getEditableComment(postId: string, userId: string) {
-    const comment = await this.prisma.post.findUnique({
-      where: {
-        id: postId,
-      },
-      select: {
-        id: true,
-        authorUserId: true,
-        parentPostId: true,
-      },
-    });
-
-    if (!comment || comment.parentPostId === null) {
-      throw new NotFoundException('Комментарий не найден');
-    }
-
-    if (comment.authorUserId !== userId) {
-      throw new ForbiddenException(
-        'Можно изменять только собственный комментарий',
+    if (!post || wrongShape) {
+      throw new NotFoundException(
+        isReview ? 'Отзыв не найден' : 'Комментарий не найден',
       );
     }
 
-    return comment;
+    if (post.authorUserId !== userId) {
+      throw new ForbiddenException(
+        isReview
+          ? 'Можно изменять только собственный отзыв'
+          : 'Можно изменять только собственный комментарий',
+      );
+    }
+
+    return post;
   }
 
   private async getPublicReview(postId: string) {
@@ -432,11 +406,10 @@ export class PostsService {
     return review;
   }
 
-  private toPublicReview(review: PublicReview) {
-    const authorRating =
-      review.rateable?.ratings.find(
-        (rating) => rating.userId === review.authorUserId,
-      )?.value ?? null;
+  private async toPublicReview(review: PublicReview) {
+    const authorRating = review.rateableId
+      ? await this.getAuthorRating(review.rateableId, review.authorUserId)
+      : null;
 
     return {
       id: review.id,
@@ -451,11 +424,11 @@ export class PostsService {
     };
   }
 
-  private toPublicComment(comment: PublicComment) {
-    const authorRating =
-      comment.parentPost?.rateable?.ratings.find(
-        (rating) => rating.userId === comment.authorUserId,
-      )?.value ?? null;
+  private async toPublicComment(comment: PublicComment) {
+    const rateableId = comment.parentPost?.rateableId ?? null;
+    const authorRating = rateableId
+      ? await this.getAuthorRating(rateableId, comment.authorUserId)
+      : null;
 
     return {
       id: comment.id,
@@ -469,39 +442,26 @@ export class PostsService {
   }
 
   /**
-   * Maps known post-write database errors to BadRequestException; any other
-   * error is re-thrown unchanged. Always throws, so callers can use it as the
-   * single statement in their catch block.
+   * Fetches just the author's own rating for a rateable, instead of loading
+   * every rating row to find one. Mirrors the scalar subquery in
+   * getWorkReviews.
    */
-  private rethrowPostWriteError(error: unknown): never {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
-      if (error.code === 'P2002') {
-        throw new BadRequestException(
-          'Пользователь уже оставил отзыв на этот объект',
-        );
-      }
-      if (error.code === 'P2003') {
-        throw new BadRequestException('Некорректная ссылка на объект отзыва');
-      }
-      if (error.code === 'P2004') {
-        throw new BadRequestException(
-          'Отзыв можно создать только после выставления оценки',
-        );
-      }
-    }
+  private async getAuthorRating(
+    rateableId: string,
+    authorUserId: string,
+  ): Promise<number | null> {
+    const rating = await this.prisma.rating.findUnique({
+      where: {
+        userId_rateableId: {
+          userId: authorUserId,
+          rateableId,
+        },
+      },
+      select: {
+        value: true,
+      },
+    });
 
-    // The review-requires-rating trigger surfaces as an unknown request error.
-    if (
-      error instanceof Prisma.PrismaClientUnknownRequestError &&
-      error.message.includes(
-        'Review requires an existing rating by the same user for the same rateable object',
-      )
-    ) {
-      throw new BadRequestException(
-        'Отзыв можно создать только после выставления оценки',
-      );
-    }
-
-    throw error;
+    return rating?.value ?? null;
   }
 }

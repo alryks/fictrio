@@ -1,91 +1,50 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, WorkKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { RatingStats } from '../common/rating-stats';
 import { GetWorksQueryDto } from './works.dto';
 
+/** Shared include for a work detail and its nested seasons/episodes. */
+const workDetailInclude = Prisma.validator<Prisma.WorkInclude>()({
+  movie: true,
+  show: {
+    include: {
+      seasons: {
+        include: {
+          work: true,
+          episodes: {
+            include: {
+              work: true,
+            },
+            orderBy: {
+              episodeNumber: 'asc',
+            },
+          },
+        },
+        orderBy: {
+          seasonNumber: 'asc',
+        },
+      },
+    },
+  },
+  season: {
+    include: {
+      episodes: {
+        include: {
+          work: true,
+        },
+        orderBy: {
+          episodeNumber: 'asc',
+        },
+      },
+    },
+  },
+  episode: true,
+  book: true,
+});
+
 type WorkWithDetails = Prisma.WorkGetPayload<{
-  include: {
-    movie: true;
-    show: {
-      include: {
-        seasons: {
-          include: {
-            work: {
-              include: {
-                rateable: {
-                  select: {
-                    ratings: {
-                      select: {
-                        value: true;
-                      };
-                    };
-                  };
-                };
-              };
-            };
-            episodes: {
-              include: {
-                work: {
-                  include: {
-                    rateable: {
-                      select: {
-                        ratings: {
-                          select: {
-                            value: true;
-                          };
-                        };
-                      };
-                    };
-                  };
-                };
-              };
-              orderBy: {
-                episodeNumber: 'asc';
-              };
-            };
-          };
-          orderBy: {
-            seasonNumber: 'asc';
-          };
-        };
-      };
-    };
-    season: {
-      include: {
-        episodes: {
-          include: {
-            work: {
-              include: {
-                rateable: {
-                  select: {
-                    ratings: {
-                      select: {
-                        value: true;
-                      };
-                    };
-                  };
-                };
-              };
-            };
-          };
-          orderBy: {
-            episodeNumber: 'asc';
-          };
-        };
-      };
-    };
-    episode: true;
-    book: true;
-    rateable: {
-      select: {
-        ratings: {
-          select: {
-            value: true;
-          };
-        };
-      };
-    };
-  };
+  include: typeof workDetailInclude;
 }>;
 
 /** Scalar columns shared by every work projection. */
@@ -97,6 +56,40 @@ type WorkScalars = {
   description: string | null;
   releaseYear: number | null;
   imageUrl: string | null;
+};
+
+type WorkMetaValue = string | number | Date | null;
+type WorkMeta = Record<string, WorkMetaValue>;
+
+/** Normalized source for meta, fed either by relations or a raw list row. */
+type WorkMetaSource = {
+  kind: WorkKind;
+  movie?: {
+    runtimeMinutes: number | null;
+    directorNames: string | null;
+    actorNames: string | null;
+  } | null;
+  show?: {
+    firstAirDate: Date | null;
+    lastAirDate: Date | null;
+    creatorNames: string | null;
+    actorNames: string | null;
+  } | null;
+  season?: {
+    seasonNumber: number | null;
+    airDate: Date | null;
+  } | null;
+  episode?: {
+    episodeNumber: number | null;
+    airDate: Date | null;
+    runtimeMinutes: number | null;
+    directorNames: string | null;
+    actorNames: string | null;
+  } | null;
+  book?: {
+    firstPublishYear: number | null;
+    authorNames: string | null;
+  } | null;
 };
 
 type WorkListRow = WorkScalars & {
@@ -182,100 +175,20 @@ export class WorksService {
     };
   }
 
-  async findOne(id: string) {
+  async findOne(workId: string) {
     const work = await this.prisma.work.findFirst({
       where: {
-        id,
+        id: workId,
       },
-      include: {
-        movie: true,
-        show: {
-          include: {
-            seasons: {
-              include: {
-                work: {
-                  include: {
-                    rateable: {
-                      select: {
-                        ratings: {
-                          select: {
-                            value: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-                episodes: {
-                  include: {
-                    work: {
-                      include: {
-                        rateable: {
-                          select: {
-                            ratings: {
-                              select: {
-                                value: true,
-                              },
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                  orderBy: {
-                    episodeNumber: 'asc',
-                  },
-                },
-              },
-              orderBy: {
-                seasonNumber: 'asc',
-              },
-            },
-          },
-        },
-        season: {
-          include: {
-            episodes: {
-              include: {
-                work: {
-                  include: {
-                    rateable: {
-                      select: {
-                        ratings: {
-                          select: {
-                            value: true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              orderBy: {
-                episodeNumber: 'asc',
-              },
-            },
-          },
-        },
-        episode: true,
-        book: true,
-        rateable: {
-          select: {
-            ratings: {
-              select: {
-                value: true,
-              },
-            },
-          },
-        },
-      },
+      include: workDetailInclude,
     });
 
     if (!work) {
       throw new NotFoundException('Произведение не найдено');
     }
 
-    return this.toDetails(work);
+    const ratings = await this.loadRatingStats(work);
+    return this.toDetails(work, ratings);
   }
 
   private buildListWhereSql(query: GetWorksQueryDto) {
@@ -363,8 +276,8 @@ export class WorksService {
    */
   private buildWorkItem(
     work: WorkScalars,
-    rating: { average: number | null; count: number },
-    meta: Record<string, string | number | Date | null | undefined>,
+    rating: RatingStats,
+    meta: WorkMeta,
   ) {
     return {
       id: work.id,
@@ -389,21 +302,41 @@ export class WorksService {
             : Number(work.averageRating.toFixed(2)),
         count: Number(work.ratingCount),
       },
-      this.getRowMeta(work),
+      this.buildMeta({
+        kind: work.kind,
+        movie: {
+          runtimeMinutes: work.runtimeMinutes,
+          directorNames: work.directorNames,
+          actorNames: work.movieActorNames,
+        },
+        show: {
+          firstAirDate: work.firstAirDate,
+          lastAirDate: work.lastAirDate,
+          creatorNames: work.creatorNames,
+          actorNames: work.showActorNames,
+        },
+        book: {
+          firstPublishYear: work.firstPublishYear,
+          authorNames: work.authorNames,
+        },
+      }),
     );
   }
 
-  private toListItem(work: WorkWithDetails) {
-    return this.buildWorkItem(
-      work,
-      this.getRatingStats(work.rateable.ratings),
-      this.getMeta(work),
-    );
-  }
-
-  private toDetails(work: WorkWithDetails) {
+  private toDetails(work: WorkWithDetails, ratings: Map<string, RatingStats>) {
     return {
-      ...this.toListItem(work),
+      ...this.buildWorkItem(
+        work,
+        this.statsFor(ratings, work.rateableId),
+        this.buildMeta({
+          kind: work.kind,
+          movie: work.movie,
+          show: work.show,
+          season: work.season,
+          episode: work.episode,
+          book: work.book,
+        }),
+      ),
       details:
         work.kind === WorkKind.movie
           ? work.movie
@@ -427,121 +360,134 @@ export class WorksService {
       seasons:
         work.kind === WorkKind.show
           ? (work.show?.seasons.map((season) => ({
-              ...this.toRelationWorkItem(season.work),
+              ...this.toRelationWorkItem(season.work, ratings),
               episodes: season.episodes.map((episode) =>
-                this.toRelationWorkItem(episode.work),
+                this.toRelationWorkItem(episode.work, ratings),
               ),
             })) ?? [])
           : undefined,
       episodes:
         work.kind === WorkKind.season
           ? (work.season?.episodes.map((episode) =>
-              this.toRelationWorkItem(episode.work),
+              this.toRelationWorkItem(episode.work, ratings),
             ) ?? [])
           : undefined,
     };
   }
 
   private toRelationWorkItem(
-    work: Prisma.WorkGetPayload<{
-      include: {
-        rateable: {
-          select: {
-            ratings: {
-              select: {
-                value: true;
-              };
-            };
-          };
-        };
-      };
-    }>,
+    work: WorkScalars & { rateableId: string },
+    ratings: Map<string, RatingStats>,
   ) {
     return this.buildWorkItem(
       work,
-      this.getRatingStats(work.rateable.ratings),
+      this.statsFor(ratings, work.rateableId),
       {},
     );
   }
 
-  private getRatingStats(ratings: Array<{ value: number }>) {
-    if (ratings.length === 0) {
-      return {
-        average: null,
-        count: 0,
-      };
+  /**
+   * Aggregates rating average/count for the work plus every nested season
+   * and episode in a single grouped query, so we never fetch raw rating rows.
+   */
+  private async loadRatingStats(
+    work: WorkWithDetails,
+  ): Promise<Map<string, RatingStats>> {
+    const rateableIds = this.collectRateableIds(work);
+
+    const grouped = await this.prisma.rating.groupBy({
+      by: ['rateableId'],
+      where: {
+        rateableId: {
+          in: rateableIds,
+        },
+      },
+      _avg: {
+        value: true,
+      },
+      _count: {
+        id: true,
+      },
+    });
+
+    const stats = new Map<string, RatingStats>();
+    for (const row of grouped) {
+      stats.set(row.rateableId, {
+        average:
+          row._avg.value === null ? null : Number(row._avg.value.toFixed(2)),
+        count: row._count.id,
+      });
     }
 
-    const sum = ratings.reduce((acc, rating) => acc + rating.value, 0);
-
-    return {
-      average: Number((sum / ratings.length).toFixed(2)),
-      count: ratings.length,
-    };
+    return stats;
   }
 
-  private getMeta(work: WorkWithDetails) {
-    if (work.kind === WorkKind.movie) {
-      return {
-        runtimeMinutes: work.movie?.runtimeMinutes ?? null,
-        directorNames: work.movie?.directorNames ?? null,
-        actorNames: work.movie?.actorNames ?? null,
-      };
+  private collectRateableIds(work: WorkWithDetails): string[] {
+    const ids = [work.rateableId];
+
+    if (work.show) {
+      for (const season of work.show.seasons) {
+        ids.push(season.work.rateableId);
+        for (const episode of season.episodes) {
+          ids.push(episode.work.rateableId);
+        }
+      }
     }
 
-    if (work.kind === WorkKind.show) {
-      return {
-        firstAirDate: work.show?.firstAirDate ?? null,
-        lastAirDate: work.show?.lastAirDate ?? null,
-        creatorNames: work.show?.creatorNames ?? null,
-        actorNames: work.show?.actorNames ?? null,
-      };
+    if (work.season) {
+      for (const episode of work.season.episodes) {
+        ids.push(episode.work.rateableId);
+      }
     }
 
-    if (work.kind === WorkKind.season) {
-      return {
-        seasonNumber: work.season?.seasonNumber ?? null,
-        airDate: work.season?.airDate ?? null,
-      };
-    }
-
-    if (work.kind === WorkKind.episode) {
-      return {
-        episodeNumber: work.episode?.episodeNumber ?? null,
-        airDate: work.episode?.airDate ?? null,
-        runtimeMinutes: work.episode?.runtimeMinutes ?? null,
-        directorNames: work.episode?.directorNames ?? null,
-        actorNames: work.episode?.actorNames ?? null,
-      };
-    }
-
-    return {
-      firstPublishYear: work.book?.firstPublishYear ?? null,
-      authorNames: work.book?.authorNames ?? null,
-    };
+    return ids;
   }
 
-  private getRowMeta(work: WorkListRow) {
-    if (work.kind === WorkKind.movie) {
+  private statsFor(
+    ratings: Map<string, RatingStats>,
+    rateableId: string,
+  ): RatingStats {
+    return ratings.get(rateableId) ?? { average: null, count: 0 };
+  }
+
+  private buildMeta(source: WorkMetaSource): WorkMeta {
+    if (source.kind === WorkKind.movie) {
       return {
-        runtimeMinutes: work.runtimeMinutes,
-        directorNames: work.directorNames,
-        actorNames: work.movieActorNames,
+        runtimeMinutes: source.movie?.runtimeMinutes ?? null,
+        directorNames: source.movie?.directorNames ?? null,
+        actorNames: source.movie?.actorNames ?? null,
       };
     }
 
-    if (work.kind === WorkKind.show) {
+    if (source.kind === WorkKind.show) {
       return {
-        firstAirDate: work.firstAirDate,
-        lastAirDate: work.lastAirDate,
-        creatorNames: work.creatorNames,
-        actorNames: work.showActorNames,
+        firstAirDate: source.show?.firstAirDate ?? null,
+        lastAirDate: source.show?.lastAirDate ?? null,
+        creatorNames: source.show?.creatorNames ?? null,
+        actorNames: source.show?.actorNames ?? null,
+      };
+    }
+
+    if (source.kind === WorkKind.season) {
+      return {
+        seasonNumber: source.season?.seasonNumber ?? null,
+        airDate: source.season?.airDate ?? null,
+      };
+    }
+
+    if (source.kind === WorkKind.episode) {
+      return {
+        episodeNumber: source.episode?.episodeNumber ?? null,
+        airDate: source.episode?.airDate ?? null,
+        runtimeMinutes: source.episode?.runtimeMinutes ?? null,
+        directorNames: source.episode?.directorNames ?? null,
+        actorNames: source.episode?.actorNames ?? null,
       };
     }
 
     return {
-      firstPublishYear: work.firstPublishYear,
-      authorNames: work.authorNames,
+      firstPublishYear: source.book?.firstPublishYear ?? null,
+      authorNames: source.book?.authorNames ?? null,
     };
   }
 }
