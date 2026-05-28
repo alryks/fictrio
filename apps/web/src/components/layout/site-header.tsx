@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { cn } from "@/lib/utils";
 
 type NavKey = "feed" | "catalog" | "lists" | "profile";
@@ -15,7 +16,6 @@ const navItems: NavItem[] = [
   { key: "feed", label: "Лента", href: "/" },
   { key: "catalog", label: "Каталог", href: "/catalog" },
   { key: "lists", label: "Списки", href: "/lists" },
-  { key: "profile", label: "Профиль", href: "#" },
 ];
 
 type SiteHeaderProps = {
@@ -28,13 +28,19 @@ type SiteHeaderProps = {
 export function SiteHeader({ active, rightSlot }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto flex min-h-16 w-full max-w-7xl flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:flex-nowrap lg:px-8">
         <Link className="flex shrink-0 items-center gap-3" href="/">
-          <Image src="/logo.svg" alt="Fictrio" width={36} height={36} priority />
+          <Image
+            src="/logo.svg"
+            alt="Fictrio"
+            width={36}
+            height={36}
+            priority
+          />
           <span className="text-xl font-semibold text-primary">Fictrio</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
+        <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto text-sm font-medium text-muted-foreground lg:order-none lg:w-auto">
           {navItems.map((item) => (
             <Link
               key={item.key}
@@ -52,7 +58,12 @@ export function SiteHeader({ active, rightSlot }: SiteHeaderProps) {
           ))}
         </nav>
 
-        {rightSlot ? <div className="ml-auto flex min-w-0">{rightSlot}</div> : null}
+        <div className="ml-auto flex min-w-0 items-center gap-3">
+          {rightSlot ? (
+            <div className="hidden min-w-0 sm:flex">{rightSlot}</div>
+          ) : null}
+          <HeaderAuthActions />
+        </div>
       </div>
     </header>
   );
