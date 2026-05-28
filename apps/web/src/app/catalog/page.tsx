@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
+import type { CatalogWorkKind } from "@fictrio/contracts";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
 import { Button } from "@/components/ui/button";
@@ -16,14 +17,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { WorkCard } from "@/features/works/work-card";
-import { getWorks, WorkKind } from "@/features/works/works-api";
+import { getWorks } from "@/features/works/works-api";
 
 const catalogPageSize = 24;
-type CatalogWorkKind = Extract<WorkKind, "movie" | "show" | "book">;
 
 const kindOptions: Array<{ value: CatalogWorkKind; label: string }> = [
   { value: "movie", label: "Фильмы" },
@@ -308,13 +309,7 @@ function CatalogContent() {
           </div>
         </Card>
 
-        {worksQuery.isLoading ? (
-          <StateCard
-            className="mt-5"
-            title="Загрузка каталога"
-            text="Получаем произведения из API."
-          />
-        ) : null}
+        {worksQuery.isLoading ? <CatalogSkeletonGrid /> : null}
 
         {worksQuery.isError ? (
           <StateCard
@@ -342,13 +337,7 @@ function CatalogContent() {
 
         <div ref={loadMoreRef} className="h-8" />
 
-        {isFetchingNextPage ? (
-          <StateCard
-            className="mt-5"
-            title="Загружаем еще"
-            text="Подбираем следующую порцию произведений."
-          />
-        ) : null}
+        {isFetchingNextPage ? <CatalogSkeletonGrid /> : null}
 
         {hasNextPage && !isFetchingNextPage ? (
           <div className="mt-5 flex justify-center">
@@ -364,6 +353,16 @@ function CatalogContent() {
         ) : null}
       </main>
     </div>
+  );
+}
+
+function CatalogSkeletonGrid() {
+  return (
+    <section className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6">
+      {Array.from({ length: 12 }).map((_, index) => (
+        <Skeleton key={index} className="aspect-[2/3] w-full" />
+      ))}
+    </section>
   );
 }
 

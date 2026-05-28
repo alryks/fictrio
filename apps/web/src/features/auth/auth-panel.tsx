@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -40,14 +41,12 @@ export function AuthPanel({
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
-  const [message, setMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
-    setMessage(null);
     setFieldErrors({});
 
     try {
@@ -63,7 +62,7 @@ export function AuthPanel({
 
       setUser(response.user);
       setPassword("");
-      setMessage(mode === "login" ? "Вы вошли в аккаунт" : "Аккаунт создан");
+      toast.success(mode === "login" ? "Вы вошли в аккаунт" : "Аккаунт создан");
 
       if (redirectTo) {
         router.push(redirectTo);
@@ -75,9 +74,8 @@ export function AuthPanel({
             error.issues.map((issue) => [issue.path, issue.message]),
           ),
         );
-        setMessage(null);
       } else {
-        setMessage(
+        toast.error(
           error instanceof Error ? error.message : "Ошибка авторизации",
         );
       }
@@ -223,9 +221,6 @@ export function AuthPanel({
               />
             )}
           </FormField>
-          {message ? (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          ) : null}
           <Button type="submit" className="h-10 w-full" disabled={isSubmitting}>
             {isSubmitting
               ? "Отправка..."
@@ -239,7 +234,6 @@ export function AuthPanel({
           className="mt-3 h-auto p-0"
           onClick={() => {
             setMode(mode === "login" ? "register" : "login");
-            setMessage(null);
             setFieldErrors({});
           }}
           type="button"

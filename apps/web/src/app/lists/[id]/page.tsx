@@ -8,15 +8,18 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
 import { UserLink } from "@/components/user-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
+import { requireUser } from "@/lib/require-user";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
@@ -32,12 +35,6 @@ import { RatingControl } from "@/features/ratings/rating-control";
 import { WorkCard } from "@/features/works/work-card";
 
 const listItemsPageSize = 12;
-
-function requireUser(user: unknown, action: string): asserts user {
-  if (!user) {
-    throw new Error(`Для ${action} нужно войти в аккаунт`);
-  }
-}
 
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
@@ -94,10 +91,16 @@ export default function ListDetailsPage() {
     },
     onSuccess: async () => {
       setIsEditingDetails(false);
+      toast.success("Список обновлен");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось обновить список",
+      );
     },
   });
 
@@ -113,6 +116,11 @@ export default function ListDetailsPage() {
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось оценить список",
+      );
+    },
   });
 
   const deleteRatingMutation = useMutation({
@@ -127,6 +135,11 @@ export default function ListDetailsPage() {
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось удалить оценку",
+      );
+    },
   });
 
   const reorderMutation = useMutation({
@@ -139,6 +152,11 @@ export default function ListDetailsPage() {
         queryKey: qk.lists.detail(params.id),
       });
     },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось изменить порядок",
+      );
+    },
   });
 
   const removeMutation = useMutation({
@@ -147,10 +165,18 @@ export default function ListDetailsPage() {
       return removeWorkFromList(params.id, workId);
     },
     onSuccess: async () => {
+      toast.success("Произведение удалено из списка");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
         queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не удалось удалить произведение",
+      );
     },
   });
 
@@ -191,11 +217,14 @@ export default function ListDetailsPage() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (
-          <StateCard
-            as="h1"
-            title="Загрузка списка"
-            text="Получаем подборку из API."
-          />
+          <div className="space-y-6">
+            <Skeleton className="h-40 w-full" />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton key={index} className="aspect-[2/3] w-full" />
+              ))}
+            </div>
+          </div>
         ) : null}
         {listQuery.isError ? (
           <StateCard
@@ -394,16 +423,19 @@ export default function ListDetailsPage() {
               </div>
 
               {items.length === 0 ? (
-                <p className="rounded-md border bg-card p-6 text-sm text-muted-foreground">
-                  В этом списке пока нет произведений.
-                </p>
+                <StateCard
+                  title="Список пуст"
+                  text="В этом списке пока нет произведений."
+                />
               ) : null}
 
               <div ref={loadMoreRef} className="h-8" />
               {isFetchingNextListItemsPage ? (
-                <p className="text-sm text-muted-foreground">
-                  Загружаем еще...
-                </p>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {Array.from({ length: 4 }).map((_, index) => (
+                    <Skeleton key={index} className="aspect-[2/3] w-full" />
+                  ))}
+                </div>
               ) : null}
             </section>
           </>
