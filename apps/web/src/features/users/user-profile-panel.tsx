@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Save, ShieldCheck, X } from "lucide-react";
-import type { PublicUser, PublicUserProfile } from "@fictrio/contracts";
+import type { PublicUserProfile, SelfUser } from "@fictrio/contracts";
 import { FormField } from "@/components/form-field";
 import { UserBadge } from "@/components/user-badge";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,7 @@ type FieldErrors = Record<string, string>;
 
 type UserProfilePanelProps = {
   profile: PublicUserProfile;
-  viewer: PublicUser | null;
+  viewer: SelfUser | null;
 };
 
 const roleLabels: Record<string, string> = {
