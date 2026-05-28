@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AccessTokenPayload, AuthenticatedUser } from './auth.types';
+import { getJwtSecret } from './jwt-config';
 
 type RequestWithHeaders = {
   headers: {
@@ -34,7 +35,7 @@ export class JwtAuthGuard implements CanActivate {
       const payload = await this.jwtService.verifyAsync<AccessTokenPayload>(
         token,
         {
-          secret: this.getJwtSecret(),
+          secret: getJwtSecret(this.configService),
         },
       );
 
@@ -57,12 +58,5 @@ export class JwtAuthGuard implements CanActivate {
 
     const [type, token] = header.split(' ');
     return type === 'Bearer' && token ? token : null;
-  }
-
-  private getJwtSecret(): string {
-    return (
-      this.configService.get<string>('JWT_SECRET') ??
-      'fictrio-development-secret-change-me'
-    );
   }
 }
