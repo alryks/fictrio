@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
+import { qk } from "@/lib/query-keys";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorks, WorkKind } from "@/features/works/works-api";
 
@@ -76,10 +77,15 @@ function CatalogContent() {
   const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const worksQuery = useInfiniteQuery({
-    queryKey: [
-      "works",
-      { search, kinds, yearFrom, yearTo, minRating, sortBy, sortOrder },
-    ],
+    queryKey: qk.works.list({
+      search,
+      kinds,
+      yearFrom,
+      yearTo,
+      minRating,
+      sortBy,
+      sortOrder,
+    }),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       getWorks({

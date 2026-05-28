@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/layout/site-header";
 import { Button } from "@/components/ui/button";
+import { qk } from "@/lib/query-keys";
 import { getPublicLists } from "@/features/lists/lists-api";
 import { ListCard } from "@/features/lists/list-card";
 
@@ -11,7 +12,7 @@ const pageSize = 12;
 
 export default function ListsPage() {
   const listsQuery = useInfiniteQuery({
-    queryKey: ["lists", "public"],
+    queryKey: qk.lists.public,
     queryFn: ({ pageParam }) => getPublicLists(pageParam, pageSize),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => {

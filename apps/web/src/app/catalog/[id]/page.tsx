@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
 import { formatDate } from "@/lib/format";
+import { qk } from "@/lib/query-keys";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
@@ -22,7 +23,7 @@ const kindLabels: Record<WorkKind, string> = {
 export default function WorkDetailsPage() {
   const params = useParams<{ id: string }>();
   const workQuery = useQuery({
-    queryKey: ["work", params.id],
+    queryKey: qk.works.detail(params.id),
     queryFn: () => getWork(params.id),
   });
 

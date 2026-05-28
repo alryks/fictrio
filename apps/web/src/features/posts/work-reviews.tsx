@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserBadge } from "@/components/user-badge";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
+import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteWorkRating,
@@ -57,7 +58,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const activityQuery = useInfiniteQuery({
-    queryKey: ["work", work.id, "reviews"],
+    queryKey: qk.works.reviews(work.id),
     queryFn: ({ pageParam }) =>
       getWorkReviews(work.id, pageParam, REVIEWS_PAGE_SIZE),
     initialPageParam: 0,
@@ -151,7 +152,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     onSuccess: async () => {
       setMessage(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -173,7 +174,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       setMessage("Отзыв удален");
       setReviewDraft("");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -324,10 +325,10 @@ async function invalidateWorkQueries(
   workId: string,
 ) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["work", workId] }),
-    queryClient.invalidateQueries({ queryKey: ["works"] }),
-    queryClient.invalidateQueries({ queryKey: ["work", workId, "reviews"] }),
-    queryClient.invalidateQueries({ queryKey: ["review"] }),
+    queryClient.invalidateQueries({ queryKey: qk.works.detail(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.works.all }),
+    queryClient.invalidateQueries({ queryKey: qk.works.reviews(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.reviews.all }),
   ]);
 }
 
@@ -452,7 +453,7 @@ function CommentItem({
       setIsEditing(false);
       setEditMessage(null);
       await queryClient.invalidateQueries({
-        queryKey: ["review", reviewId, "comments"],
+        queryKey: qk.reviews.comments(reviewId),
       });
     },
     onError: (error) => {
@@ -472,10 +473,10 @@ function CommentItem({
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", reviewId, "comments"],
+          queryKey: qk.reviews.comments(reviewId),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },
@@ -640,7 +641,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
   const commentsQuery = useInfiniteQuery({
-    queryKey: ["review", review.id, "comments"],
+    queryKey: qk.reviews.comments(review.id),
     queryFn: ({ pageParam }) =>
       getReviewComments(review.id, pageParam, COMMENTS_PAGE_SIZE),
     enabled: isOpen,
@@ -667,10 +668,10 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       setIsOpen(true);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", review.id, "comments"],
+          queryKey: qk.reviews.comments(review.id),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },

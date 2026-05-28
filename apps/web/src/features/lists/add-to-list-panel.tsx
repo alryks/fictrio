@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
+import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/features/auth/auth-store";
 import { addWorkToList, createList, getMyLists } from "./lists-api";
 
@@ -35,7 +36,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const myListsQuery = useQuery({
-    queryKey: ["lists", "mine"],
+    queryKey: qk.lists.mine,
     queryFn: getMyLists,
     enabled: Boolean(user),
   });
@@ -48,8 +49,8 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
     onSuccess: async () => {
       setMessage("Произведение добавлено в список");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
-        queryClient.invalidateQueries({ queryKey: ["lists", "mine"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {
@@ -75,8 +76,8 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
       setSelectedListId(list.id);
       setMessage("Список создан, произведение добавлено");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
-        queryClient.invalidateQueries({ queryKey: ["lists", "mine"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {

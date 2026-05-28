@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
+import { qk } from "@/lib/query-keys";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteListRating,
@@ -50,7 +51,7 @@ export default function ListDetailsPage() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
 
   const listQuery = useInfiniteQuery({
-    queryKey: ["list", params.id],
+    queryKey: qk.lists.detail(params.id),
     queryFn: ({ pageParam }) =>
       getList(params.id, pageParam, listItemsPageSize),
     initialPageParam: 0,
@@ -120,8 +121,8 @@ export default function ListDetailsPage() {
     onSuccess: async () => {
       setIsEditingDetails(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -134,8 +135,8 @@ export default function ListDetailsPage() {
     onSuccess: async (response) => {
       setRatingDraft(response.value);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -148,8 +149,8 @@ export default function ListDetailsPage() {
     onSuccess: async () => {
       setRatingDraft(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -160,7 +161,7 @@ export default function ListDetailsPage() {
       return reorderListItems(params.id, nextItems);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["list", params.id] });
+      await queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) });
     },
   });
 
@@ -171,8 +172,8 @@ export default function ListDetailsPage() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
