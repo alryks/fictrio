@@ -1,7 +1,5 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -9,15 +7,8 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowUp,
-  Pencil,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
+import { SiteHeader } from "@/components/layout/site-header";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteListRating,
@@ -213,27 +204,7 @@ export default function ListDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
-            <Image
-              src="/logo.svg"
-              alt="Fictrio"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="text-xl font-semibold text-primary">Fictrio</span>
-          </Link>
-          <Link
-            className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-            href="/lists"
-          >
-            <ArrowLeft className="size-4" />
-            Списки
-          </Link>
-        </div>
-      </header>
+      <SiteHeader back={{ href: "/lists", label: "Списки" }} />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (

@@ -1,5 +1,4 @@
-import Image from "next/image";
-import Link from "next/link";
+import { SiteHeader } from "@/components/layout/site-header";
 import { AuthPanel } from "@/features/auth/auth-panel";
 import { RatingMark } from "@/components/ui/rating-mark";
 import { Bell, BookOpen, Film, MessageCircle, Search, Tv } from "lucide-react";
@@ -116,43 +115,11 @@ const feedItems: FeedItem[] = [
 export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b bg-background/95 backdrop-blur">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
-            <Image
-              src="/logo.svg"
-              alt="Fictrio"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="text-xl font-semibold text-primary">Fictrio</span>
-          </Link>
-          <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
-            <a className="rounded-md px-3 py-2 text-primary" href="#">
-              Лента
-            </a>
-            <Link
-              className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="/catalog"
-            >
-              Каталог
-            </Link>
-            <Link
-              className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="/lists"
-            >
-              Списки
-            </Link>
-            <a
-              className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="#"
-            >
-              Профиль
-            </a>
-          </nav>
-          <div className="ml-auto hidden min-w-0 flex-1 justify-end sm:flex">
-            <label className="relative w-full max-w-sm">
+      <SiteHeader
+        active="feed"
+        rightSlot={
+          <div className="flex flex-1 items-center justify-end gap-4">
+            <label className="relative hidden w-full max-w-sm sm:block">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <span className="sr-only">Поиск</span>
               <input
@@ -161,13 +128,13 @@ export default function Home() {
                 type="search"
               />
             </label>
+            <button className="grid size-10 shrink-0 place-items-center rounded-md border bg-card text-muted-foreground transition hover:border-primary hover:text-primary">
+              <Bell className="size-4" />
+              <span className="sr-only">Уведомления</span>
+            </button>
           </div>
-          <button className="grid size-10 place-items-center rounded-md border bg-card text-muted-foreground transition hover:border-primary hover:text-primary">
-            <Bell className="size-4" />
-            <span className="sr-only">Уведомления</span>
-          </button>
-        </div>
-      </header>
+        }
+      />
 
       <main className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,760px)_minmax(280px,1fr)] lg:px-8">
         <section className="min-w-0 space-y-4">
