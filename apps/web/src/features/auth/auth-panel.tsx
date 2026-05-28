@@ -1,41 +1,36 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
-import { getMe, login, register } from "./auth-api";
-import { useAuthStore } from "./auth-store";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { FormField } from "@/components/form-field";
+import { UserBadge } from "@/components/user-badge";
+import { ApiError } from "@/lib/api";
+import { login, logout, register } from "./auth-api";
+import { useSession, useSessionActions } from "./use-session";
 
 type AuthMode = "login" | "register";
+type FieldErrors = Record<string, string>;
 
 export function AuthPanel() {
-  const { accessToken, user, isHydrated, clearSession, hydrate, setSession } =
-    useAuthStore();
+  const { user, isLoading } = useSession();
+  const { setUser } = useSessionActions();
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  useEffect(() => {
-    if (!isHydrated || !accessToken) {
-      return;
-    }
-
-    void getMe(accessToken)
-      .then((profile) => setSession(accessToken, profile))
-      .catch(() => clearSession());
-  }, [accessToken, clearSession, isHydrated, setSession]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setIsSubmitting(true);
     setMessage(null);
+    setFieldErrors({});
 
     try {
       const response =
@@ -48,31 +43,50 @@ export function AuthPanel() {
               displayName: displayName || undefined,
             });
 
-      setSession(response.accessToken, response.user);
+      setUser(response.user);
       setPassword("");
       setMessage(mode === "login" ? "Вы вошли в аккаунт" : "Аккаунт создан");
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Ошибка авторизации");
+      if (error instanceof ApiError && error.issues.length > 0) {
+        setFieldErrors(
+          Object.fromEntries(
+            error.issues.map((issue) => [issue.path, issue.message]),
+          ),
+        );
+        setMessage(null);
+      } else {
+        setMessage(
+          error instanceof Error ? error.message : "Ошибка авторизации",
+        );
+      }
     } finally {
       setIsSubmitting(false);
     }
   }
 
-  if (!isHydrated) {
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      // Even if the server call fails we clear the local user so the UI
+      // reflects the user's intent.
+    }
+    setUser(null);
+  }
+
+  if (isLoading) {
     return (
-      <div className="h-[232px] rounded-md border bg-card p-4 shadow-sm">
+      <Card className="h-[232px] p-4">
         <p className="text-sm text-muted-foreground">Загрузка сессии...</p>
-      </div>
+      </Card>
     );
   }
 
   if (user) {
     return (
-      <section className="rounded-md border bg-card p-4 shadow-sm">
+      <Card className="p-4">
         <div className="flex items-center gap-3">
-          <div className="grid size-11 place-items-center rounded-md bg-primary text-sm font-semibold text-primary-foreground">
-            {user.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={user.username} size="md" tone="primary" />
           <div className="min-w-0">
             <h2 className="truncate font-semibold">{user.displayName}</h2>
             <p className="truncate text-sm text-muted-foreground">
@@ -90,20 +104,21 @@ export function AuthPanel() {
             </span>
           ))}
         </div>
-        <button
-          className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary hover:text-primary"
-          onClick={clearSession}
+        <Button
+          variant="outline"
+          className="mt-4 h-10 w-full"
+          onClick={handleLogout}
           type="button"
         >
           <LogOut className="size-4" />
           Выйти
-        </button>
-      </section>
+        </Button>
+      </Card>
     );
   }
 
   return (
-    <section className="rounded-md border bg-card p-4 shadow-sm">
+    <Card className="p-4">
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-semibold">
           {mode === "login" ? "Вход" : "Регистрация"}
@@ -114,75 +129,77 @@ export function AuthPanel() {
           <UserRoundPlus className="size-4 text-primary" />
         )}
       </div>
-      <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
-        <label className="block">
-          <span className="text-sm font-medium">Имя пользователя</span>
-          <input
-            className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-            minLength={3}
-            onChange={(event) => setUsername(event.target.value)}
-            required
-            value={username}
-          />
-        </label>
+      <form className="mt-4 space-y-3" onSubmit={handleSubmit} noValidate>
+        <FormField label="Имя пользователя" error={fieldErrors.username}>
+          {(field) => (
+            <Input
+              {...field}
+              minLength={3}
+              onChange={(event) => setUsername(event.target.value)}
+              required
+              value={username}
+            />
+          )}
+        </FormField>
         {mode === "register" ? (
           <>
-            <label className="block">
-              <span className="text-sm font-medium">Почта</span>
-              <input
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) => setEmail(event.target.value)}
-                required
-                type="email"
-                value={email}
-              />
-            </label>
-            <label className="block">
-              <span className="text-sm font-medium">Отображаемое имя</span>
-              <input
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                onChange={(event) => setDisplayName(event.target.value)}
-                value={displayName}
-              />
-            </label>
+            <FormField label="Почта" error={fieldErrors.email}>
+              {(field) => (
+                <Input
+                  {...field}
+                  onChange={(event) => setEmail(event.target.value)}
+                  required
+                  type="email"
+                  value={email}
+                />
+              )}
+            </FormField>
+            <FormField label="Отображаемое имя" error={fieldErrors.displayName}>
+              {(field) => (
+                <Input
+                  {...field}
+                  onChange={(event) => setDisplayName(event.target.value)}
+                  value={displayName}
+                />
+              )}
+            </FormField>
           </>
         ) : null}
-        <label className="block">
-          <span className="text-sm font-medium">Пароль</span>
-          <input
-            className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-            minLength={8}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-            type="password"
-            value={password}
-          />
-        </label>
+        <FormField label="Пароль" error={fieldErrors.password}>
+          {(field) => (
+            <Input
+              {...field}
+              minLength={8}
+              onChange={(event) => setPassword(event.target.value)}
+              required
+              type="password"
+              value={password}
+            />
+          )}
+        </FormField>
         {message ? (
           <p className="text-sm text-muted-foreground">{message}</p>
         ) : null}
-        <button
-          className="inline-flex h-10 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
-          disabled={isSubmitting}
-          type="submit"
-        >
+        <Button type="submit" className="h-10 w-full" disabled={isSubmitting}>
           {isSubmitting
             ? "Отправка..."
             : mode === "login"
               ? "Войти"
               : "Создать аккаунт"}
-        </button>
+        </Button>
       </form>
-      <button
-        className="mt-3 text-sm text-primary hover:underline"
+      <Button
+        variant="link"
+        className="mt-3 h-auto p-0"
         onClick={() => {
           setMode(mode === "login" ? "register" : "login");
           setMessage(null);
+          setFieldErrors({});
         }}
         type="button"
       >
         {mode === "login" ? "Создать новый аккаунт" : "У меня уже есть аккаунт"}
-      </button>
-    </section>
+      </Button>
+    </Card>
   );
 }

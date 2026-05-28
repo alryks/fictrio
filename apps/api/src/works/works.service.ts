@@ -88,7 +88,8 @@ type WorkWithDetails = Prisma.WorkGetPayload<{
   };
 }>;
 
-type WorkListRow = {
+/** Scalar columns shared by every work projection. */
+type WorkScalars = {
   id: string;
   kind: WorkKind;
   title: string;
@@ -96,6 +97,9 @@ type WorkListRow = {
   description: string | null;
   releaseYear: number | null;
   imageUrl: string | null;
+};
+
+type WorkListRow = WorkScalars & {
   averageRating: number | null;
   ratingCount: bigint;
   runtimeMinutes: number | null;
@@ -298,7 +302,18 @@ export class WorksService {
     }
 
     if (query.search) {
-      and.push(Prisma.sql`w.title ILIKE ${`%${query.search}%`}`);
+      // Uses the `works_search_gin_idx` GIN index on
+      // to_tsvector('russian', coalesce(title)||' '||coalesce(original_title)||' '||coalesce(description)).
+      // websearch_to_tsquery handles user input safely (quoted phrases,
+      // OR keywords, exclusions) without exposing tsquery syntax.
+      and.push(Prisma.sql`
+        to_tsvector(
+          'russian',
+          coalesce(w.title, '') || ' ' ||
+          coalesce(w.original_title, '') || ' ' ||
+          coalesce(w.description, '')
+        ) @@ websearch_to_tsquery('russian', ${query.search})
+      `);
     }
 
     return Prisma.sql`WHERE ${Prisma.join(and, ' AND ')}`;
@@ -327,7 +342,16 @@ export class WorksService {
     return Prisma.sql`ORDER BY w.release_year ${direction} NULLS LAST, w.title ASC`;
   }
 
-  private toListRowItem(work: WorkListRow) {
+  /**
+   * Builds the public work-item shape from the scalar columns shared by
+   * every source (raw list rows, included work payloads, relation works)
+   * plus a precomputed rating and meta map.
+   */
+  private buildWorkItem(
+    work: WorkScalars,
+    rating: { average: number | null; count: number },
+    meta: Record<string, string | number | Date | null | undefined>,
+  ) {
     return {
       id: work.id,
       kind: work.kind,
@@ -336,29 +360,31 @@ export class WorksService {
       description: work.description,
       releaseYear: work.releaseYear,
       imageUrl: work.imageUrl,
-      rating: {
+      rating,
+      meta,
+    };
+  }
+
+  private toListRowItem(work: WorkListRow) {
+    return this.buildWorkItem(
+      work,
+      {
         average:
           work.averageRating === null
             ? null
             : Number(work.averageRating.toFixed(2)),
         count: Number(work.ratingCount),
       },
-      meta: this.getRowMeta(work),
-    };
+      this.getRowMeta(work),
+    );
   }
 
   private toListItem(work: WorkWithDetails) {
-    return {
-      id: work.id,
-      kind: work.kind,
-      title: work.title,
-      originalTitle: work.originalTitle,
-      description: work.description,
-      releaseYear: work.releaseYear,
-      imageUrl: work.imageUrl,
-      rating: this.getRatingStats(work.rateable.ratings),
-      meta: this.getMeta(work),
-    };
+    return this.buildWorkItem(
+      work,
+      this.getRatingStats(work.rateable.ratings),
+      this.getMeta(work),
+    );
   }
 
   private toDetails(work: WorkWithDetails) {
@@ -417,17 +443,11 @@ export class WorksService {
       };
     }>,
   ) {
-    return {
-      id: work.id,
-      kind: work.kind,
-      title: work.title,
-      originalTitle: work.originalTitle,
-      description: work.description,
-      releaseYear: work.releaseYear,
-      imageUrl: work.imageUrl,
-      rating: this.getRatingStats(work.rateable.ratings),
-      meta: {},
-    };
+    return this.buildWorkItem(
+      work,
+      this.getRatingStats(work.rateable.ratings),
+      {},
+    );
   }
 
   private getRatingStats(ratings: Array<{ value: number }>) {

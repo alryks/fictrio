@@ -1,24 +1,24 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  ArrowDown,
-  ArrowLeft,
-  ArrowUp,
-  Pencil,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
+import { SiteHeader } from "@/components/layout/site-header";
+import { StateCard } from "@/components/state-card";
+import { UserBadge } from "@/components/user-badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { FormField } from "@/components/form-field";
+import { formatDate, getWorksCountLabel } from "@/lib/format";
+import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteListRating,
   getList,
@@ -30,15 +30,19 @@ import {
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { RatingControl } from "@/features/ratings/rating-control";
 import { WorkCard } from "@/features/works/work-card";
-import { getWorksCountLabel } from "@/features/works/work-rail";
 
 const listItemsPageSize = 12;
+
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
 
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
@@ -46,12 +50,8 @@ export default function ListDetailsPage() {
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
   const listQuery = useInfiniteQuery({
-    queryKey: ["list", params.id],
+    queryKey: qk.lists.detail(params.id),
     queryFn: ({ pageParam }) =>
       getList(params.id, pageParam, listItemsPageSize),
     initialPageParam: 0,
@@ -72,7 +72,6 @@ export default function ListDetailsPage() {
     ratingDraft === undefined
       ? list?.userRating !== null && list?.userRating !== undefined
       : ratingDraft !== null;
-  const fetchNextListItemsPage = listQuery.fetchNextPage;
   const hasNextListItemsPage = listQuery.hasNextPage;
   const isFetchingNextListItemsPage = listQuery.isFetchingNextPage;
   const canReorderItems = isOwner && !hasNextListItemsPage;
@@ -81,118 +80,76 @@ export default function ListDetailsPage() {
     [listQuery.data?.pages],
   );
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          hasNextListItemsPage &&
-          !isFetchingNextListItemsPage
-        ) {
-          void fetchNextListItemsPage();
-        }
-      },
-      { rootMargin: "320px" },
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [
-    fetchNextListItemsPage,
-    hasNextListItemsPage,
-    isFetchingNextListItemsPage,
-  ]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: hasNextListItemsPage,
+    isFetchingNextPage: isFetchingNextListItemsPage,
+    fetchNextPage: listQuery.fetchNextPage,
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для редактирования списка нужно войти в аккаунт");
-      }
-
-      return updateList(
-        params.id,
-        {
-          title: titleDraft,
-          description: descriptionDraft || null,
-        },
-        accessToken,
-      );
+      requireUser(user, "редактирования списка");
+      return updateList(params.id, {
+        title: titleDraft,
+        description: descriptionDraft || null,
+      });
     },
     onSuccess: async () => {
       setIsEditingDetails(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => {
-      if (!accessToken) {
-        throw new Error("Для оценки списка нужно войти в аккаунт");
-      }
-
-      return rateList(params.id, value, accessToken);
+      requireUser(user, "оценки списка");
+      return rateList(params.id, value);
     },
     onSuccess: async (response) => {
       setRatingDraft(response.value);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
 
   const deleteRatingMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления оценки нужно войти в аккаунт");
-      }
-
-      return deleteListRating(params.id, accessToken);
+      requireUser(user, "удаления оценки");
+      return deleteListRating(params.id);
     },
     onSuccess: async () => {
       setRatingDraft(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
 
   const reorderMutation = useMutation({
     mutationFn: (nextItems: Array<{ workId: string; position: number }>) => {
-      if (!accessToken) {
-        throw new Error("Для изменения порядка нужно войти в аккаунт");
-      }
-
-      return reorderListItems(params.id, nextItems, accessToken);
+      requireUser(user, "изменения порядка");
+      return reorderListItems(params.id, nextItems);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["list", params.id] });
+      await queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) });
     },
   });
 
   const removeMutation = useMutation({
     mutationFn: (workId: string) => {
-      if (!accessToken) {
-        throw new Error("Для удаления из списка нужно войти в аккаунт");
-      }
-
-      return removeWorkFromList(params.id, workId, accessToken);
+      requireUser(user, "удаления из списка");
+      return removeWorkFromList(params.id, workId);
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -230,34 +187,14 @@ export default function ListDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
-            <Image
-              src="/logo.svg"
-              alt="Fictrio"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="text-xl font-semibold text-primary">Fictrio</span>
-          </Link>
-          <Link
-            className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-            href="/lists"
-          >
-            <ArrowLeft className="size-4" />
-            Списки
-          </Link>
-        </div>
-      </header>
+      <SiteHeader back={{ href: "/lists", label: "Списки" }} />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (
-          <State title="Загрузка списка" text="Получаем подборку из API." />
+          <StateCard as="h1" title="Загрузка списка" text="Получаем подборку из API." />
         ) : null}
         {listQuery.isError ? (
-          <State title="Список недоступен" text={listQuery.error.message} />
+          <StateCard as="h1" title="Список недоступен" text={listQuery.error.message} />
         ) : null}
 
         {list ? (
@@ -267,9 +204,7 @@ export default function ListDetailsPage() {
                 <div className="min-w-0">
                   <header className="min-w-0">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-                        {list.owner.username.slice(0, 2).toUpperCase()}
-                      </div>
+                      <UserBadge name={list.owner.username} />
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold">
                           {list.owner.displayName}
@@ -289,20 +224,21 @@ export default function ListDetailsPage() {
                           updateMutation.mutate();
                         }}
                       >
-                        <label className="block text-sm font-medium">
-                          Название
-                          <input
-                            className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                            disabled={updateMutation.isPending}
-                            maxLength={255}
-                            onChange={(event) =>
-                              setTitleDraft(event.target.value)
-                            }
-                            required
-                            type="text"
-                            value={titleDraft}
-                          />
-                        </label>
+                        <FormField label="Название">
+                          {(field) => (
+                            <Input
+                              {...field}
+                              disabled={updateMutation.isPending}
+                              maxLength={255}
+                              onChange={(event) =>
+                                setTitleDraft(event.target.value)
+                              }
+                              required
+                              type="text"
+                              value={titleDraft}
+                            />
+                          )}
+                        </FormField>
                       </form>
                     ) : (
                       <div className="mt-4 flex min-w-0 flex-wrap items-center gap-2">
@@ -315,8 +251,10 @@ export default function ListDetailsPage() {
                           {getWorksCountLabel(list.itemsTotal)}
                         </span>
                         {isOwner ? (
-                          <button
-                            className="grid size-8 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary"
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="size-8"
                             onClick={startEditingDetails}
                             type="button"
                           >
@@ -324,7 +262,7 @@ export default function ListDetailsPage() {
                             <span className="sr-only">
                               Редактировать список
                             </span>
-                          </button>
+                          </Button>
                         ) : null}
                       </div>
                     )}
@@ -332,38 +270,39 @@ export default function ListDetailsPage() {
 
                   {isEditingDetails ? (
                     <div className="mt-4 max-w-3xl space-y-3">
-                      <label className="block text-sm font-medium">
-                        Описание
-                        <textarea
-                          className="mt-1 min-h-28 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary"
-                          disabled={updateMutation.isPending}
-                          form="list-details-form"
-                          maxLength={2000}
-                          onChange={(event) =>
-                            setDescriptionDraft(event.target.value)
-                          }
-                          value={descriptionDraft}
-                        />
-                      </label>
+                      <FormField label="Описание">
+                        {(field) => (
+                          <Textarea
+                            {...field}
+                            className="min-h-28"
+                            disabled={updateMutation.isPending}
+                            form="list-details-form"
+                            maxLength={2000}
+                            onChange={(event) =>
+                              setDescriptionDraft(event.target.value)
+                            }
+                            value={descriptionDraft}
+                          />
+                        )}
+                      </FormField>
                       <div className="flex flex-wrap gap-2">
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground transition hover:bg-accent disabled:opacity-50"
+                        <Button
                           disabled={updateMutation.isPending}
                           form="list-details-form"
                           type="submit"
                         >
                           <Save className="size-4" />
                           Сохранить
-                        </button>
-                        <button
-                          className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="outline"
                           disabled={updateMutation.isPending}
                           onClick={cancelEditingDetails}
                           type="button"
                         >
                           <X className="size-4" />
                           Отмена
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ) : list.description ? (
@@ -386,7 +325,7 @@ export default function ListDetailsPage() {
                   <RatingControl
                     value={ratingValue}
                     hasValue={hasRating}
-                    disabled={!isHydrated || !user || ratingMutation.isPending}
+                    disabled={isLoading || !user || ratingMutation.isPending}
                     deleteDisabled={!user || deleteRatingMutation.isPending}
                     onChange={() => {
                       ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
@@ -406,8 +345,10 @@ export default function ListDetailsPage() {
                     <WorkCard work={item.work} />
                     {isOwner ? (
                       <div className="mt-3 flex gap-2">
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-9"
                           disabled={
                             !canReorderItems ||
                             index === 0 ||
@@ -418,9 +359,11 @@ export default function ListDetailsPage() {
                         >
                           <ArrowUp className="size-4" />
                           <span className="sr-only">Выше</span>
-                        </button>
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-primary hover:text-primary disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-9"
                           disabled={
                             !canReorderItems ||
                             index === items.length - 1 ||
@@ -431,18 +374,18 @@ export default function ListDetailsPage() {
                         >
                           <ArrowDown className="size-4" />
                           <span className="sr-only">Ниже</span>
-                        </button>
-                        <button
-                          className="grid size-9 place-items-center rounded-md border text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-50"
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="size-9"
                           disabled={removeMutation.isPending}
                           onClick={() => removeMutation.mutate(item.work.id)}
                           type="button"
                         >
                           <Trash2 className="size-4" />
-                          <span className="sr-only">
-                            Удалить из списка
-                          </span>
-                        </button>
+                          <span className="sr-only">Удалить из списка</span>
+                        </Button>
                       </div>
                     ) : null}
                   </div>
@@ -467,27 +410,4 @@ export default function ListDetailsPage() {
       </main>
     </div>
   );
-}
-
-function State({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="rounded-md border bg-card p-8 text-center shadow-sm">
-      <h1 className="font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-    </section>
-  );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

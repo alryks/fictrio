@@ -1,39 +1,18 @@
+import type {
+  CreateListInput,
+  DeletedResponse,
+  FictrioList,
+  ListOwner,
+  ListsPage,
+  MyListsResponse,
+  RatingStats,
+  UpdateListInput,
+  UpsertRatingResponse,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
-import type { WorkListItem } from "@/features/works/works-api";
 
-export type ListOwner = {
-  id: string;
-  username: string;
-  displayName: string;
-};
-
-export type FictrioList = {
-  id: string;
-  title: string;
-  description: string | null;
-  visibility: "public" | "friends" | "private";
-  createdAt: string;
-  updatedAt: string;
-  owner: ListOwner;
-  rating: {
-    average: number | null;
-    count: number;
-  };
-  userRating: number | null;
-  itemsTotal: number;
-  items: Array<{
-    position: number;
-    addedAt: string;
-    work: WorkListItem;
-  }>;
-};
-
-export type ListsResponse = {
-  items: FictrioList[];
-  total: number;
-  limit?: number;
-  offset?: number;
-};
+export type { FictrioList, ListOwner };
+export type ListsResponse = ListsPage;
 
 export function getPublicLists(offset = 0, limit = 12, itemsLimit = 6) {
   return apiRequest<ListsResponse>(
@@ -41,8 +20,8 @@ export function getPublicLists(offset = 0, limit = 12, itemsLimit = 6) {
   );
 }
 
-export function getMyLists(token: string) {
-  return apiRequest<ListsResponse>("/lists/mine", { token });
+export function getMyLists() {
+  return apiRequest<MyListsResponse>("/me/lists");
 }
 
 export function getList(id: string, itemsOffset = 0, itemsLimit = 12) {
@@ -51,85 +30,55 @@ export function getList(id: string, itemsOffset = 0, itemsLimit = 12) {
   );
 }
 
-export function createList(
-  input: {
-    title: string;
-    description?: string | null;
-    visibility: FictrioList["visibility"];
-  },
-  token: string,
-) {
+export function createList(input: CreateListInput) {
   return apiRequest<FictrioList>("/lists", {
     method: "POST",
-    token,
     body: JSON.stringify(input),
   });
 }
 
-export function addWorkToList(listId: string, workId: string, token: string) {
+export function addWorkToList(listId: string, workId: string) {
   return apiRequest<FictrioList>(`/lists/${listId}/items`, {
     method: "POST",
-    token,
     body: JSON.stringify({ workId }),
   });
 }
 
-export function updateList(
-  listId: string,
-  input: {
-    title?: string;
-    description?: string | null;
-  },
-  token: string,
-) {
+export function updateList(listId: string, input: UpdateListInput) {
   return apiRequest<FictrioList>(`/lists/${listId}`, {
     method: "PATCH",
-    token,
     body: JSON.stringify(input),
   });
 }
 
-export function removeWorkFromList(
-  listId: string,
-  workId: string,
-  token: string,
-) {
+export function removeWorkFromList(listId: string, workId: string) {
   return apiRequest<FictrioList>(`/lists/${listId}/items/${workId}`, {
     method: "DELETE",
-    token,
   });
 }
 
 export function reorderListItems(
   listId: string,
   items: Array<{ workId: string; position: number }>,
-  token: string,
 ) {
   return apiRequest<FictrioList>(`/lists/${listId}/items/order`, {
     method: "PATCH",
-    token,
     body: JSON.stringify({ items }),
   });
 }
 
-export function rateList(listId: string, value: number, token: string) {
-  return apiRequest<{
-    id: string;
-    value: number;
-    rating: FictrioList["rating"];
-  }>(`/lists/${listId}/rating`, {
+export function rateList(listId: string, value: number) {
+  return apiRequest<UpsertRatingResponse>(`/lists/${listId}/rating`, {
     method: "PUT",
-    token,
     body: JSON.stringify({ value }),
   });
 }
 
-export function deleteListRating(listId: string, token: string) {
-  return apiRequest<{ deleted: true; rating: FictrioList["rating"] }>(
+export function deleteListRating(listId: string) {
+  return apiRequest<DeletedResponse & { rating: RatingStats }>(
     `/lists/${listId}/rating`,
     {
       method: "DELETE",
-      token,
     },
   );
 }

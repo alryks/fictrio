@@ -1,48 +1,26 @@
+import type {
+  CatalogWorkKind,
+  SortOrder,
+  WorkDetails,
+  WorkKind,
+  WorkListItem,
+  WorkSeason,
+  WorksPage,
+  WorksSortBy,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type WorkKind = "movie" | "show" | "season" | "episode" | "book";
-
-export type WorkListItem = {
-  id: string;
-  kind: WorkKind;
-  title: string;
-  originalTitle: string | null;
-  description: string | null;
-  releaseYear: number | null;
-  imageUrl: string | null;
-  rating: {
-    average: number | null;
-    count: number;
-  };
-  meta: Record<string, string | number | null>;
-};
-
-export type WorkDetails = WorkListItem & {
-  details: Record<string, string | number | null> | null;
-  userRating?: number | null;
-  seasons?: WorkSeason[];
-  episodes?: WorkListItem[];
-};
-
-export type WorkSeason = WorkListItem & {
-  episodes: WorkListItem[];
-};
-
-export type WorksResponse = {
-  items: WorkListItem[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+export type { CatalogWorkKind, WorkDetails, WorkKind, WorkListItem, WorkSeason };
+export type WorksResponse = WorksPage;
 
 export type GetWorksParams = {
   search?: string;
-  kinds?: Array<Extract<WorkKind, "movie" | "show" | "book">>;
+  kinds?: CatalogWorkKind[];
   yearFrom?: string;
   yearTo?: string;
   minRating?: string;
-  sortBy?: "title" | "releaseYear" | "averageRating";
-  sortOrder?: "asc" | "desc";
+  sortBy?: WorksSortBy;
+  sortOrder?: SortOrder;
   limit?: number;
   offset?: number;
 };

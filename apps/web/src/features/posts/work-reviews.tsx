@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -8,7 +8,14 @@ import {
 } from "@tanstack/react-query";
 import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { UserBadge } from "@/components/user-badge";
+import { FormField } from "@/components/form-field";
+import { formatDate } from "@/lib/format";
+import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteWorkRating,
   upsertWorkRating,
@@ -29,6 +36,12 @@ import {
   updateReview,
 } from "./reviews-api";
 
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
+
 type WorkReviewsProps = {
   work: WorkDetails;
 };
@@ -38,19 +51,15 @@ const COMMENTS_PAGE_SIZE = 5;
 
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
   const activityQuery = useInfiniteQuery({
-    queryKey: ["work", work.id, "reviews"],
+    queryKey: qk.works.reviews(work.id),
     queryFn: ({ pageParam }) =>
       getWorkReviews(work.id, pageParam, REVIEWS_PAGE_SIZE),
     initialPageParam: 0,
@@ -64,31 +73,12 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     () => activityQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [activityQuery.data?.pages],
   );
-  const fetchNextReviewsPage = activityQuery.fetchNextPage;
-  const hasNextReviewsPage = activityQuery.hasNextPage;
-  const isFetchingNextReviewsPage = activityQuery.isFetchingNextPage;
-
-  useEffect(() => {
-    function handleScroll() {
-      const distanceToBottom =
-        document.documentElement.scrollHeight -
-        window.scrollY -
-        window.innerHeight;
-
-      if (
-        distanceToBottom < 500 &&
-        hasNextReviewsPage &&
-        !isFetchingNextReviewsPage
-      ) {
-        void fetchNextReviewsPage();
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [fetchNextReviewsPage, hasNextReviewsPage, isFetchingNextReviewsPage]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: activityQuery.hasNextPage,
+    isFetchingNextPage: activityQuery.isFetchingNextPage,
+    fetchNextPage: activityQuery.fetchNextPage,
+    rootMargin: "500px 0px",
+  });
 
   const ownReview = useMemo(
     () =>
@@ -113,11 +103,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const ratingMutation = useMutation({
     mutationFn: (value: number) => {
-      if (!accessToken) {
-        throw new Error("Для оценки нужно войти в аккаунт");
-      }
-
-      return upsertWorkRating(work.id, value, accessToken);
+      requireUser(user, "оценки");
+      return upsertWorkRating(work.id, value);
     },
     onSuccess: async (response) => {
       setRatingDraft(response.value);
@@ -127,11 +114,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const deleteRatingMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления оценки нужно войти в аккаунт");
-      }
-
-      return deleteWorkRating(work.id, accessToken);
+      requireUser(user, "удаления оценки");
+      return deleteWorkRating(work.id);
     },
     onSuccess: async () => {
       setRatingDraft(null);
@@ -142,18 +126,15 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const reviewMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для отзыва нужно войти в аккаунт");
-      }
-
+      requireUser(user, "отзыва");
       return ownReview
-        ? updateReview(ownReview.id, reviewBody.trim(), accessToken)
-        : createWorkReview(work.id, reviewBody.trim(), accessToken);
+        ? updateReview(ownReview.id, reviewBody.trim())
+        : createWorkReview(work.id, reviewBody.trim());
     },
     onSuccess: async () => {
       setMessage(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -165,17 +146,17 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   const deleteReviewMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken || !ownReview) {
+      requireUser(user, "удаления отзыва");
+      if (!ownReview) {
         throw new Error("Отзыв не найден");
       }
-
-      return deleteReview(ownReview.id, accessToken);
+      return deleteReview(ownReview.id);
     },
     onSuccess: async () => {
       setMessage("Отзыв удален");
       setReviewDraft("");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -217,37 +198,39 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             <RatingControl
               value={ratingValue}
               hasValue={hasRating}
-              disabled={!isHydrated || !user || ratingMutation.isPending}
+              disabled={isLoading || !user || ratingMutation.isPending}
               deleteDisabled={!user || !hasRating || deleteRatingMutation.isPending}
               onChange={handleRatingClick}
               onDelete={() => deleteRatingMutation.mutate()}
             />
           </div>
 
-          <label className="block">
-            <span className="text-sm font-medium">Текст отзыва</span>
-            <textarea
-              className="mt-1 min-h-36 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              disabled={!isHydrated || !user || reviewMutation.isPending}
-              maxLength={5000}
-              onChange={(event) => setReviewDraft(event.target.value)}
-              placeholder="Что стоит обсудить после просмотра или чтения?"
-              required
-              value={reviewBody}
-            />
-          </label>
+          <FormField label="Текст отзыва">
+            {(field) => (
+              <Textarea
+                {...field}
+                className="min-h-36"
+                disabled={isLoading || !user || reviewMutation.isPending}
+                maxLength={5000}
+                onChange={(event) => setReviewDraft(event.target.value)}
+                placeholder="Что стоит обсудить после просмотра или чтения?"
+                required
+                value={reviewBody}
+              />
+            )}
+          </FormField>
           {message ? (
             <p className="text-sm text-muted-foreground">{message}</p>
           ) : null}
-          {!user && isHydrated ? (
+          {!user && !isLoading ? (
             <p className="text-sm text-muted-foreground">
               Войдите в аккаунт на главной странице, чтобы оценивать и писать
               отзывы.
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+            <Button
+              className="h-10"
               disabled={
                 !user ||
                 reviewMutation.isPending ||
@@ -261,17 +244,18 @@ export function WorkReviews({ work }: WorkReviewsProps) {
                 <Send className="size-4" />
               )}
               {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
-            </button>
+            </Button>
             {ownReview ? (
-              <button
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+              <Button
+                variant="destructive"
+                className="h-10"
                 disabled={deleteReviewMutation.isPending}
                 onClick={() => deleteReviewMutation.mutate()}
                 type="button"
               >
                 <Trash2 className="size-4" />
                 Удалить отзыв
-              </button>
+              </Button>
             ) : null}
           </div>
         </form>
@@ -310,6 +294,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             />
           ))}
         </div>
+        <div ref={loadMoreRef} className="h-px" />
         {activityQuery.isFetchingNextPage ? (
           <p className="mt-4 text-sm text-muted-foreground">Загружаем еще...</p>
         ) : null}
@@ -323,10 +308,10 @@ async function invalidateWorkQueries(
   workId: string,
 ) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["work", workId] }),
-    queryClient.invalidateQueries({ queryKey: ["works"] }),
-    queryClient.invalidateQueries({ queryKey: ["work", workId, "reviews"] }),
-    queryClient.invalidateQueries({ queryKey: ["review"] }),
+    queryClient.invalidateQueries({ queryKey: qk.works.detail(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.works.all }),
+    queryClient.invalidateQueries({ queryKey: qk.works.reviews(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.reviews.all }),
   ]);
 }
 
@@ -376,9 +361,7 @@ function PostContent({
     <>
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {author.displayName}
@@ -438,7 +421,7 @@ function CommentItem({
   workId: string;
 }) {
   const queryClient = useQueryClient();
-  const { accessToken, user } = useAuthStore();
+  const { user } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
   const [editMessage, setEditMessage] = useState<string | null>(null);
@@ -446,17 +429,14 @@ function CommentItem({
 
   const updateMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для редактирования нужно войти в аккаунт");
-      }
-
-      return updateComment(comment.id, editDraft.trim(), accessToken);
+      requireUser(user, "редактирования");
+      return updateComment(comment.id, editDraft.trim());
     },
     onSuccess: async () => {
       setIsEditing(false);
       setEditMessage(null);
       await queryClient.invalidateQueries({
-        queryKey: ["review", reviewId, "comments"],
+        queryKey: qk.reviews.comments(reviewId),
       });
     },
     onError: (error) => {
@@ -470,19 +450,16 @@ function CommentItem({
 
   const deleteMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для удаления нужно войти в аккаунт");
-      }
-
-      return deleteComment(comment.id, accessToken);
+      requireUser(user, "удаления");
+      return deleteComment(comment.id);
     },
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", reviewId, "comments"],
+          queryKey: qk.reviews.comments(reviewId),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },
@@ -511,9 +488,7 @@ function CommentItem({
     <article className="py-3 first:pt-0 last:pb-0">
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {comment.author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={comment.author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {comment.author.displayName}
@@ -532,8 +507,7 @@ function CommentItem({
 
       {isEditing ? (
         <form className="mt-3 space-y-2" onSubmit={handleEditSubmit}>
-          <textarea
-            className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+          <Textarea
             disabled={updateMutation.isPending}
             maxLength={2000}
             onChange={(event) => setEditDraft(event.target.value)}
@@ -544,8 +518,8 @@ function CommentItem({
             <p className="text-sm text-muted-foreground">{editMessage}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+            <Button
+              size="sm"
               disabled={
                 updateMutation.isPending || editDraft.trim().length === 0
               }
@@ -553,38 +527,42 @@ function CommentItem({
             >
               <Send className="size-3.5" />
               Сохранить
-            </button>
-            <button
-              className="inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={updateMutation.isPending}
               onClick={cancelEdit}
               type="button"
             >
               Отменить
-            </button>
-            <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-60"
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
               disabled={deleteMutation.isPending}
               onClick={() => deleteMutation.mutate()}
               type="button"
             >
               <Trash2 className="size-3.5" />
               Удалить
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
         <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
           {comment.body}
           {isOwnComment ? (
-            <button
-              className="ml-1.5 inline-grid size-5 shrink-0 translate-y-[1px] place-items-center rounded border text-muted-foreground transition hover:border-primary hover:text-primary"
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="ml-1.5 translate-y-[1px]"
               onClick={() => setIsEditing(true)}
               type="button"
             >
               <Pencil className="size-3" />
               <span className="sr-only">Редактировать</span>
-            </button>
+            </Button>
           ) : null}
         </p>
       )}
@@ -611,8 +589,7 @@ function CommentForm({
 }) {
   return (
     <form className="space-y-2" onSubmit={onSubmit}>
-      <textarea
-        className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+      <Textarea
         disabled={isDisabled}
         maxLength={2000}
         onChange={(event) => onDraftChange(event.target.value)}
@@ -628,27 +605,26 @@ function CommentForm({
           Войдите в аккаунт, чтобы участвовать в обсуждении.
         </p>
       ) : null}
-      <button
-        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+      <Button
         disabled={isPending || commentDraft.trim().length === 0}
         type="submit"
       >
         <Send className="size-4" />
         Отправить
-      </button>
+      </Button>
     </form>
   );
 }
 
 function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
   const commentsQuery = useInfiniteQuery({
-    queryKey: ["review", review.id, "comments"],
+    queryKey: qk.reviews.comments(review.id),
     queryFn: ({ pageParam }) =>
       getReviewComments(review.id, pageParam, COMMENTS_PAGE_SIZE),
     enabled: isOpen,
@@ -666,11 +642,8 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
   const commentMutation = useMutation({
     mutationFn: () => {
-      if (!accessToken) {
-        throw new Error("Для комментария нужно войти в аккаунт");
-      }
-
-      return createReviewComment(review.id, commentDraft.trim(), accessToken);
+      requireUser(user, "комментария");
+      return createReviewComment(review.id, commentDraft.trim());
     },
     onSuccess: async () => {
       setCommentDraft("");
@@ -678,10 +651,10 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       setIsOpen(true);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", review.id, "comments"],
+          queryKey: qk.reviews.comments(review.id),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },
@@ -702,14 +675,14 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
   return (
     <section className="mt-4">
-      <button
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary"
+      <Button
+        variant="outline"
         onClick={() => setIsOpen((value) => !value)}
         type="button"
       >
         {isOpen ? "Скрыть" : "Комментарии"}
         <span className="text-muted-foreground">({review.commentsCount})</span>
-      </button>
+      </Button>
 
       {isOpen ? (
         <div className="mt-3 space-y-3 pl-8">
@@ -717,13 +690,13 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             <CommentForm
               commentDraft={commentDraft}
               commentMessage={commentMessage}
-              isDisabled={!isHydrated || !user || commentMutation.isPending}
+              isDisabled={isLoading || !user || commentMutation.isPending}
               isPending={
                 !user ||
                 commentMutation.isPending ||
                 commentDraft.trim().length === 0
               }
-              isUserMissing={!user && isHydrated}
+              isUserMissing={!user && !isLoading}
               onDraftChange={setCommentDraft}
               onSubmit={handleCommentSubmit}
             />
@@ -755,8 +728,8 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             />
           ) : null}
           {commentsQuery.hasNextPage ? (
-            <button
-              className="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            <Button
+              variant="outline"
               disabled={commentsQuery.isFetchingNextPage}
               onClick={() => commentsQuery.fetchNextPage()}
               type="button"
@@ -764,24 +737,10 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
               {commentsQuery.isFetchingNextPage
                 ? "Загружаем..."
                 : "Загрузить еще"}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
     </section>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

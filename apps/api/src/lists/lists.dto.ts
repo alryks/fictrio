@@ -1,90 +1,58 @@
-import { z } from 'zod';
+import {
+  addListItemInputSchema,
+  createListInputSchema,
+  getListQuerySchema,
+  getListsQuerySchema,
+  reorderListItemsInputSchema,
+  updateListInputSchema,
+  type AddListItemInput,
+  type CreateListInput,
+  type GetListQuery,
+  type GetListsQuery,
+  type ListVisibility,
+  type ReorderListItemsInput,
+  type UpdateListInput,
+} from '@fictrio/contracts';
 
-const listTitleSchema = z
-  .string()
-  .trim()
-  .min(1, 'Название списка обязательно')
-  .max(255, 'Название списка должно содержать не более 255 символов');
-
-const listDescriptionSchema = z
-  .string()
-  .trim()
-  .max(2000, 'Описание списка должно содержать не более 2000 символов')
-  .nullable()
-  .optional();
-
-export class GetListsQueryDto {
-  static readonly schema = z.object({
-    limit: z.coerce.number().int().min(1).max(50).default(12),
-    offset: z.coerce.number().int().min(0).default(0),
-    itemsLimit: z.coerce.number().int().min(0).max(20).default(6),
-  });
+export class GetListsQueryDto implements GetListsQuery {
+  static readonly schema = getListsQuerySchema;
 
   limit!: number;
   offset!: number;
   itemsLimit!: number;
 }
 
-export class GetListQueryDto {
-  static readonly schema = z.object({
-    itemsLimit: z.coerce.number().int().min(1).max(50).default(12),
-    itemsOffset: z.coerce.number().int().min(0).default(0),
-  });
+export class GetListQueryDto implements GetListQuery {
+  static readonly schema = getListQuerySchema;
 
   itemsLimit!: number;
   itemsOffset!: number;
 }
 
-export class CreateListDto {
-  static readonly schema = z.object({
-    title: listTitleSchema,
-    description: listDescriptionSchema,
-    visibility: z.enum(['public', 'friends', 'private']).default('public'),
-  });
+export class CreateListDto implements CreateListInput {
+  static readonly schema = createListInputSchema;
 
   title!: string;
   description?: string | null;
-  visibility!: 'public' | 'friends' | 'private';
+  visibility!: ListVisibility;
 }
 
-export class UpdateListDto {
-  static readonly schema = z
-    .object({
-      title: listTitleSchema.optional(),
-      description: listDescriptionSchema,
-    })
-    .refine(
-      (value) => value.title !== undefined || value.description !== undefined,
-      {
-        message: 'Передайте название или описание списка',
-      },
-    );
+export class UpdateListDto implements UpdateListInput {
+  static readonly schema = updateListInputSchema;
 
   title?: string;
   description?: string | null;
 }
 
-export class AddListItemDto {
-  static readonly schema = z.object({
-    workId: z.string().uuid('Некорректный идентификатор произведения'),
-    position: z.coerce.number().int().min(0).optional(),
-  });
+export class AddListItemDto implements AddListItemInput {
+  static readonly schema = addListItemInputSchema;
 
   workId!: string;
   position?: number;
 }
 
-export class ReorderListItemsDto {
-  static readonly schema = z.object({
-    items: z
-      .array(
-        z.object({
-          workId: z.string().uuid('Некорректный идентификатор произведения'),
-          position: z.coerce.number().int().min(0),
-        }),
-      )
-      .min(1, 'Передайте хотя бы один элемент списка'),
-  });
+export class ReorderListItemsDto implements ReorderListItemsInput {
+  static readonly schema = reorderListItemsInputSchema;
 
   items!: Array<{ workId: string; position: number }>;
 }

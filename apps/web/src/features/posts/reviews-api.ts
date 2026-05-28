@@ -1,46 +1,17 @@
+import type {
+  DeletedResponse,
+  PublicUserRef,
+  Review,
+  ReviewComment,
+  ReviewCommentsPage,
+  ReviewsPage,
+} from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type ReviewAuthor = {
-  id: string;
-  username: string;
-  displayName: string;
-};
-
-export type Review = {
-  id: string;
-  kind: "review" | "rating";
-  body: string | null;
-  isHidden: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: ReviewAuthor;
-  rating: number | null;
-  commentsCount: number;
-};
-
-export type ReviewComment = {
-  id: string;
-  body: string;
-  isHidden: boolean;
-  createdAt: string;
-  updatedAt: string;
-  author: ReviewAuthor;
-  rating: number | null;
-};
-
-export type ReviewsResponse = {
-  items: Review[];
-  total: number;
-  limit: number;
-  offset: number;
-};
-
-export type ReviewCommentsResponse = {
-  items: ReviewComment[];
-  total: number;
-  limit: number;
-  offset: number;
-};
+export type ReviewAuthor = PublicUserRef;
+export type { Review, ReviewComment };
+export type ReviewsResponse = ReviewsPage;
+export type ReviewCommentsResponse = ReviewCommentsPage;
 
 export function getWorkReviews(workId: string, offset = 0, limit = 10) {
   return apiRequest<ReviewsResponse>(
@@ -48,26 +19,23 @@ export function getWorkReviews(workId: string, offset = 0, limit = 10) {
   );
 }
 
-export function createWorkReview(workId: string, body: string, token: string) {
+export function createWorkReview(workId: string, body: string) {
   return apiRequest<Review>(`/works/${workId}/reviews`, {
     method: "POST",
-    token,
     body: JSON.stringify({ body }),
   });
 }
 
-export function updateReview(reviewId: string, body: string, token: string) {
+export function updateReview(reviewId: string, body: string) {
   return apiRequest<Review>(`/reviews/${reviewId}`, {
     method: "PATCH",
-    token,
     body: JSON.stringify({ body }),
   });
 }
 
-export function deleteReview(reviewId: string, token: string) {
-  return apiRequest<{ deleted: true }>(`/reviews/${reviewId}`, {
+export function deleteReview(reviewId: string) {
+  return apiRequest<DeletedResponse>(`/reviews/${reviewId}`, {
     method: "DELETE",
-    token,
   });
 }
 
@@ -77,29 +45,22 @@ export function getReviewComments(reviewId: string, offset = 0, limit = 5) {
   );
 }
 
-export function createReviewComment(
-  reviewId: string,
-  body: string,
-  token: string,
-) {
+export function createReviewComment(reviewId: string, body: string) {
   return apiRequest<ReviewComment>(`/reviews/${reviewId}/comments`, {
     method: "POST",
-    token,
     body: JSON.stringify({ body }),
   });
 }
 
-export function updateComment(commentId: string, body: string, token: string) {
+export function updateComment(commentId: string, body: string) {
   return apiRequest<ReviewComment>(`/comments/${commentId}`, {
     method: "PATCH",
-    token,
     body: JSON.stringify({ body }),
   });
 }
 
-export function deleteComment(commentId: string, token: string) {
-  return apiRequest<{ deleted: true }>(`/comments/${commentId}`, {
+export function deleteComment(commentId: string) {
+  return apiRequest<DeletedResponse>(`/comments/${commentId}`, {
     method: "DELETE",
-    token,
   });
 }

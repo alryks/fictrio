@@ -1,51 +1,56 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ListPlus } from "lucide-react";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { FormField } from "@/components/form-field";
+import { qk } from "@/lib/query-keys";
+import { useSession } from "@/features/auth/use-session";
 import { addWorkToList, createList, getMyLists } from "./lists-api";
 
 type AddToListPanelProps = {
   workId: string;
 };
 
+function requireUser(user: unknown, action: string): asserts user {
+  if (!user) {
+    throw new Error(`Для ${action} нужно войти в аккаунт`);
+  }
+}
+
 export function AddToListPanel({ workId }: AddToListPanelProps) {
   const queryClient = useQueryClient();
-  const { accessToken, user, isHydrated, hydrate } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [selectedListId, setSelectedListId] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
   const myListsQuery = useQuery({
-    queryKey: ["lists", "mine"],
-    queryFn: () => {
-      if (!accessToken) {
-        throw new Error("Для работы со списками нужно войти в аккаунт");
-      }
-
-      return getMyLists(accessToken);
-    },
-    enabled: Boolean(accessToken),
+    queryKey: qk.lists.mine,
+    queryFn: getMyLists,
+    enabled: Boolean(user),
   });
 
   const addMutation = useMutation({
     mutationFn: (listId: string) => {
-      if (!accessToken) {
-        throw new Error("Для добавления в список нужно войти в аккаунт");
-      }
-
-      return addWorkToList(listId, workId, accessToken);
+      requireUser(user, "добавления в список");
+      return addWorkToList(listId, workId);
     },
     onSuccess: async () => {
       setMessage("Произведение добавлено в список");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
-        queryClient.invalidateQueries({ queryKey: ["lists", "mine"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {
@@ -59,27 +64,20 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
 
   const createAndAddMutation = useMutation({
     mutationFn: async () => {
-      if (!accessToken) {
-        throw new Error("Для создания списка нужно войти в аккаунт");
-      }
-
-      const list = await createList(
-        {
-          title: title.trim(),
-          visibility: "public",
-        },
-        accessToken,
-      );
-
-      return addWorkToList(list.id, workId, accessToken);
+      requireUser(user, "создания списка");
+      const list = await createList({
+        title: title.trim(),
+        visibility: "public",
+      });
+      return addWorkToList(list.id, workId);
     },
     onSuccess: async (list) => {
       setTitle("");
       setSelectedListId(list.id);
       setMessage("Список создан, произведение добавлено");
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
-        queryClient.invalidateQueries({ queryKey: ["lists", "mine"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.mine }),
       ]);
     },
     onError: (error) => {
@@ -105,7 +103,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
   }
 
   return (
-    <section className="mt-6 rounded-md border bg-card p-4 shadow-sm">
+    <Card className="mt-6 p-4">
       <div className="flex items-center gap-3">
         <ListPlus className="size-5 shrink-0 text-primary" />
         <div>
@@ -116,7 +114,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
         </div>
       </div>
 
-      {!user && isHydrated ? (
+      {!user && !isLoading ? (
         <p className="mt-4 text-sm text-muted-foreground">
           Войдите в аккаунт на главной странице, чтобы создавать списки.
         </p>
@@ -125,45 +123,51 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
       {user ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
           <form className="flex flex-col gap-3" onSubmit={handleAddSubmit}>
-            <label className="block">
-              <span className="text-sm font-medium">Ваш список</span>
-              <select
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                disabled={myListsQuery.isLoading || addMutation.isPending}
-                onChange={(event) => setSelectedListId(event.target.value)}
-                value={selectedListId}
-              >
-                <option value="">Выберите список</option>
-                {myListsQuery.data?.items.map((list) => (
-                  <option key={list.id} value={list.id}>
-                    {list.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            <FormField label="Ваш список">
+              {(field) => (
+                <Select
+                  value={selectedListId}
+                  onValueChange={setSelectedListId}
+                  disabled={myListsQuery.isLoading || addMutation.isPending}
+                >
+                  <SelectTrigger id={field.id}>
+                    <SelectValue placeholder="Выберите список" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {myListsQuery.data?.items.map((list) => (
+                      <SelectItem key={list.id} value={list.id}>
+                        {list.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </FormField>
+            <Button
+              variant="outline"
+              className="h-10"
               disabled={!selectedListId || addMutation.isPending}
               type="submit"
             >
               <ListPlus className="size-4" />
               Добавить
-            </button>
+            </Button>
           </form>
 
           <form className="flex flex-col gap-3" onSubmit={handleCreateSubmit}>
-            <label className="block">
-              <span className="text-sm font-medium">Новый список</span>
-              <input
-                className="mt-1 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-                maxLength={255}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Например, Лучшее на выходные"
-                value={title}
-              />
-            </label>
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+            <FormField label="Новый список">
+              {(field) => (
+                <Input
+                  {...field}
+                  maxLength={255}
+                  onChange={(event) => setTitle(event.target.value)}
+                  placeholder="Например, Лучшее на выходные"
+                  value={title}
+                />
+              )}
+            </FormField>
+            <Button
+              className="h-10"
               disabled={
                 title.trim().length === 0 || createAndAddMutation.isPending
               }
@@ -171,7 +175,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
             >
               <ListPlus className="size-4" />
               Создать и добавить
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}
@@ -179,6 +183,6 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
       {message ? (
         <p className="mt-3 text-sm text-muted-foreground">{message}</p>
       ) : null}
-    </section>
+    </Card>
   );
 }
