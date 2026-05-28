@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { aggregateRateableRating } from '../common/rating-stats';
 import { UpsertRatingDto } from './ratings.dto';
 
 @Injectable()
@@ -36,7 +37,7 @@ export class RatingsService {
       },
     });
 
-    const stats = await this.getRateableRatingStats(work.rateableId);
+    const stats = await aggregateRateableRating(this.prisma, work.rateableId);
 
     return {
       id: rating.id,
@@ -74,33 +75,11 @@ export class RatingsService {
       }),
     ]);
 
-    const stats = await this.getRateableRatingStats(work.rateableId);
+    const stats = await aggregateRateableRating(this.prisma, work.rateableId);
 
     return {
       deleted: true,
       rating: stats,
-    };
-  }
-
-  private async getRateableRatingStats(rateableId: string) {
-    const aggregate = await this.prisma.rating.aggregate({
-      where: {
-        rateableId,
-      },
-      _avg: {
-        value: true,
-      },
-      _count: {
-        id: true,
-      },
-    });
-
-    return {
-      average:
-        aggregate._avg.value === null
-          ? null
-          : Number(aggregate._avg.value.toFixed(2)),
-      count: aggregate._count.id,
     };
   }
 }
