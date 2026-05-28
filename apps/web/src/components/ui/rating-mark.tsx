@@ -28,16 +28,21 @@ const radiusClassNames: Record<RatingMarkSize, string> = {
 
 const segmentColorClassNames = [
   {
-    idle: "bg-[var(--fictrio-soft)]/35",
-    active: "bg-[var(--fictrio-soft)]",
+    idle: "bg-[var(--fictrio-soft)]/35 group-hover/button:bg-[var(--fictrio-soft)]/45",
+    active:
+      "bg-[var(--fictrio-soft)] group-hover/button:bg-[color-mix(in_srgb,var(--fictrio-soft)_82%,black)]",
   },
   {
-    idle: "bg-[var(--fictrio-accent)]/35",
-    active: "bg-[var(--fictrio-accent)]",
+    idle:
+      "bg-[var(--fictrio-accent)]/35 group-hover/button:bg-[var(--fictrio-accent)]/45",
+    active:
+      "bg-[var(--fictrio-accent)] group-hover/button:bg-[color-mix(in_srgb,var(--fictrio-accent)_82%,black)]",
   },
   {
-    idle: "bg-[var(--fictrio-primary)]/35",
-    active: "bg-[var(--fictrio-primary)]",
+    idle:
+      "bg-[var(--fictrio-primary)]/35 group-hover/button:bg-[var(--fictrio-primary)]/45",
+    active:
+      "bg-[var(--fictrio-primary)] group-hover/button:bg-[color-mix(in_srgb,var(--fictrio-primary)_82%,black)]",
   },
 ];
 
@@ -64,7 +69,7 @@ export function RatingMark({
   const mark = (
     <span
       className={cn(
-        "grid grid-rows-3 overflow-hidden",
+        "grid grid-rows-3 overflow-hidden transition-colors",
         sizeClassNames[size],
         radiusClassNames[size],
         className,
@@ -78,13 +83,13 @@ export function RatingMark({
           <span
             key={segmentIndex}
             className={cn(
-              "relative overflow-hidden",
+              "relative overflow-hidden transition-colors",
               segmentColorClassNames[segmentIndex].idle,
             )}
           >
             <span
               className={cn(
-                "absolute inset-x-0 bottom-0",
+                "absolute inset-x-0 bottom-0 transition-colors",
                 segmentColorClassNames[segmentIndex].active,
               )}
               style={{ height: `${fill * 100}%` }}
