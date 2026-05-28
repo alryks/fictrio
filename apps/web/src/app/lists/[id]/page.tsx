@@ -10,7 +10,7 @@ import {
 import { ArrowDown, ArrowUp, Pencil, Save, Trash2, X } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
 import { StateCard } from "@/components/state-card";
-import { UserBadge } from "@/components/user-badge";
+import { UserLink } from "@/components/user-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -43,9 +43,7 @@ export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { user, isLoading } = useSession();
-  const [ratingDraft, setRatingDraft] = useState<
-    number | null | undefined
-  >();
+  const [ratingDraft, setRatingDraft] = useState<number | null | undefined>();
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const [descriptionDraft, setDescriptionDraft] = useState("");
@@ -137,7 +135,9 @@ export default function ListDetailsPage() {
       return reorderListItems(params.id, nextItems);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) });
+      await queryClient.invalidateQueries({
+        queryKey: qk.lists.detail(params.id),
+      });
     },
   });
 
@@ -191,10 +191,18 @@ export default function ListDetailsPage() {
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {listQuery.isLoading ? (
-          <StateCard as="h1" title="Загрузка списка" text="Получаем подборку из API." />
+          <StateCard
+            as="h1"
+            title="Загрузка списка"
+            text="Получаем подборку из API."
+          />
         ) : null}
         {listQuery.isError ? (
-          <StateCard as="h1" title="Список недоступен" text={listQuery.error.message} />
+          <StateCard
+            as="h1"
+            title="Список недоступен"
+            text={listQuery.error.message}
+          />
         ) : null}
 
         {list ? (
@@ -203,17 +211,10 @@ export default function ListDetailsPage() {
               <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="min-w-0">
                   <header className="min-w-0">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <UserBadge name={list.owner.username} />
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold">
-                          {list.owner.displayName}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                          @{list.owner.username} · {formatDate(list.createdAt)}
-                        </p>
-                      </div>
-                    </div>
+                    <UserLink
+                      user={list.owner}
+                      meta={formatDate(list.createdAt)}
+                    />
 
                     {isEditingDetails ? (
                       <form
