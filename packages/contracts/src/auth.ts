@@ -49,9 +49,18 @@ export const publicUserSchema = z.object({
 });
 export type PublicUser = z.infer<typeof publicUserSchema>;
 
+/**
+ * Response returned from /auth/login and /auth/register. The JWT itself
+ * is delivered to the browser as an HttpOnly cookie set by the server,
+ * and the body only mirrors the public user profile so the UI can
+ * populate its session state.
+ */
 export const authResponseSchema = z.object({
-  accessToken: z.string(),
-  tokenType: z.literal('Bearer'),
   user: publicUserSchema,
 });
 export type AuthResponse = z.infer<typeof authResponseSchema>;
+
+export const csrfTokenResponseSchema = z.object({
+  csrfToken: z.string(),
+});
+export type CsrfTokenResponse = z.infer<typeof csrfTokenResponseSchema>;

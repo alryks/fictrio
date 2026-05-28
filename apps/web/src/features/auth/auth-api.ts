@@ -24,8 +24,10 @@ export function register(payload: RegisterPayload) {
   });
 }
 
-export function getMe(token: string) {
-  return apiRequest<AuthUser>("/auth/me", {
-    token,
-  });
+export function logout() {
+  return apiRequest<void>("/auth/logout", { method: "POST" });
+}
+
+export function getMe() {
+  return apiRequest<AuthUser>("/auth/me");
 }

@@ -1,15 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { LogIn, LogOut, UserRoundPlus } from "lucide-react";
-import { getMe, login, register } from "./auth-api";
+import { login, logout, register } from "./auth-api";
 import { useAuthStore } from "./auth-store";
 
 type AuthMode = "login" | "register";
 
 export function AuthPanel() {
-  const { accessToken, user, isHydrated, clearSession, hydrate, setSession } =
-    useAuthStore();
+  const { user, isHydrated, setUser } = useAuthStore();
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -17,20 +16,6 @@ export function AuthPanel() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
-
-  useEffect(() => {
-    if (!isHydrated || !accessToken) {
-      return;
-    }
-
-    void getMe(accessToken)
-      .then((profile) => setSession(accessToken, profile))
-      .catch(() => clearSession());
-  }, [accessToken, clearSession, isHydrated, setSession]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -48,7 +33,7 @@ export function AuthPanel() {
               displayName: displayName || undefined,
             });
 
-      setSession(response.accessToken, response.user);
+      setUser(response.user);
       setPassword("");
       setMessage(mode === "login" ? "Вы вошли в аккаунт" : "Аккаунт создан");
     } catch (error) {
@@ -56,6 +41,16 @@ export function AuthPanel() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      // Even if the server call fails we clear the local user so the UI
+      // reflects the user's intent.
+    }
+    setUser(null);
   }
 
   if (!isHydrated) {
@@ -92,7 +87,7 @@ export function AuthPanel() {
         </div>
         <button
           className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border text-sm font-medium transition hover:border-primary hover:text-primary"
-          onClick={clearSession}
+          onClick={handleLogout}
           type="button"
         >
           <LogOut className="size-4" />

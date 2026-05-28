@@ -7,12 +7,11 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AccessTokenPayload, AuthenticatedUser } from './auth.types';
+import { SESSION_COOKIE_NAME } from './cookies';
 import { getJwtSecret } from './jwt-config';
 
-type RequestWithHeaders = {
-  headers: {
-    authorization?: string;
-  };
+type RequestWithSession = {
+  cookies?: Record<string, string | undefined>;
   user?: AuthenticatedUser;
 };
 
@@ -24,8 +23,8 @@ export class JwtAuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest<RequestWithHeaders>();
-    const token = this.extractBearerToken(request.headers.authorization);
+    const request = context.switchToHttp().getRequest<RequestWithSession>();
+    const token = request.cookies?.[SESSION_COOKIE_NAME];
 
     if (!token) {
       throw new UnauthorizedException('Требуется авторизация');
@@ -49,14 +48,5 @@ export class JwtAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Требуется авторизация');
     }
-  }
-
-  private extractBearerToken(header: string | undefined): string | null {
-    if (!header) {
-      return null;
-    }
-
-    const [type, token] = header.split(' ');
-    return type === 'Bearer' && token ? token : null;
   }
 }
