@@ -194,31 +194,41 @@ export class ListsService {
     await this.assertOwnedList(listId, userId);
     await this.assertWorkExists(dto.workId);
 
-    const position = dto.position ?? (await this.getNextPosition(listId));
-
     try {
       await this.prisma.$transaction(async (tx) => {
+        // Serialize concurrent additions to the same list so the
+        // position computed below is still valid at insert time.
+        await tx.$executeRaw`
+          SELECT 1 FROM lists WHERE id = ${listId}::uuid FOR UPDATE
+        `;
+
+        const insertPosition =
+          dto.position ?? (await this.getNextPositionTx(tx, listId));
+
         if (dto.position !== undefined) {
-          await tx.listItem.updateMany({
-            where: {
-              listId,
-              position: {
-                gte: dto.position,
-              },
-            },
-            data: {
-              position: {
-                increment: 1,
-              },
-            },
-          });
+          // The (list_id, position) UNIQUE index is checked row-by-row
+          // so a direct `position = position + 1` would collide with the
+          // neighbouring row mid-statement. Stash affected positions in
+          // disjoint negatives, then restore as `position + 1`.
+          await tx.$executeRaw`
+            UPDATE list_items
+            SET position = -position - 1
+            WHERE list_id = ${listId}::uuid
+              AND position >= ${dto.position}::int
+          `;
+          await tx.$executeRaw`
+            UPDATE list_items
+            SET position = -position
+            WHERE list_id = ${listId}::uuid
+              AND position < 0
+          `;
         }
 
         await tx.listItem.create({
           data: {
             listId,
             workId: dto.workId,
-            position,
+            position: insertPosition,
           },
         });
       });
@@ -231,6 +241,17 @@ export class ListsService {
     }
 
     return this.findOne(listId, userId);
+  }
+
+  private async getNextPositionTx(
+    tx: Prisma.TransactionClient,
+    listId: string,
+  ) {
+    const aggregate = await tx.listItem.aggregate({
+      where: { listId },
+      _max: { position: true },
+    });
+    return (aggregate._max.position ?? -1) + 1;
   }
 
   async removeItem(listId: string, workId: string, userId: string) {
@@ -271,38 +292,39 @@ export class ListsService {
       throw new NotFoundException('Элемент списка не найден');
     }
 
-    await this.prisma.$transaction(async (tx) => {
-      await Promise.all(
-        dto.items.map((item, index) =>
-          tx.listItem.update({
-            where: {
-              listId_workId: {
-                listId,
-                workId: item.workId,
-              },
-            },
-            data: {
-              position: -(index + 1),
-            },
-          }),
-        ),
-      );
+    // The (list_id, position) UNIQUE index is checked row-by-row, so a
+    // direct UPDATE that swaps positions can violate uniqueness mid-statement.
+    // Stash everything in disjoint negative positions, then assign the final
+    // values in a second statement. Two bulk UPDATEs total instead of 2N.
+    const stashTuples = Prisma.join(
+      dto.items.map(
+        (item, index) =>
+          Prisma.sql`(${item.workId}::uuid, ${-(index + 1)}::int)`,
+      ),
+      ', ',
+    );
+    const finalTuples = Prisma.join(
+      dto.items.map(
+        (item) => Prisma.sql`(${item.workId}::uuid, ${item.position}::int)`,
+      ),
+      ', ',
+    );
 
-      await Promise.all(
-        dto.items.map((item) =>
-          tx.listItem.update({
-            where: {
-              listId_workId: {
-                listId,
-                workId: item.workId,
-              },
-            },
-            data: {
-              position: item.position,
-            },
-          }),
-        ),
-      );
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        UPDATE list_items AS li
+        SET position = data.new_position
+        FROM (VALUES ${stashTuples}) AS data(work_id, new_position)
+        WHERE li.list_id = ${listId}::uuid
+          AND li.work_id = data.work_id
+      `;
+      await tx.$executeRaw`
+        UPDATE list_items AS li
+        SET position = data.new_position
+        FROM (VALUES ${finalTuples}) AS data(work_id, new_position)
+        WHERE li.list_id = ${listId}::uuid
+          AND li.work_id = data.work_id
+      `;
     });
 
     return this.findOne(listId, userId);
@@ -312,49 +334,29 @@ export class ListsService {
     tx: Prisma.TransactionClient,
     listId: string,
   ) {
-    const items = await tx.listItem.findMany({
-      where: {
-        listId,
-      },
-      select: {
-        workId: true,
-      },
-      orderBy: {
-        position: 'asc',
-      },
-    });
-
-    await Promise.all(
-      items.map((item, index) =>
-        tx.listItem.update({
-          where: {
-            listId_workId: {
-              listId,
-              workId: item.workId,
-            },
-          },
-          data: {
-            position: -(index + 1),
-          },
-        }),
-      ),
-    );
-
-    await Promise.all(
-      items.map((item, index) =>
-        tx.listItem.update({
-          where: {
-            listId_workId: {
-              listId,
-              workId: item.workId,
-            },
-          },
-          data: {
-            position: index,
-          },
-        }),
-      ),
-    );
+    // Re-number positions from 0..N-1 in current order. Two bulk UPDATEs
+    // (stash to disjoint negatives, then assign finals) avoid the same
+    // mid-statement uniqueness violations as reorderItems.
+    await tx.$executeRaw`
+      WITH ordered AS (
+        SELECT
+          work_id,
+          ROW_NUMBER() OVER (ORDER BY position ASC) AS row_number
+        FROM list_items
+        WHERE list_id = ${listId}::uuid
+      )
+      UPDATE list_items AS li
+      SET position = -ordered.row_number::int
+      FROM ordered
+      WHERE li.list_id = ${listId}::uuid
+        AND li.work_id = ordered.work_id
+    `;
+    await tx.$executeRaw`
+      UPDATE list_items
+      SET position = (-position - 1)
+      WHERE list_id = ${listId}::uuid
+        AND position < 0
+    `;
   }
 
   async rateList(listId: string, userId: string, value: number) {
@@ -470,19 +472,6 @@ export class ListsService {
     if (!work) {
       throw new NotFoundException('Произведение не найдено');
     }
-  }
-
-  private async getNextPosition(listId: string) {
-    const aggregate = await this.prisma.listItem.aggregate({
-      where: {
-        listId,
-      },
-      _max: {
-        position: true,
-      },
-    });
-
-    return (aggregate._max.position ?? -1) + 1;
   }
 
   private async getRatingStats(rateableId: string) {
