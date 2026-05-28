@@ -7,13 +7,17 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { StateCard } from "@/components/state-card";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { UserLink } from "@/components/user-link";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
+import { requireUser } from "@/lib/require-user";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
@@ -36,12 +40,6 @@ import {
   updateReview,
 } from "./reviews-api";
 
-function requireUser(user: unknown, action: string): asserts user {
-  if (!user) {
-    throw new Error(`Для ${action} нужно войти в аккаунт`);
-  }
-}
-
 type WorkReviewsProps = {
   work: WorkDetails;
 };
@@ -54,7 +52,6 @@ export function WorkReviews({ work }: WorkReviewsProps) {
   const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<number | null | undefined>();
   const [reviewDraft, setReviewDraft] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   const activityQuery = useInfiniteQuery({
     queryKey: qk.works.reviews(work.id),
@@ -108,6 +105,11 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       setRatingDraft(response.value);
       await invalidateWorkQueries(queryClient, work.id);
     },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось сохранить оценку",
+      );
+    },
   });
 
   const deleteRatingMutation = useMutation({
@@ -120,6 +122,11 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       setReviewDraft("");
       await invalidateWorkQueries(queryClient, work.id);
     },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось удалить оценку",
+      );
+    },
   });
 
   const reviewMutation = useMutation({
@@ -130,13 +137,13 @@ export function WorkReviews({ work }: WorkReviewsProps) {
         : createWorkReview(work.id, reviewBody.trim());
     },
     onSuccess: async () => {
-      setMessage(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
+      toast.success(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
       await queryClient.invalidateQueries({
         queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
-      setMessage(
+      toast.error(
         error instanceof Error ? error.message : "Не удалось сохранить отзыв",
       );
     },
@@ -151,14 +158,14 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       return deleteReview(ownReview.id);
     },
     onSuccess: async () => {
-      setMessage("Отзыв удален");
+      toast.success("Отзыв удален");
       setReviewDraft("");
       await queryClient.invalidateQueries({
         queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
-      setMessage(
+      toast.error(
         error instanceof Error ? error.message : "Не удалось удалить отзыв",
       );
     },
@@ -166,12 +173,10 @@ export function WorkReviews({ work }: WorkReviewsProps) {
 
   function handleReviewSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage(null);
     reviewMutation.mutate();
   }
 
   function handleRatingClick() {
-    setMessage(null);
     ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
   }
 
@@ -219,9 +224,6 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               />
             )}
           </FormField>
-          {message ? (
-            <p className="text-sm text-muted-foreground">{message}</p>
-          ) : null}
           {!user && !isLoading ? (
             <p className="text-sm text-muted-foreground">
               Войдите в аккаунт на главной странице, чтобы оценивать и писать
@@ -268,21 +270,29 @@ export function WorkReviews({ work }: WorkReviewsProps) {
         </div>
 
         {activityQuery.isLoading ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Загружаем активность...
-          </p>
+          <div className="mt-4 space-y-3">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <Skeleton key={index} className="h-24 w-full" />
+            ))}
+          </div>
         ) : null}
 
         {activityQuery.isError ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            {activityQuery.error.message}
-          </p>
+          <StateCard
+            className="mt-4"
+            title="Не удалось загрузить отзывы"
+            text={activityQuery.error.message}
+          />
         ) : null}
 
-        {activityItems.length === 0 && !activityQuery.isLoading ? (
-          <p className="mt-4 text-sm text-muted-foreground">
-            Оценок и отзывов пока нет. Станьте первым, кто начнет обсуждение.
-          </p>
+        {activityItems.length === 0 &&
+        !activityQuery.isLoading &&
+        !activityQuery.isError ? (
+          <StateCard
+            className="mt-4"
+            title="Пока нет отзывов и оценок"
+            text="Станьте первым, кто начнет обсуждение."
+          />
         ) : null}
 
         <div className="mt-4 space-y-3">
@@ -296,7 +306,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
         </div>
         <div ref={loadMoreRef} className="h-px" />
         {activityQuery.isFetchingNextPage ? (
-          <p className="mt-4 text-sm text-muted-foreground">Загружаем еще...</p>
+          <Skeleton className="mt-4 h-24 w-full" />
         ) : null}
       </div>
     </section>
@@ -414,7 +424,6 @@ function CommentItem({
   const { user } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
-  const [editMessage, setEditMessage] = useState<string | null>(null);
   const isOwnComment = user?.id === comment.author.id;
 
   const updateMutation = useMutation({
@@ -424,13 +433,13 @@ function CommentItem({
     },
     onSuccess: async () => {
       setIsEditing(false);
-      setEditMessage(null);
+      toast.success("Комментарий обновлен");
       await queryClient.invalidateQueries({
         queryKey: qk.reviews.comments(reviewId),
       });
     },
     onError: (error) => {
-      setEditMessage(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Не удалось обновить комментарий",
@@ -444,6 +453,7 @@ function CommentItem({
       return deleteComment(comment.id);
     },
     onSuccess: async () => {
+      toast.success("Комментарий удален");
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: qk.reviews.comments(reviewId),
@@ -454,7 +464,7 @@ function CommentItem({
       ]);
     },
     onError: (error) => {
-      setEditMessage(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Не удалось удалить комментарий",
@@ -464,14 +474,12 @@ function CommentItem({
 
   function handleEditSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setEditMessage(null);
     updateMutation.mutate();
   }
 
   function cancelEdit() {
     setIsEditing(false);
     setEditDraft(comment.body);
-    setEditMessage(null);
   }
 
   return (
@@ -494,9 +502,6 @@ function CommentItem({
             required
             value={editDraft}
           />
-          {editMessage ? (
-            <p className="text-sm text-muted-foreground">{editMessage}</p>
-          ) : null}
           <div className="flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -552,7 +557,6 @@ function CommentItem({
 
 function CommentForm({
   commentDraft,
-  commentMessage,
   isDisabled,
   isPending,
   isUserMissing,
@@ -560,7 +564,6 @@ function CommentForm({
   onSubmit,
 }: {
   commentDraft: string;
-  commentMessage: string | null;
   isDisabled: boolean;
   isPending: boolean;
   isUserMissing: boolean;
@@ -577,9 +580,6 @@ function CommentForm({
         required
         value={commentDraft}
       />
-      {commentMessage ? (
-        <p className="text-sm text-muted-foreground">{commentMessage}</p>
-      ) : null}
       {isUserMissing ? (
         <p className="text-sm text-muted-foreground">
           Войдите в аккаунт, чтобы участвовать в обсуждении.
@@ -601,7 +601,6 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const { user, isLoading } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
-  const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
   const commentsQuery = useInfiniteQuery({
     queryKey: qk.reviews.comments(review.id),
@@ -627,7 +626,6 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
     },
     onSuccess: async () => {
       setCommentDraft("");
-      setCommentMessage(null);
       setIsOpen(true);
       await Promise.all([
         queryClient.invalidateQueries({
@@ -639,7 +637,7 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       ]);
     },
     onError: (error) => {
-      setCommentMessage(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Не удалось опубликовать комментарий",
@@ -649,7 +647,6 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
   function handleCommentSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setCommentMessage(null);
     commentMutation.mutate();
   }
 
@@ -669,7 +666,6 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
           <div className="border-b pb-3">
             <CommentForm
               commentDraft={commentDraft}
-              commentMessage={commentMessage}
               isDisabled={isLoading || !user || commentMutation.isPending}
               isPending={
                 !user ||
@@ -683,21 +679,24 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
           </div>
 
           {commentsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Загружаем комментарии...
-            </p>
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-14 w-full" />
+              ))}
+            </div>
           ) : null}
 
           {commentsQuery.isError ? (
-            <p className="text-sm text-muted-foreground">
-              {commentsQuery.error.message}
-            </p>
+            <StateCard
+              title="Не удалось загрузить комментарии"
+              text={commentsQuery.error.message}
+            />
           ) : null}
 
-          {comments.length === 0 && !commentsQuery.isLoading ? (
-            <p className="text-sm text-muted-foreground">
-              Пока нет комментариев.
-            </p>
+          {comments.length === 0 &&
+          !commentsQuery.isLoading &&
+          !commentsQuery.isError ? (
+            <StateCard title="Пока нет комментариев" />
           ) : null}
 
           {comments.length ? (

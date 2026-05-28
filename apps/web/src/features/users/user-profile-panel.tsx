@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Save, ShieldCheck, X } from "lucide-react";
+import { toast } from "sonner";
 import type { PublicUserProfile, SelfUser } from "@fictrio/contracts";
 import { FormField } from "@/components/form-field";
 import { UserBadge } from "@/components/user-badge";
@@ -40,7 +41,6 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio ?? "");
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [message, setMessage] = useState<string | null>(null);
 
   const updateMutation = useMutation({
     mutationFn: () =>
@@ -72,7 +72,7 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
 
       setIsEditing(false);
       setFieldErrors({});
-      setMessage(null);
+      toast.success("Профиль обновлен");
 
       if (
         profile.username !== updated.username &&
@@ -88,11 +88,10 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
             error.issues.map((issue) => [issue.path, issue.message]),
           ),
         );
-        setMessage(null);
         return;
       }
 
-      setMessage(
+      toast.error(
         error instanceof Error ? error.message : "Не удалось обновить профиль",
       );
     },
@@ -101,7 +100,6 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFieldErrors({});
-    setMessage(null);
     updateMutation.mutate();
   }
 
@@ -111,7 +109,6 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
     setBio(profile.bio ?? "");
     setIsEditing(false);
     setFieldErrors({});
-    setMessage(null);
   }
 
   function startEditing() {
@@ -197,9 +194,6 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
                 />
               )}
             </FormField>
-            {message ? (
-              <p className="text-sm text-muted-foreground">{message}</p>
-            ) : null}
             <div className="flex flex-wrap gap-2">
               <Button disabled={updateMutation.isPending} type="submit">
                 <Save data-icon="inline-start" />
