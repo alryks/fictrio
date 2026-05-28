@@ -44,59 +44,59 @@ export class PostsController {
     return this.postsService.createWorkReview(workId, user.id, dto);
   }
 
-  @Patch('reviews/:postId')
+  @Patch('reviews/:reviewId')
   @UseGuards(JwtAuthGuard)
   updateReview(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateReviewDto,
   ) {
-    return this.postsService.updateReview(postId, user.id, dto);
+    return this.postsService.updateReview(reviewId, user.id, dto);
   }
 
-  @Delete('reviews/:postId')
+  @Delete('reviews/:reviewId')
   @UseGuards(JwtAuthGuard)
   deleteReview(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.postsService.deleteReview(postId, user.id);
+    return this.postsService.deleteReview(reviewId, user.id);
   }
 
-  @Get('reviews/:postId/comments')
+  @Get('reviews/:reviewId/comments')
   getReviewComments(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
     @Query() query: GetPostsPageQueryDto,
   ) {
-    return this.postsService.getReviewComments(postId, query);
+    return this.postsService.getReviewComments(reviewId, query);
   }
 
-  @Post('reviews/:postId/comments')
+  @Post('reviews/:reviewId/comments')
   @UseGuards(JwtAuthGuard)
   createReviewComment(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('reviewId', ParseUUIDPipe) reviewId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateCommentDto,
   ) {
-    return this.postsService.createReviewComment(postId, user.id, dto);
+    return this.postsService.createReviewComment(reviewId, user.id, dto);
   }
 
-  @Patch('comments/:postId')
+  @Patch('comments/:commentId')
   @UseGuards(JwtAuthGuard)
   updateComment(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('commentId', ParseUUIDPipe) commentId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateCommentDto,
   ) {
-    return this.postsService.updateComment(postId, user.id, dto);
+    return this.postsService.updateComment(commentId, user.id, dto);
   }
 
-  @Delete('comments/:postId')
+  @Delete('comments/:commentId')
   @UseGuards(JwtAuthGuard)
   deleteComment(
-    @Param('postId', ParseUUIDPipe) postId: string,
+    @Param('commentId', ParseUUIDPipe) commentId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.postsService.deleteComment(postId, user.id);
+    return this.postsService.deleteComment(commentId, user.id);
   }
 }
