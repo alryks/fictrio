@@ -31,7 +31,7 @@ export function RatingControl({
       <div className="flex items-center gap-2">
         <Button
           aria-label="Изменить оценку"
-          className="size-10 hover:bg-muted/60"
+          className="size-10 border-0 hover:bg-transparent"
           disabled={disabled}
           onClick={onChange}
           size="icon"
