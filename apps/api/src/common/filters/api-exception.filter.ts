@@ -34,7 +34,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     response.status(statusCode).send({
       statusCode,
       error: this.getError(body, exception, statusCode),
-      message: this.getMessage(body, exception),
+      message: this.getMessage(body, exception, statusCode),
       details: body?.issues,
       path: request.url,
       timestamp: new Date().toISOString(),
@@ -86,9 +86,16 @@ export class ApiExceptionFilter implements ExceptionFilter {
   private getMessage(
     body: ErrorResponseBody | null,
     exception: unknown,
+    statusCode: number,
   ): unknown {
     if (body?.message) {
       return body.message;
+    }
+
+    // Never surface a raw internal error message (Prisma details, stack
+    // hints, etc.) to the client on a 500.
+    if (statusCode === 500) {
+      return 'Внутренняя ошибка сервера';
     }
 
     if (exception instanceof Error) {
