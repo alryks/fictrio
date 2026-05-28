@@ -19,6 +19,27 @@ export const ratingStatsSchema = z.object({
 });
 export type RatingStats = z.infer<typeof ratingStatsSchema>;
 
+/**
+ * Per-field validation issue surfaced in the `details` array of an API
+ * error response. `path` is the dotted DTO field path; `message` is the
+ * localized Zod message.
+ */
+export const fieldIssueSchema = z.object({
+  path: z.string(),
+  message: z.string(),
+});
+export type FieldIssue = z.infer<typeof fieldIssueSchema>;
+
+export const apiErrorBodySchema = z.object({
+  statusCode: z.number().optional(),
+  error: z.string().optional(),
+  message: z.unknown().optional(),
+  details: z.array(fieldIssueSchema).optional(),
+  path: z.string().optional(),
+  timestamp: z.string().optional(),
+});
+export type ApiErrorBody = z.infer<typeof apiErrorBodySchema>;
+
 export const isoDateTimeSchema = z.iso.datetime({ offset: true });
 
 export function paginationSchema(defaults: {

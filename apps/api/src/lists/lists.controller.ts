@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { UpsertRatingDto } from '../ratings/ratings.dto';
 import {
@@ -34,18 +35,14 @@ export class ListsController {
     return this.listsService.findPublic(query);
   }
 
-  @Get('mine')
-  @UseGuards(JwtAuthGuard)
-  findMine(@CurrentUser() user: AuthenticatedUser) {
-    return this.listsService.findMine(user.id);
-  }
-
   @Get(':listId')
+  @UseGuards(OptionalJwtAuthGuard)
   findOne(
     @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: AuthenticatedUser | undefined,
     @Query() query: GetListQueryDto,
   ) {
-    return this.listsService.findOne(listId, undefined, query);
+    return this.listsService.findOne(listId, user?.id, query);
   }
 
   @Post()
