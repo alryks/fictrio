@@ -359,12 +359,13 @@ function getSelectedKinds(searchParams: URLSearchParams): CatalogWorkKind[] {
     .filter((kind): kind is CatalogWorkKind => kind in kindLabels);
 }
 
-function getSortBy(searchParams: URLSearchParams) {
-  const sortBy = searchParams.get("sortBy");
+type SortByValue = (typeof sortOptions)[number]["value"];
 
-  return sortOptions.some((option) => option.value === sortBy)
-    ? (sortBy as (typeof sortOptions)[number]["value"])
-    : "averageRating";
+function getSortBy(searchParams: URLSearchParams): SortByValue {
+  const sortBy = searchParams.get("sortBy");
+  const match = sortOptions.find((option) => option.value === sortBy);
+
+  return match?.value ?? "averageRating";
 }
 
 function getSortOrder(searchParams: URLSearchParams) {
