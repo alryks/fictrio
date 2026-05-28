@@ -4,7 +4,7 @@ import Link from "next/link";
 import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { cn } from "@/lib/utils";
 
-type NavKey = "feed" | "catalog" | "lists" | "profile";
+type NavKey = "feed" | "catalog" | "lists";
 
 type NavItem = {
   key: NavKey;

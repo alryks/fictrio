@@ -13,7 +13,7 @@ export default function ProfilePage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <SiteHeader active="profile" />
+      <SiteHeader />
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {isLoading ? <Skeleton className="h-56 w-full" /> : null}

@@ -29,9 +29,8 @@ export function Providers({ children }: { children: ReactNode }) {
 
 /**
  * Side effects that run once on app mount: ensure the CSRF cookie exists so
- * the first mutation succeeds, and drop the legacy localStorage entry from
- * the pre-cookie auth implementation. The session user itself is fetched
- * lazily by useSession() where it is needed.
+ * the first mutation succeeds. The session user itself is fetched lazily by
+ * useSession() where it is needed.
  */
 function SessionBootstrap() {
   useEffect(() => {
@@ -39,10 +38,6 @@ function SessionBootstrap() {
       // Best-effort; mutations will surface a clear error if the CSRF
       // cookie is still missing.
     });
-
-    if (typeof window !== "undefined") {
-      window.localStorage.removeItem("fictrio.auth");
-    }
   }, []);
 
   return null;
