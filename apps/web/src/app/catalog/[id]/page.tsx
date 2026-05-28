@@ -1,10 +1,10 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft } from "lucide-react";
+import { SiteHeader } from "@/components/layout/site-header";
+import { StateCard } from "@/components/state-card";
+import { formatDate } from "@/lib/format";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
@@ -28,38 +28,20 @@ export default function WorkDetailsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
-            <Image
-              src="/logo.svg"
-              alt="Fictrio"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="text-xl font-semibold text-primary">Fictrio</span>
-          </Link>
-          <Link
-            className="ml-auto inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"
-            href="/catalog"
-          >
-            <ArrowLeft className="size-4" />
-            Каталог
-          </Link>
-        </div>
-      </header>
+      <SiteHeader back={{ href: "/catalog", label: "Каталог" }} />
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         {workQuery.isLoading ? (
-          <DetailsState
+          <StateCard
+            as="h1"
             title="Загрузка карточки"
             text="Получаем данные произведения из API."
           />
         ) : null}
 
         {workQuery.isError ? (
-          <DetailsState
+          <StateCard
+            as="h1"
             title="Карточка недоступна"
             text={workQuery.error.message}
           />
@@ -170,15 +152,6 @@ function Poster({ imageUrl }: { imageUrl: string | null }) {
   );
 }
 
-function DetailsState({ title, text }: { title: string; text: string }) {
-  return (
-    <section className="rounded-md border bg-card p-8 text-center shadow-sm">
-      <h1 className="font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{text}</p>
-    </section>
-  );
-}
-
 function getMetaLabel(key: string) {
   const labels: Record<string, string> = {
     runtimeMinutes: "Длительность",
@@ -207,18 +180,4 @@ function formatMetaValue(key: string, value: string | number) {
   }
 
   return String(value);
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

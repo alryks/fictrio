@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { UserBadge } from "@/components/user-badge";
+import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkCard } from "@/features/works/work-card";
-import { getWorksCountLabel } from "@/features/works/work-rail";
 import type { FictrioList } from "./lists-api";
 
 export function ListCard({ list }: { list: FictrioList }) {
@@ -17,9 +18,7 @@ export function ListCard({ list }: { list: FictrioList }) {
         <div className="min-w-0">
           <header className="min-w-0">
             <div className="flex min-w-0 items-center gap-3">
-              <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-                {list.owner.username.slice(0, 2).toUpperCase()}
-              </div>
+              <UserBadge name={list.owner.username} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold">
                   {list.owner.displayName}
@@ -101,18 +100,4 @@ export function ListCard({ list }: { list: FictrioList }) {
       </div>
     </article>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

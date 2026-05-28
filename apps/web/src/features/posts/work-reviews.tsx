@@ -8,6 +8,11 @@ import {
 } from "@tanstack/react-query";
 import { MessageCircle, PenLine, Pencil, Send, Trash2 } from "lucide-react";
 import { RatingMark } from "@/components/ui/rating-mark";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { UserBadge } from "@/components/user-badge";
+import { FormField } from "@/components/form-field";
+import { formatDate } from "@/lib/format";
 import { useAuthStore } from "@/features/auth/auth-store";
 import {
   deleteWorkRating,
@@ -217,18 +222,20 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             />
           </div>
 
-          <label className="block">
-            <span className="text-sm font-medium">Текст отзыва</span>
-            <textarea
-              className="mt-1 min-h-36 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
-              disabled={!isHydrated || !user || reviewMutation.isPending}
-              maxLength={5000}
-              onChange={(event) => setReviewDraft(event.target.value)}
-              placeholder="Что стоит обсудить после просмотра или чтения?"
-              required
-              value={reviewBody}
-            />
-          </label>
+          <FormField label="Текст отзыва">
+            {(field) => (
+              <Textarea
+                {...field}
+                className="min-h-36"
+                disabled={!isHydrated || !user || reviewMutation.isPending}
+                maxLength={5000}
+                onChange={(event) => setReviewDraft(event.target.value)}
+                placeholder="Что стоит обсудить после просмотра или чтения?"
+                required
+                value={reviewBody}
+              />
+            )}
+          </FormField>
           {message ? (
             <p className="text-sm text-muted-foreground">{message}</p>
           ) : null}
@@ -239,8 +246,8 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+            <Button
+              className="h-10"
               disabled={
                 !user ||
                 reviewMutation.isPending ||
@@ -254,17 +261,18 @@ export function WorkReviews({ work }: WorkReviewsProps) {
                 <Send className="size-4" />
               )}
               {ownReview ? "Обновить отзыв" : "Опубликовать отзыв"}
-            </button>
+            </Button>
             {ownReview ? (
-              <button
-                className="inline-flex h-10 items-center justify-center gap-2 rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+              <Button
+                variant="destructive"
+                className="h-10"
                 disabled={deleteReviewMutation.isPending}
                 onClick={() => deleteReviewMutation.mutate()}
                 type="button"
               >
                 <Trash2 className="size-4" />
                 Удалить отзыв
-              </button>
+              </Button>
             ) : null}
           </div>
         </form>
@@ -369,9 +377,7 @@ function PostContent({
     <>
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {author.displayName}
@@ -498,9 +504,7 @@ function CommentItem({
     <article className="py-3 first:pt-0 last:pb-0">
       <header className="flex h-10 items-start justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="grid size-10 shrink-0 place-items-center rounded-md bg-accent text-sm font-semibold text-accent-foreground">
-            {comment.author.username.slice(0, 2).toUpperCase()}
-          </div>
+          <UserBadge name={comment.author.username} />
           <div className="min-w-0">
             <h3 className="truncate text-sm font-semibold">
               {comment.author.displayName}
@@ -519,8 +523,7 @@ function CommentItem({
 
       {isEditing ? (
         <form className="mt-3 space-y-2" onSubmit={handleEditSubmit}>
-          <textarea
-            className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+          <Textarea
             disabled={updateMutation.isPending}
             maxLength={2000}
             onChange={(event) => setEditDraft(event.target.value)}
@@ -531,8 +534,8 @@ function CommentItem({
             <p className="text-sm text-muted-foreground">{editMessage}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+            <Button
+              size="sm"
               disabled={
                 updateMutation.isPending || editDraft.trim().length === 0
               }
@@ -540,38 +543,42 @@ function CommentItem({
             >
               <Send className="size-3.5" />
               Сохранить
-            </button>
-            <button
-              className="inline-flex h-8 items-center justify-center rounded-md border px-3 text-xs font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               disabled={updateMutation.isPending}
               onClick={cancelEdit}
               type="button"
             >
               Отменить
-            </button>
-            <button
-              className="inline-flex h-8 items-center justify-center gap-2 rounded-md border px-3 text-xs font-medium text-muted-foreground transition hover:border-destructive hover:text-destructive disabled:opacity-60"
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
               disabled={deleteMutation.isPending}
               onClick={() => deleteMutation.mutate()}
               type="button"
             >
               <Trash2 className="size-3.5" />
               Удалить
-            </button>
+            </Button>
           </div>
         </form>
       ) : (
         <p className="mt-3 whitespace-pre-wrap text-sm leading-6">
           {comment.body}
           {isOwnComment ? (
-            <button
-              className="ml-1.5 inline-grid size-5 shrink-0 translate-y-[1px] place-items-center rounded border text-muted-foreground transition hover:border-primary hover:text-primary"
+            <Button
+              variant="outline"
+              size="icon-xs"
+              className="ml-1.5 translate-y-[1px]"
               onClick={() => setIsEditing(true)}
               type="button"
             >
               <Pencil className="size-3" />
               <span className="sr-only">Редактировать</span>
-            </button>
+            </Button>
           ) : null}
         </p>
       )}
@@ -598,8 +605,7 @@ function CommentForm({
 }) {
   return (
     <form className="space-y-2" onSubmit={onSubmit}>
-      <textarea
-        className="min-h-20 w-full resize-y rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-ring/30"
+      <Textarea
         disabled={isDisabled}
         maxLength={2000}
         onChange={(event) => onDraftChange(event.target.value)}
@@ -615,14 +621,13 @@ function CommentForm({
           Войдите в аккаунт, чтобы участвовать в обсуждении.
         </p>
       ) : null}
-      <button
-        className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-[var(--fictrio-accent)] disabled:opacity-60"
+      <Button
         disabled={isPending || commentDraft.trim().length === 0}
         type="submit"
       >
         <Send className="size-4" />
         Отправить
-      </button>
+      </Button>
     </form>
   );
 }
@@ -686,14 +691,14 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
 
   return (
     <section className="mt-4">
-      <button
-        className="inline-flex h-9 items-center gap-1.5 rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary"
+      <Button
+        variant="outline"
         onClick={() => setIsOpen((value) => !value)}
         type="button"
       >
         {isOpen ? "Скрыть" : "Комментарии"}
         <span className="text-muted-foreground">({review.commentsCount})</span>
-      </button>
+      </Button>
 
       {isOpen ? (
         <div className="mt-3 space-y-3 pl-8">
@@ -739,8 +744,8 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             />
           ) : null}
           {commentsQuery.hasNextPage ? (
-            <button
-              className="inline-flex h-9 items-center justify-center rounded-md border px-3 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            <Button
+              variant="outline"
               disabled={commentsQuery.isFetchingNextPage}
               onClick={() => commentsQuery.fetchNextPage()}
               type="button"
@@ -748,24 +753,10 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
               {commentsQuery.isFetchingNextPage
                 ? "Загружаем..."
                 : "Загрузить еще"}
-            </button>
+            </Button>
           ) : null}
         </div>
       ) : null}
     </section>
   );
-}
-
-function formatDate(value: string) {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(date);
 }

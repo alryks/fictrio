@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
-import Link from "next/link";
 import { useMemo } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { SiteHeader } from "@/components/layout/site-header";
+import { Button } from "@/components/ui/button";
 import { getPublicLists } from "@/features/lists/lists-api";
 import { ListCard } from "@/features/lists/list-card";
 
@@ -27,37 +27,7 @@ export default function ListsPage() {
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex h-16 w-full max-w-7xl items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <Link className="flex shrink-0 items-center gap-3" href="/">
-            <Image
-              src="/logo.svg"
-              alt="Fictrio"
-              width={36}
-              height={36}
-              priority
-            />
-            <span className="text-xl font-semibold text-primary">Fictrio</span>
-          </Link>
-          <nav className="hidden items-center gap-1 text-sm font-medium text-muted-foreground md:flex">
-            <Link
-              className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="/"
-            >
-              Лента
-            </Link>
-            <Link
-              className="rounded-md px-3 py-2 hover:bg-accent hover:text-accent-foreground"
-              href="/catalog"
-            >
-              Каталог
-            </Link>
-            <Link className="rounded-md px-3 py-2 text-primary" href="/lists">
-              Списки
-            </Link>
-          </nav>
-        </div>
-      </header>
+      <SiteHeader active="lists" />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <section className="min-w-0">
@@ -98,14 +68,15 @@ export default function ListsPage() {
           </div>
 
           {listsQuery.hasNextPage ? (
-            <button
-              className="mt-5 inline-flex h-10 items-center justify-center rounded-md border px-4 text-sm font-medium transition hover:border-primary hover:text-primary disabled:opacity-60"
+            <Button
+              variant="outline"
+              className="mt-5 h-10"
               disabled={listsQuery.isFetchingNextPage}
               onClick={() => listsQuery.fetchNextPage()}
               type="button"
             >
               {listsQuery.isFetchingNextPage ? "Загрузка..." : "Показать еще"}
-            </button>
+            </Button>
           ) : null}
         </section>
       </main>
