@@ -55,7 +55,6 @@ export class AddListItemDto implements AddListItemInput {
   static readonly schema = addListItemInputSchema;
 
   workId!: string;
-  position?: number;
 }
 
 export class ReorderListItemsDto implements ReorderListItemsInput {

@@ -11,8 +11,8 @@ export class WorksController {
     return this.worksService.findMany(query);
   }
 
-  @Get(':id')
-  findOne(@Param('id', ParseUUIDPipe) id: string) {
-    return this.worksService.findOne(id);
+  @Get(':workId')
+  findOne(@Param('workId', ParseUUIDPipe) workId: string) {
+    return this.worksService.findOne(workId);
   }
 }

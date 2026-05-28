@@ -4,8 +4,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { PublicUser, PublicUserProfile } from '@fictrio/contracts';
+import type { PublicUserProfile, SelfUser } from '@fictrio/contracts';
 import { PrismaService } from '../prisma/prisma.service';
+import { isUniqueConstraintError } from '../common/prisma-errors';
 import { UpdateMyProfileDto } from './users.dto';
 
 const userWithRolesInclude = {
@@ -39,7 +40,7 @@ export class UsersService {
     return this.toPublicProfile(user);
   }
 
-  async updateMe(userId: string, dto: UpdateMyProfileDto): Promise<PublicUser> {
+  async updateMe(userId: string, dto: UpdateMyProfileDto): Promise<SelfUser> {
     try {
       const user = await this.prisma.user.update({
         where: {
@@ -59,7 +60,7 @@ export class UsersService {
 
       return this.toPrivateUser(user);
     } catch (error) {
-      if (this.isUniqueConstraintError(error)) {
+      if (isUniqueConstraintError(error)) {
         throw new ConflictException(
           'Пользователь с таким именем уже существует',
         );
@@ -79,7 +80,7 @@ export class UsersService {
     };
   }
 
-  private toPrivateUser(user: UserWithRoles): PublicUser {
+  private toPrivateUser(user: UserWithRoles): SelfUser {
     return {
       ...this.toPublicProfile(user),
       email: user.email,
@@ -89,12 +90,5 @@ export class UsersService {
 
   private normalizeUsername(username: string): string {
     return username.trim().toLowerCase();
-  }
-
-  private isUniqueConstraintError(error: unknown): boolean {
-    return (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === 'P2002'
-    );
   }
 }

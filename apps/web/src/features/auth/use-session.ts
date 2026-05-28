@@ -1,12 +1,12 @@
 "use client";
 
-import type { PublicUser } from "@fictrio/contracts";
+import type { SelfUser } from "@fictrio/contracts";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { getMe } from "./auth-api";
 
-export type AuthUser = PublicUser;
+export type AuthUser = SelfUser;
 
 /**
  * Reads the current session user as server state via TanStack Query
