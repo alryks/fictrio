@@ -38,6 +38,11 @@ so they don't come back.
 - Keep the contract enums (`workKind`, `listVisibility`, …) in sync with the
   Prisma enums; Prisma stays the source of truth for the database, contracts
   for the wire.
+- The signed-in user's own record (carries `email`) is `SelfUser` /
+  `selfUserSchema`. Don't name a private, email-bearing shape `PublicUser`.
+  Public-facing user shapes are `PublicUserProfile` (a profile page) and
+  `PublicUserRef` (an embedded author/owner ref); reuse `PublicUserRef`
+  instead of re-declaring a `{ id, username, displayName }` schema.
 
 ## Backend (`apps/api`)
 
@@ -78,6 +83,16 @@ so they don't come back.
 - An error-mapping helper should be typed `never` and always throw (map known
   Prisma codes to HTTP exceptions, re-throw the rest) — no trailing
   `throw error` at the call site.
+- Shared helpers live in `apps/api/src/common/` — don't re-implement them per
+  service. Prisma error mapping is `prisma-errors.ts`
+  (`isUniqueConstraintError`, `mapPostWriteError`); rating stats are
+  `rating-stats.ts` (`averageFromValues` for an in-memory `{ value }[]`,
+  `aggregateRateableRating` for a single rateable). For a work plus its nested
+  seasons/episodes, aggregate ratings in one `groupBy` keyed by `rateableId` —
+  never `include` the full `ratings` rows just to average them in JS.
+- Reuse a Prisma `include` once via `Prisma.validator<…Include>()(…)` and
+  derive both the `…GetPayload` type and the runtime `include` from it, rather
+  than hand-duplicating the shape in two places.
 
 ### REST conventions
 - Name route params by resource (`:reviewId`, `:commentId`), not a generic
@@ -104,6 +119,8 @@ so they don't come back.
   a mutation, invalidate the matching `qk` key(s).
 - Infinite lists use the `useInfiniteScroll` hook (sentinel + observer), not a
   bespoke effect or a window scroll listener.
+- The `requireUser(user, action)` assertion lives in `lib/require-user.ts`;
+  import it, don't re-declare it per component.
 
 ### UI
 - Build forms and controls from the shadcn primitives in `components/ui`
@@ -115,7 +132,14 @@ so they don't come back.
 - Destructive actions use `<Button variant="destructive">` (red), not an
   ad-hoc `hover:border-destructive` treatment.
 - Use the design tokens (`bg-primary`, `text-destructive`, `--fictrio-*`),
-  not raw hex values, in JSX.
+  not raw hex values, in JSX. Poster/cover surfaces use `<PosterPlaceholder>`
+  (brand-token gradient + optional image), not a hard-coded hex gradient.
+- Mutation feedback (success/error) goes through `toast` from `sonner` (the
+  `Toaster` is mounted in `providers.tsx`) — not an ad-hoc local `message`
+  state rendered as `<p>{message}</p>`. Per-field validation errors stay in
+  `FormField` via `ApiError.issues`.
+- Content loading renders `Skeleton` placeholders; empty and error states
+  render `StateCard`. Don't fall back to inline `<p>Загружаем…</p>` text.
 - Interface text is Russian. Keep `alt`, `aria-*`, focus rings and semantic
   HTML.
 
