@@ -3,6 +3,8 @@ import type {
   DeletedResponse,
   FictrioList,
   ListOwner,
+  ListsSortBy,
+  ListsSortOrder,
   ListsPage,
   MyListsResponse,
   RatingStats,
@@ -11,13 +13,48 @@ import type {
 } from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type { FictrioList, ListOwner };
+export type { FictrioList, ListOwner, ListsSortBy, ListsSortOrder };
 export type ListsResponse = ListsPage;
 
-export function getPublicLists(offset = 0, limit = 12, itemsLimit = 6) {
-  return apiRequest<ListsResponse>(
-    `/lists?offset=${offset}&limit=${limit}&itemsLimit=${itemsLimit}`,
-  );
+export type GetPublicListsParams = {
+  search?: string;
+  minRating?: string;
+  minRatingsCount?: string;
+  sortBy?: ListsSortBy;
+  sortOrder?: ListsSortOrder;
+  offset?: number;
+  limit?: number;
+  itemsLimit?: number;
+};
+
+export function getPublicLists(params: GetPublicListsParams = {}) {
+  const searchParams = new URLSearchParams();
+
+  if (params.search) {
+    searchParams.set("search", params.search);
+  }
+
+  if (params.minRating) {
+    searchParams.set("minRating", params.minRating);
+  }
+
+  if (params.minRatingsCount) {
+    searchParams.set("minRatingsCount", params.minRatingsCount);
+  }
+
+  if (params.sortBy) {
+    searchParams.set("sortBy", params.sortBy);
+  }
+
+  if (params.sortOrder) {
+    searchParams.set("sortOrder", params.sortOrder);
+  }
+
+  searchParams.set("offset", String(params.offset ?? 0));
+  searchParams.set("limit", String(params.limit ?? 12));
+  searchParams.set("itemsLimit", String(params.itemsLimit ?? 6));
+
+  return apiRequest<ListsResponse>(`/lists?${searchParams.toString()}`);
 }
 
 export function getMyLists() {

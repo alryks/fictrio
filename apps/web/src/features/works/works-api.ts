@@ -10,7 +10,13 @@ import type {
 } from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type { CatalogWorkKind, WorkDetails, WorkKind, WorkListItem, WorkSeason };
+export type {
+  CatalogWorkKind,
+  WorkDetails,
+  WorkKind,
+  WorkListItem,
+  WorkSeason,
+};
 export type WorksResponse = WorksPage;
 
 export type GetWorksParams = {
@@ -19,6 +25,7 @@ export type GetWorksParams = {
   yearFrom?: string;
   yearTo?: string;
   minRating?: string;
+  minRatingsCount?: string;
   sortBy?: WorksSortBy;
   sortOrder?: SortOrder;
   limit?: number;
@@ -46,6 +53,10 @@ export async function getWorks(params: GetWorksParams) {
 
   if (params.minRating) {
     searchParams.set("minRating", params.minRating);
+  }
+
+  if (params.minRatingsCount) {
+    searchParams.set("minRatingsCount", params.minRatingsCount);
   }
 
   if (params.sortBy) {

@@ -21,6 +21,7 @@ export class GetWorksQueryDto {
   yearFrom?: number;
   yearTo?: number;
   minRating?: number;
+  minRatingsCount?: number;
   sortBy!: WorksSortBy;
   sortOrder!: SortOrder;
   limit!: number;

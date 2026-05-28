@@ -10,6 +10,8 @@ import {
   type GetListQuery,
   type GetListsQuery,
   type ListVisibility,
+  type ListsSortBy,
+  type ListsSortOrder,
   type ReorderListItemsInput,
   type UpdateListInput,
 } from '@fictrio/contracts';
@@ -17,6 +19,11 @@ import {
 export class GetListsQueryDto implements GetListsQuery {
   static readonly schema = getListsQuerySchema;
 
+  search?: string;
+  minRating?: number;
+  minRatingsCount?: number;
+  sortBy!: ListsSortBy;
+  sortOrder!: ListsSortOrder;
   limit!: number;
   offset!: number;
   itemsLimit!: number;
