@@ -34,9 +34,7 @@ export type SortOrder = z.infer<typeof sortOrderSchema>;
 export const getWorksQuerySchema = z
   .object({
     search: z.string().trim().max(255).optional(),
-    kind: workKindSchema.optional(),
     kinds: workKindArraySchema,
-    year: yearSchema.optional(),
     yearFrom: yearSchema.optional(),
     yearTo: yearSchema.optional(),
     minRating: z.coerce.number().min(0).max(3).optional(),
@@ -45,16 +43,6 @@ export const getWorksQuerySchema = z
     sortOrder: sortOrderSchema.default("desc"),
     limit: z.coerce.number().int().min(1).max(50).default(24),
     offset: z.coerce.number().int().min(0).default(0),
-  })
-  .transform((query) => {
-    const kinds = query.kinds ?? (query.kind ? [query.kind] : undefined);
-
-    return {
-      ...query,
-      kinds,
-      yearFrom: query.yearFrom ?? query.year,
-      yearTo: query.yearTo ?? query.year,
-    };
   })
   .refine(
     (query) =>
