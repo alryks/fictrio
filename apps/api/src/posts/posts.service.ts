@@ -224,7 +224,6 @@ export class PostsService {
       return this.toPublicReview(review);
     } catch (error) {
       this.rethrowPostWriteError(error);
-      throw error;
     }
   }
 
@@ -245,7 +244,6 @@ export class PostsService {
       return this.toPublicReview(updatedReview);
     } catch (error) {
       this.rethrowPostWriteError(error);
-      throw error;
     }
   }
 
@@ -312,7 +310,6 @@ export class PostsService {
       return this.toPublicComment(comment);
     } catch (error) {
       this.rethrowPostWriteError(error);
-      throw error;
     }
   }
 
@@ -333,7 +330,6 @@ export class PostsService {
       return this.toPublicComment(updatedComment);
     } catch (error) {
       this.rethrowPostWriteError(error);
-      throw error;
     }
   }
 
@@ -472,36 +468,40 @@ export class PostsService {
     };
   }
 
-  private rethrowPostWriteError(error: unknown): never | void {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError)) {
-      if (
-        error instanceof Prisma.PrismaClientUnknownRequestError &&
-        error.message.includes(
-          'Review requires an existing rating by the same user for the same rateable object',
-        )
-      ) {
+  /**
+   * Maps known post-write database errors to BadRequestException; any other
+   * error is re-thrown unchanged. Always throws, so callers can use it as the
+   * single statement in their catch block.
+   */
+  private rethrowPostWriteError(error: unknown): never {
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        throw new BadRequestException(
+          'Пользователь уже оставил отзыв на этот объект',
+        );
+      }
+      if (error.code === 'P2003') {
+        throw new BadRequestException('Некорректная ссылка на объект отзыва');
+      }
+      if (error.code === 'P2004') {
         throw new BadRequestException(
           'Отзыв можно создать только после выставления оценки',
         );
       }
-
-      return;
     }
 
-    if (error.code === 'P2002') {
-      throw new BadRequestException(
-        'Пользователь уже оставил отзыв на этот объект',
-      );
-    }
-
-    if (error.code === 'P2003') {
-      throw new BadRequestException('Некорректная ссылка на объект отзыва');
-    }
-
-    if (error.code === 'P2004') {
+    // The review-requires-rating trigger surfaces as an unknown request error.
+    if (
+      error instanceof Prisma.PrismaClientUnknownRequestError &&
+      error.message.includes(
+        'Review requires an existing rating by the same user for the same rateable object',
+      )
+    ) {
       throw new BadRequestException(
         'Отзыв можно создать только после выставления оценки',
       );
     }
+
+    throw error;
   }
 }

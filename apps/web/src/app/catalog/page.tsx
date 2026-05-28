@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef } from "react";
+import { Suspense } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { SiteHeader } from "@/components/layout/site-header";
@@ -17,6 +17,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormField } from "@/components/form-field";
+import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { WorkCard } from "@/features/works/work-card";
 import { getWorks, WorkKind } from "@/features/works/works-api";
 
@@ -73,13 +75,17 @@ function CatalogContent() {
   const minRating = searchParams.get("minRating") ?? "";
   const sortBy = getSortBy(searchParams);
   const sortOrder = getSortOrder(searchParams);
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
 
   const worksQuery = useInfiniteQuery({
-    queryKey: [
-      "works",
-      { search, kinds, yearFrom, yearTo, minRating, sortBy, sortOrder },
-    ],
+    queryKey: qk.works.list({
+      search,
+      kinds,
+      yearFrom,
+      yearTo,
+      minRating,
+      sortBy,
+      sortOrder,
+    }),
     initialPageParam: 0,
     queryFn: ({ pageParam }) =>
       getWorks({
@@ -106,26 +112,12 @@ function CatalogContent() {
   const hasNextPage = worksQuery.hasNextPage;
   const isFetchingNextPage = worksQuery.isFetchingNextPage;
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target || !hasNextPage) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting && !isFetchingNextPage && hasNextPage) {
-          void fetchNextPage();
-        }
-      },
-      { rootMargin: "600px 0px" },
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    rootMargin: "600px 0px",
+  });
 
   function updateParams(updates: Record<string, string | string[] | null>) {
     const nextParams = new URLSearchParams(searchParams.toString());
@@ -367,12 +359,13 @@ function getSelectedKinds(searchParams: URLSearchParams): CatalogWorkKind[] {
     .filter((kind): kind is CatalogWorkKind => kind in kindLabels);
 }
 
-function getSortBy(searchParams: URLSearchParams) {
-  const sortBy = searchParams.get("sortBy");
+type SortByValue = (typeof sortOptions)[number]["value"];
 
-  return sortOptions.some((option) => option.value === sortBy)
-    ? (sortBy as (typeof sortOptions)[number]["value"])
-    : "averageRating";
+function getSortBy(searchParams: URLSearchParams): SortByValue {
+  const sortBy = searchParams.get("sortBy");
+  const match = sortOptions.find((option) => option.value === sortBy);
+
+  return match?.value ?? "averageRating";
 }
 
 function getSortOrder(searchParams: URLSearchParams) {

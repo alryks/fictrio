@@ -9,13 +9,14 @@ import { FormField } from "@/components/form-field";
 import { UserBadge } from "@/components/user-badge";
 import { ApiError } from "@/lib/api";
 import { login, logout, register } from "./auth-api";
-import { useAuthStore } from "./auth-store";
+import { useSession, useSessionActions } from "./use-session";
 
 type AuthMode = "login" | "register";
 type FieldErrors = Record<string, string>;
 
 export function AuthPanel() {
-  const { user, isHydrated, setUser } = useAuthStore();
+  const { user, isLoading } = useSession();
+  const { setUser } = useSessionActions();
   const [mode, setMode] = useState<AuthMode>("login");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -73,7 +74,7 @@ export function AuthPanel() {
     setUser(null);
   }
 
-  if (!isHydrated) {
+  if (isLoading) {
     return (
       <Card className="h-[232px] p-4">
         <p className="text-sm text-muted-foreground">Загрузка сессии...</p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -13,7 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserBadge } from "@/components/user-badge";
 import { FormField } from "@/components/form-field";
 import { formatDate } from "@/lib/format";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteWorkRating,
   upsertWorkRating,
@@ -49,7 +51,7 @@ const COMMENTS_PAGE_SIZE = 5;
 
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
@@ -57,7 +59,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
   const [message, setMessage] = useState<string | null>(null);
 
   const activityQuery = useInfiniteQuery({
-    queryKey: ["work", work.id, "reviews"],
+    queryKey: qk.works.reviews(work.id),
     queryFn: ({ pageParam }) =>
       getWorkReviews(work.id, pageParam, REVIEWS_PAGE_SIZE),
     initialPageParam: 0,
@@ -71,31 +73,12 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     () => activityQuery.data?.pages.flatMap((page) => page.items) ?? [],
     [activityQuery.data?.pages],
   );
-  const fetchNextReviewsPage = activityQuery.fetchNextPage;
-  const hasNextReviewsPage = activityQuery.hasNextPage;
-  const isFetchingNextReviewsPage = activityQuery.isFetchingNextPage;
-
-  useEffect(() => {
-    function handleScroll() {
-      const distanceToBottom =
-        document.documentElement.scrollHeight -
-        window.scrollY -
-        window.innerHeight;
-
-      if (
-        distanceToBottom < 500 &&
-        hasNextReviewsPage &&
-        !isFetchingNextReviewsPage
-      ) {
-        void fetchNextReviewsPage();
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll);
-    handleScroll();
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [fetchNextReviewsPage, hasNextReviewsPage, isFetchingNextReviewsPage]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: activityQuery.hasNextPage,
+    isFetchingNextPage: activityQuery.isFetchingNextPage,
+    fetchNextPage: activityQuery.fetchNextPage,
+    rootMargin: "500px 0px",
+  });
 
   const ownReview = useMemo(
     () =>
@@ -151,7 +134,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
     onSuccess: async () => {
       setMessage(ownReview ? "Отзыв обновлен" : "Отзыв опубликован");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -173,7 +156,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
       setMessage("Отзыв удален");
       setReviewDraft("");
       await queryClient.invalidateQueries({
-        queryKey: ["work", work.id, "reviews"],
+        queryKey: qk.works.reviews(work.id),
       });
     },
     onError: (error) => {
@@ -215,7 +198,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             <RatingControl
               value={ratingValue}
               hasValue={hasRating}
-              disabled={!isHydrated || !user || ratingMutation.isPending}
+              disabled={isLoading || !user || ratingMutation.isPending}
               deleteDisabled={!user || !hasRating || deleteRatingMutation.isPending}
               onChange={handleRatingClick}
               onDelete={() => deleteRatingMutation.mutate()}
@@ -227,7 +210,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
               <Textarea
                 {...field}
                 className="min-h-36"
-                disabled={!isHydrated || !user || reviewMutation.isPending}
+                disabled={isLoading || !user || reviewMutation.isPending}
                 maxLength={5000}
                 onChange={(event) => setReviewDraft(event.target.value)}
                 placeholder="Что стоит обсудить после просмотра или чтения?"
@@ -239,7 +222,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
           {message ? (
             <p className="text-sm text-muted-foreground">{message}</p>
           ) : null}
-          {!user && isHydrated ? (
+          {!user && !isLoading ? (
             <p className="text-sm text-muted-foreground">
               Войдите в аккаунт на главной странице, чтобы оценивать и писать
               отзывы.
@@ -311,6 +294,7 @@ export function WorkReviews({ work }: WorkReviewsProps) {
             />
           ))}
         </div>
+        <div ref={loadMoreRef} className="h-px" />
         {activityQuery.isFetchingNextPage ? (
           <p className="mt-4 text-sm text-muted-foreground">Загружаем еще...</p>
         ) : null}
@@ -324,10 +308,10 @@ async function invalidateWorkQueries(
   workId: string,
 ) {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: ["work", workId] }),
-    queryClient.invalidateQueries({ queryKey: ["works"] }),
-    queryClient.invalidateQueries({ queryKey: ["work", workId, "reviews"] }),
-    queryClient.invalidateQueries({ queryKey: ["review"] }),
+    queryClient.invalidateQueries({ queryKey: qk.works.detail(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.works.all }),
+    queryClient.invalidateQueries({ queryKey: qk.works.reviews(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.reviews.all }),
   ]);
 }
 
@@ -437,7 +421,7 @@ function CommentItem({
   workId: string;
 }) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
   const [editMessage, setEditMessage] = useState<string | null>(null);
@@ -452,7 +436,7 @@ function CommentItem({
       setIsEditing(false);
       setEditMessage(null);
       await queryClient.invalidateQueries({
-        queryKey: ["review", reviewId, "comments"],
+        queryKey: qk.reviews.comments(reviewId),
       });
     },
     onError: (error) => {
@@ -472,10 +456,10 @@ function CommentItem({
     onSuccess: async () => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", reviewId, "comments"],
+          queryKey: qk.reviews.comments(reviewId),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },
@@ -634,13 +618,13 @@ function CommentForm({
 
 function CommentThread({ review, workId }: { review: Review; workId: string }) {
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
+  const { user, isLoading } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [commentDraft, setCommentDraft] = useState("");
   const [commentMessage, setCommentMessage] = useState<string | null>(null);
 
   const commentsQuery = useInfiniteQuery({
-    queryKey: ["review", review.id, "comments"],
+    queryKey: qk.reviews.comments(review.id),
     queryFn: ({ pageParam }) =>
       getReviewComments(review.id, pageParam, COMMENTS_PAGE_SIZE),
     enabled: isOpen,
@@ -667,10 +651,10 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
       setIsOpen(true);
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: ["review", review.id, "comments"],
+          queryKey: qk.reviews.comments(review.id),
         }),
         queryClient.invalidateQueries({
-          queryKey: ["work", workId, "reviews"],
+          queryKey: qk.works.reviews(workId),
         }),
       ]);
     },
@@ -706,13 +690,13 @@ function CommentThread({ review, workId }: { review: Review; workId: string }) {
             <CommentForm
               commentDraft={commentDraft}
               commentMessage={commentMessage}
-              isDisabled={!isHydrated || !user || commentMutation.isPending}
+              isDisabled={isLoading || !user || commentMutation.isPending}
               isPending={
                 !user ||
                 commentMutation.isPending ||
                 commentDraft.trim().length === 0
               }
-              isUserMissing={!user && isHydrated}
+              isUserMissing={!user && !isLoading}
               onDraftChange={setCommentDraft}
               onSubmit={handleCommentSubmit}
             />

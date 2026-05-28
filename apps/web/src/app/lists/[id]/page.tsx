@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   useInfiniteQuery,
   useMutation,
@@ -16,7 +16,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
-import { useAuthStore } from "@/features/auth/auth-store";
+import { qk } from "@/lib/query-keys";
+import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { useSession } from "@/features/auth/use-session";
 import {
   deleteListRating,
   getList,
@@ -40,8 +42,7 @@ function requireUser(user: unknown, action: string): asserts user {
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { user, isHydrated } = useAuthStore();
-  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+  const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<
     number | null | undefined
   >();
@@ -50,7 +51,7 @@ export default function ListDetailsPage() {
   const [descriptionDraft, setDescriptionDraft] = useState("");
 
   const listQuery = useInfiniteQuery({
-    queryKey: ["list", params.id],
+    queryKey: qk.lists.detail(params.id),
     queryFn: ({ pageParam }) =>
       getList(params.id, pageParam, listItemsPageSize),
     initialPageParam: 0,
@@ -71,7 +72,6 @@ export default function ListDetailsPage() {
     ratingDraft === undefined
       ? list?.userRating !== null && list?.userRating !== undefined
       : ratingDraft !== null;
-  const fetchNextListItemsPage = listQuery.fetchNextPage;
   const hasNextListItemsPage = listQuery.hasNextPage;
   const isFetchingNextListItemsPage = listQuery.isFetchingNextPage;
   const canReorderItems = isOwner && !hasNextListItemsPage;
@@ -80,34 +80,11 @@ export default function ListDetailsPage() {
     [listQuery.data?.pages],
   );
 
-  useEffect(() => {
-    const target = loadMoreRef.current;
-
-    if (!target) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (
-          entries[0]?.isIntersecting &&
-          hasNextListItemsPage &&
-          !isFetchingNextListItemsPage
-        ) {
-          void fetchNextListItemsPage();
-        }
-      },
-      { rootMargin: "320px" },
-    );
-
-    observer.observe(target);
-
-    return () => observer.disconnect();
-  }, [
-    fetchNextListItemsPage,
-    hasNextListItemsPage,
-    isFetchingNextListItemsPage,
-  ]);
+  const loadMoreRef = useInfiniteScroll({
+    hasNextPage: hasNextListItemsPage,
+    isFetchingNextPage: isFetchingNextListItemsPage,
+    fetchNextPage: listQuery.fetchNextPage,
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => {
@@ -120,8 +97,8 @@ export default function ListDetailsPage() {
     onSuccess: async () => {
       setIsEditingDetails(false);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -134,8 +111,8 @@ export default function ListDetailsPage() {
     onSuccess: async (response) => {
       setRatingDraft(response.value);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -148,8 +125,8 @@ export default function ListDetailsPage() {
     onSuccess: async () => {
       setRatingDraft(null);
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -160,7 +137,7 @@ export default function ListDetailsPage() {
       return reorderListItems(params.id, nextItems);
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ["list", params.id] });
+      await queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) });
     },
   });
 
@@ -171,8 +148,8 @@ export default function ListDetailsPage() {
     },
     onSuccess: async () => {
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["list", params.id] }),
-        queryClient.invalidateQueries({ queryKey: ["lists"] }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
       ]);
     },
   });
@@ -348,7 +325,7 @@ export default function ListDetailsPage() {
                   <RatingControl
                     value={ratingValue}
                     hasValue={hasRating}
-                    disabled={!isHydrated || !user || ratingMutation.isPending}
+                    disabled={isLoading || !user || ratingMutation.isPending}
                     deleteDisabled={!user || deleteRatingMutation.isPending}
                     onChange={() => {
                       ratingMutation.mutate((Math.floor(ratingValue) + 1) % 4);
