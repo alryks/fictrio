@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { FormField } from "@/components/form-field";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { qk } from "@/lib/query-keys";
 import { requireUser } from "@/lib/require-user";
@@ -89,7 +90,7 @@ export function WorkProgressPanel({ work }: WorkProgressPanelProps) {
   const isPending = upsertMutation.isPending || deleteMutation.isPending;
 
   return (
-    <section className="mt-6 rounded-md border bg-background p-4">
+    <Card className="mt-6 p-5">
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -100,7 +101,7 @@ export function WorkProgressPanel({ work }: WorkProgressPanelProps) {
             {getProgressText(work, progress)}
           </p>
         </div>
-        <div className="rounded-md border bg-card px-3 py-2 text-sm font-medium">
+        <div className="rounded-md border bg-background px-3 py-2 text-sm font-medium">
           {progress?.status ? statusLabels[progress.status] : "Нет прогресса"}
         </div>
       </div>
@@ -157,7 +158,7 @@ export function WorkProgressPanel({ work }: WorkProgressPanelProps) {
           onStarted={setStarted}
         />
       )}
-    </section>
+    </Card>
   );
 }
 

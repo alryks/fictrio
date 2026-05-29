@@ -112,8 +112,6 @@ export default function WorkDetailsPage() {
                     ),
                   )}
                 </dl>
-
-                <WorkProgressPanel work={workQuery.data} />
               </div>
 
               {workQuery.data.kind === "show" &&
@@ -142,6 +140,7 @@ export default function WorkDetailsPage() {
               ) : null}
             </article>
 
+            <WorkProgressPanel work={workQuery.data} />
             <AddToListPanel workId={workQuery.data.id} />
             <WorkReviews work={workQuery.data} />
           </>
