@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { useSessionActions } from "@/features/auth/use-session";
-import { ProfileProgressSection } from "@/features/progress/profile-progress-section";
+import { FollowButton } from "./follow-button";
+import { FollowListDialog } from "./follow-list-dialog";
 import { updateMyProfile } from "./users-api";
 
 type FieldErrors = Record<string, string>;
@@ -139,6 +140,18 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
                 <p className="mt-1 truncate text-sm text-muted-foreground">
                   @{profile.username}
                 </p>
+                <div className="mt-2 -ml-2 flex flex-wrap items-center gap-1">
+                  <FollowListDialog
+                    username={profile.username}
+                    mode="followers"
+                    count={profile.followersCount}
+                  />
+                  <FollowListDialog
+                    username={profile.username}
+                    mode="following"
+                    count={profile.followingCount}
+                  />
+                </div>
               </div>
             </div>
             {isOwnProfile && !isEditing ? (
@@ -151,7 +164,14 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
                 <Pencil data-icon="inline-start" />
                 Изменить
               </Button>
-            ) : null}
+            ) : (
+              <FollowButton
+                username={profile.username}
+                isFollowedByViewer={profile.isFollowedByViewer}
+                isSelf={profile.isSelf}
+                className="h-10"
+              />
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -233,8 +253,6 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
           )}
         </CardContent>
       </Card>
-
-      <ProfileProgressSection username={profile.username} />
     </div>
   );
 }

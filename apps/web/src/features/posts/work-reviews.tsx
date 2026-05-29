@@ -36,7 +36,6 @@ type WorkReviewsProps = {
 };
 
 const REVIEWS_PAGE_SIZE = 10;
-const COMMENTS_PAGE_SIZE = 5;
 
 export function WorkReviews({ work }: WorkReviewsProps) {
   const queryClient = useQueryClient();
