@@ -42,6 +42,8 @@ export type ProgressPage = z.infer<typeof progressPageSchema>;
 
 export const progressSummarySchema = z.object({
   started: z.array(progressListItemSchema),
+  startedTotal: z.number().int().min(0),
   completed: z.array(progressListItemSchema),
+  completedTotal: z.number().int().min(0),
 });
 export type ProgressSummary = z.infer<typeof progressSummarySchema>;

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ArrowRight } from "lucide-react";
 import { StateCard } from "@/components/state-card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getWorksCountLabel } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { WorkCard } from "@/features/works/work-card";
 import {
@@ -54,6 +55,7 @@ export function ProfileProgressSection({
         <div className="flex flex-col gap-5">
           <ProgressPreviewCard
             items={summaryQuery.data.started}
+            total={summaryQuery.data.startedTotal}
             title="В процессе"
             username={username}
             status="started"
@@ -61,6 +63,7 @@ export function ProfileProgressSection({
           />
           <ProgressPreviewCard
             items={summaryQuery.data.completed}
+            total={summaryQuery.data.completedTotal}
             title="Просмотрено и прочитано"
             username={username}
             status="completed"
@@ -74,24 +77,36 @@ export function ProfileProgressSection({
 
 function ProgressPreviewCard({
   items,
+  total,
   title,
   username,
   status,
   emptyText,
 }: {
   items: ProgressListItem[];
+  total: number;
   title: string;
   username: string;
   status: ProgressStatus;
   emptyText: string;
 }) {
   const preview = items.slice(0, 6);
+  const hiddenCount = Math.max(total - preview.length, 0);
   const href = `/users/${username}/progress?status=${status}`;
 
   return (
     <article className="min-w-0 overflow-hidden rounded-md border bg-card p-5 shadow-sm">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h3 className="text-xl font-semibold text-primary">{title}</h3>
+        <Link
+          className="text-xl font-semibold text-primary hover:underline"
+          href={href}
+        >
+          {title}
+        </Link>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-sm text-muted-foreground">
+          {total} {getWorksCountLabel(total)}
+        </span>
       </div>
 
       <div className="mt-4 min-w-0">
@@ -119,7 +134,9 @@ function ProgressPreviewCard({
                       Открыть прогресс
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      Перейти к списку
+                      {hiddenCount > 0
+                        ? `Еще ${hiddenCount} ${getWorksCountLabel(hiddenCount)}`
+                        : "Перейти к списку"}
                     </p>
                   </div>
                 </div>

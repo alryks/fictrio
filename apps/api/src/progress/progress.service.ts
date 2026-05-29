@@ -183,7 +183,9 @@ export class ProgressService {
 
     return {
       started: started.items,
+      startedTotal: started.total,
       completed: completed.items,
+      completedTotal: completed.total,
     };
   }
 
