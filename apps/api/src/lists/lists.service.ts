@@ -11,11 +11,14 @@ import {
   aggregateRateableRating,
   averageFromValues,
 } from '../common/rating-stats';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { canModerate } from '../auth/roles';
 import {
   AddListItemDto,
   CreateListDto,
   GetListQueryDto,
   GetListsQueryDto,
+  ModerateListDto,
   ReorderListItemsDto,
   UpdateListDto,
 } from './lists.dto';
@@ -113,6 +116,13 @@ type PublicListRow = {
   items: ListPreviewItemRow[];
 };
 type CountRow = { count: bigint };
+
+/**
+ * Minimal viewer context for visibility checks: the user id (for ownership)
+ * and role codes (for moderator access). `AuthenticatedUser` satisfies it,
+ * and internal owner-scoped callers can pass just `{ id }`.
+ */
+type ListViewer = { id: string; roles?: string[] };
 
 @Injectable()
 export class ListsService {
@@ -233,10 +243,11 @@ export class ListsService {
   }
 
   async findMine(userId: string) {
+    // The owner always sees their own lists, including hidden ones (rendered
+    // with a moderation badge), so the hidden filter is intentionally absent.
     const lists = await this.prisma.list.findMany({
       where: {
         ownerUserId: userId,
-        isHidden: false,
       },
       include: listPreviewInclude,
       orderBy: {
@@ -250,7 +261,7 @@ export class ListsService {
     };
   }
 
-  async findOne(id: string, userId?: string, query?: GetListQueryDto) {
+  async findOne(id: string, viewer?: ListViewer, query?: GetListQueryDto) {
     const list = await this.prisma.list.findUnique({
       where: {
         id,
@@ -260,18 +271,24 @@ export class ListsService {
         : listInclude,
     });
 
-    if (!list || list.isHidden) {
+    if (!list) {
       throw new NotFoundException('Список не найден');
     }
 
-    if (
-      list.visibility !== ListVisibility.public &&
-      list.ownerUserId !== userId
-    ) {
+    const isOwner = list.ownerUserId === viewer?.id;
+    const isPrivileged = isOwner || canModerate({ roles: viewer?.roles ?? [] });
+
+    // A hidden list, or a non-public one, is only reachable by its owner or a
+    // moderator (who needs to view it to moderate). Everyone else gets a 404.
+    if (list.isHidden && !isPrivileged) {
       throw new NotFoundException('Список не найден');
     }
 
-    return this.toPublicList(list, userId);
+    if (list.visibility !== ListVisibility.public && !isPrivileged) {
+      throw new NotFoundException('Список не найден');
+    }
+
+    return this.toPublicList(list, viewer?.id);
   }
 
   async create(userId: string, dto: CreateListDto) {
@@ -346,7 +363,7 @@ export class ListsService {
       throw error;
     }
 
-    return this.findOne(listId, userId);
+    return this.findOne(listId, { id: userId });
   }
 
   private async getNextPositionTx(
@@ -378,7 +395,7 @@ export class ListsService {
       await this.compactItemPositions(tx, listId);
     });
 
-    return this.findOne(listId, userId);
+    return this.findOne(listId, { id: userId });
   }
 
   async reorderItems(listId: string, userId: string, dto: ReorderListItemsDto) {
@@ -433,7 +450,7 @@ export class ListsService {
       `;
     });
 
-    return this.findOne(listId, userId);
+    return this.findOne(listId, { id: userId });
   }
 
   private async compactItemPositions(
@@ -542,6 +559,40 @@ export class ListsService {
     };
   }
 
+  async moderateList(
+    listId: string,
+    moderator: AuthenticatedUser,
+    dto: ModerateListDto,
+  ) {
+    const list = await this.prisma.list.findUnique({
+      where: {
+        id: listId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!list) {
+      throw new NotFoundException('Список не найден');
+    }
+
+    // moderate_list hides/restores the list and logs the action atomically.
+    await this.prisma.$executeRaw`
+      CALL moderate_list(
+        ${moderator.id}::uuid,
+        ${listId}::uuid,
+        ${dto.action}::moderation_action_kind,
+        ${dto.reason ?? null}
+      )
+    `;
+
+    return {
+      id: listId,
+      isHidden: dto.action === 'hide',
+    };
+  }
+
   private async assertOwnedList(listId: string, userId: string) {
     const list = await this.prisma.list.findUnique({
       where: {
@@ -586,6 +637,7 @@ export class ListsService {
       title: list.title,
       description: list.description,
       visibility: list.visibility,
+      isHidden: list.isHidden,
       createdAt: list.createdAt,
       updatedAt: list.updatedAt,
       owner: list.owner,
@@ -678,6 +730,8 @@ export class ListsService {
       title: list.title,
       description: list.description,
       visibility: list.visibility,
+      // findPublic only ever returns non-hidden lists (filtered in SQL).
+      isHidden: false,
       createdAt: list.createdAt,
       updatedAt: list.updatedAt,
       owner: {

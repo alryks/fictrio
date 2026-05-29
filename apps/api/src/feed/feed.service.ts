@@ -223,6 +223,7 @@ export class FeedService {
             'title', l.title,
             'description', l.description,
             'visibility', l.visibility,
+            'isHidden', false,
             'createdAt', l.created_at,
             'updatedAt', l.updated_at,
             'owner', jsonb_build_object(

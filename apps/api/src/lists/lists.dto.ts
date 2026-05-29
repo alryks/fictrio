@@ -3,6 +3,7 @@ import {
   createListInputSchema,
   getListQuerySchema,
   getListsQuerySchema,
+  moderationInputSchema,
   reorderListItemsInputSchema,
   updateListInputSchema,
   type AddListItemInput,
@@ -12,6 +13,7 @@ import {
   type ListVisibility,
   type ListsSortBy,
   type ListsSortOrder,
+  type ModerationInput,
   type ReorderListItemsInput,
   type UpdateListInput,
 } from '@fictrio/contracts';
@@ -61,4 +63,11 @@ export class ReorderListItemsDto implements ReorderListItemsInput {
   static readonly schema = reorderListItemsInputSchema;
 
   items!: Array<{ workId: string; position: number }>;
+}
+
+export class ModerateListDto implements ModerationInput {
+  static readonly schema = moderationInputSchema;
+
+  action!: ModerationInput['action'];
+  reason?: string;
 }
