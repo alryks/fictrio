@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ProgressService } from '../progress/progress.service';
 import { RatingStats } from '../common/rating-stats';
 import { GetWorksQueryDto } from './works.dto';
+import { WorksCacheService } from './works-cache.service';
 
 /** Shared include for a work detail and its nested seasons/episodes. */
 const workDetailInclude = Prisma.validator<Prisma.WorkInclude>()({
@@ -116,9 +117,14 @@ export class WorksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly progressService: ProgressService,
+    private readonly cache: WorksCacheService,
   ) {}
 
-  async findMany(query: GetWorksQueryDto) {
+  findMany(query: GetWorksQueryDto) {
+    return this.cache.cacheList(query, () => this.queryMany(query));
+  }
+
+  private async queryMany(query: GetWorksQueryDto) {
     const whereSql = this.buildListWhereSql(query);
     const havingSql = this.buildListHavingSql(query);
     const orderSql = this.buildOrderSql(query);
@@ -180,6 +186,19 @@ export class WorksService {
   }
 
   async findOne(workId: string, userId?: string) {
+    // The shared card (metadata + rating aggregates + nested seasons) is the
+    // same for everyone, so it is cached. `userProgress` is per-user, never
+    // cached, and merged onto the cached payload on each request.
+    const detail = await this.cache.cacheDetail(workId, () =>
+      this.loadDetail(workId),
+    );
+    const userProgress = userId
+      ? await this.progressService.getWorkProgress(workId, userId)
+      : null;
+    return { ...detail, userProgress };
+  }
+
+  private async loadDetail(workId: string) {
     const work = await this.prisma.work.findFirst({
       where: {
         id: workId,
@@ -191,11 +210,8 @@ export class WorksService {
       throw new NotFoundException('Произведение не найдено');
     }
 
-    const [ratings, userProgress] = await Promise.all([
-      this.loadRatingStats(work),
-      userId ? this.progressService.getWorkProgress(work.id, userId) : null,
-    ]);
-    return this.toDetails(work, ratings, userProgress);
+    const ratings = await this.loadRatingStats(work);
+    return this.toDetails(work, ratings);
   }
 
   private buildListWhereSql(query: GetWorksQueryDto) {
@@ -330,13 +346,7 @@ export class WorksService {
     );
   }
 
-  private toDetails(
-    work: WorkWithDetails,
-    ratings: Map<string, RatingStats>,
-    userProgress: Awaited<
-      ReturnType<ProgressService['getWorkProgress']>
-    > | null,
-  ) {
+  private toDetails(work: WorkWithDetails, ratings: Map<string, RatingStats>) {
     return {
       ...this.buildWorkItem(
         work,
@@ -370,7 +380,6 @@ export class WorksService {
               : work.kind === WorkKind.episode
                 ? work.episode
                 : work.book,
-      userProgress,
       seasons:
         work.kind === WorkKind.show
           ? (work.show?.seasons.map((season) => ({

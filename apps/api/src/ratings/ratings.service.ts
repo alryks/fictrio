@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProgressService } from '../progress/progress.service';
 import { aggregateRateableRating } from '../common/rating-stats';
+import { WorksCacheService } from '../works/works-cache.service';
 import { UpsertRatingDto } from './ratings.dto';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class RatingsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly progressService: ProgressService,
+    private readonly worksCache: WorksCacheService,
   ) {}
 
   async upsertWorkRating(workId: string, userId: string, dto: UpsertRatingDto) {
@@ -43,6 +45,7 @@ export class RatingsService {
 
     const stats = await aggregateRateableRating(this.prisma, work.rateableId);
     await this.progressService.markWorkCompleted(work.id, userId);
+    await this.worksCache.invalidate();
 
     return {
       id: rating.id,
@@ -81,6 +84,7 @@ export class RatingsService {
     ]);
 
     const stats = await aggregateRateableRating(this.prisma, work.rateableId);
+    await this.worksCache.invalidate();
 
     return {
       deleted: true,
