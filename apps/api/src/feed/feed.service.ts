@@ -2,6 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { FeedItem, FeedPage } from '@fictrio/contracts';
 import { PrismaService } from '../prisma/prisma.service';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { canModerate } from '../auth/roles';
 import { GetFeedQueryDto } from './feed.dto';
 
 /** How many works are previewed inside a list activity card. */
@@ -27,7 +29,7 @@ export class FeedService {
   async getUserFeed(
     username: string,
     query: GetFeedQueryDto,
-    viewerId?: string,
+    viewer?: AuthenticatedUser,
   ): Promise<FeedPage> {
     const user = await this.prisma.user.findUnique({
       where: { username: username.trim().toLowerCase() },
@@ -38,29 +40,29 @@ export class FeedService {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    return this.buildFeed([user.id], query, viewerId);
+    return this.buildFeed([user.id], query, viewer);
   }
 
   async getFollowingFeed(
-    viewerId: string,
+    viewer: AuthenticatedUser,
     query: GetFeedQueryDto,
   ): Promise<FeedPage> {
     const follows = await this.prisma.follow.findMany({
-      where: { followerUserId: viewerId },
+      where: { followerUserId: viewer.id },
       select: { followedUserId: true },
     });
 
     return this.buildFeed(
       follows.map((follow) => follow.followedUserId),
       query,
-      viewerId,
+      viewer,
     );
   }
 
   private async buildFeed(
     actorIds: string[],
     query: GetFeedQueryDto,
-    viewerId?: string,
+    viewer?: AuthenticatedUser,
   ): Promise<FeedPage> {
     if (actorIds.length === 0) {
       return { items: [], total: 0, limit: query.limit, offset: query.offset };
@@ -73,13 +75,13 @@ export class FeedService {
     const countBranches: Prisma.Sql[] = [];
 
     if (includePosts) {
-      rowBranches.push(this.postRowsSql(actorIds));
-      countBranches.push(this.postCountSql(actorIds));
+      rowBranches.push(this.postRowsSql(actorIds, viewer));
+      countBranches.push(this.postCountSql(actorIds, viewer));
     }
 
     if (includeLists) {
-      rowBranches.push(this.listRowsSql(actorIds, viewerId));
-      countBranches.push(this.listCountSql(actorIds));
+      rowBranches.push(this.listRowsSql(actorIds, viewer));
+      countBranches.push(this.listCountSql(actorIds, viewer));
     }
 
     const rowsUnion = Prisma.join(rowBranches, ' UNION ALL ');
@@ -107,7 +109,10 @@ export class FeedService {
     };
   }
 
-  private postRowsSql(actorIds: string[]): Prisma.Sql {
+  private postRowsSql(
+    actorIds: string[],
+    viewer?: AuthenticatedUser,
+  ): Prisma.Sql {
     return Prisma.sql`
       SELECT
         a.activity_id,
@@ -122,6 +127,7 @@ export class FeedService {
           'postKind', a.post_kind,
           'reviewId', a.review_id,
           'body', a.body,
+          'isHidden', a.is_hidden,
           'rating', a.rating,
           'commentsCount', a.comments_count,
           'work', jsonb_build_object(
@@ -134,7 +140,7 @@ export class FeedService {
             'meta', '{}'::jsonb
           )
         ) AS payload
-      FROM ( ${this.postActivitySql(actorIds)} ) a
+      FROM ( ${this.postActivitySql(actorIds, viewer)} ) a
       JOIN users u ON u.id = a.actor_id
       JOIN works w ON w.rateable_id = a.rateable_id
       LEFT JOIN LATERAL (
@@ -147,16 +153,25 @@ export class FeedService {
     `;
   }
 
-  private postCountSql(actorIds: string[]): Prisma.Sql {
+  private postCountSql(
+    actorIds: string[],
+    viewer?: AuthenticatedUser,
+  ): Prisma.Sql {
     return Prisma.sql`
       SELECT a.activity_id
-      FROM ( ${this.postActivitySql(actorIds)} ) a
+      FROM ( ${this.postActivitySql(actorIds, viewer)} ) a
       JOIN works w ON w.rateable_id = a.rateable_id
     `;
   }
 
   /** Reviews and bare (review-less) ratings authored by the given users. */
-  private postActivitySql(actorIds: string[]): Prisma.Sql {
+  private postActivitySql(
+    actorIds: string[],
+    viewer?: AuthenticatedUser,
+  ): Prisma.Sql {
+    const reviewVisible = this.postVisibleSql('p', viewer);
+    const commentVisible = this.postVisibleSql('c', viewer);
+
     return Prisma.sql`
       SELECT
         p.id              AS activity_id,
@@ -166,15 +181,16 @@ export class FeedService {
         'review'::text    AS post_kind,
         p.id              AS review_id,
         p.body            AS body,
+        p.is_hidden       AS is_hidden,
         (SELECT r.value FROM ratings r
           WHERE r.user_id = p.author_user_id
             AND r.rateable_id = p.rateable_id) AS rating,
         (SELECT COUNT(*)::int FROM posts c
           WHERE c.parent_post_id = p.id
-            AND c.is_hidden = false) AS comments_count
+            AND ${commentVisible}) AS comments_count
       FROM posts p
       WHERE p.parent_post_id IS NULL
-        AND p.is_hidden = false
+        AND ${reviewVisible}
         AND p.author_user_id = ANY(${actorIds}::uuid[])
 
       UNION ALL
@@ -187,6 +203,7 @@ export class FeedService {
         'rating'::text AS post_kind,
         NULL::uuid     AS review_id,
         NULL::text     AS body,
+        false          AS is_hidden,
         r.value        AS rating,
         0              AS comments_count
       FROM ratings r
@@ -196,16 +213,20 @@ export class FeedService {
           WHERE p.author_user_id = r.user_id
             AND p.rateable_id = r.rateable_id
             AND p.parent_post_id IS NULL
-            AND p.is_hidden = false
+            AND ${reviewVisible}
         )
     `;
   }
 
-  private listRowsSql(actorIds: string[], viewerId?: string): Prisma.Sql {
-    const userRatingSql = viewerId
+  private listRowsSql(
+    actorIds: string[],
+    viewer?: AuthenticatedUser,
+  ): Prisma.Sql {
+    const userRatingSql = viewer?.id
       ? Prisma.sql`(SELECT x.value FROM ratings x
-          WHERE x.rateable_id = l.rateable_id AND x.user_id = ${viewerId}::uuid)`
+          WHERE x.rateable_id = l.rateable_id AND x.user_id = ${viewer.id}::uuid)`
       : Prisma.sql`NULL::int`;
+    const listVisible = this.listVisibleSql('l', viewer);
 
     return Prisma.sql`
       SELECT
@@ -223,7 +244,7 @@ export class FeedService {
             'title', l.title,
             'description', l.description,
             'visibility', l.visibility,
-            'isHidden', false,
+            'isHidden', l.is_hidden,
             'createdAt', l.created_at,
             'updatedAt', l.updated_at,
             'owner', jsonb_build_object(
@@ -285,18 +306,35 @@ export class FeedService {
         WHERE x.rateable_id = l.rateable_id
       ) lr ON true
       WHERE l.owner_user_id = ANY(${actorIds}::uuid[])
-        AND l.is_hidden = false
-        AND l.visibility = 'public'
+        AND ${listVisible}
     `;
   }
 
-  private listCountSql(actorIds: string[]): Prisma.Sql {
+  private listCountSql(
+    actorIds: string[],
+    viewer?: AuthenticatedUser,
+  ): Prisma.Sql {
+    const listVisible = this.listVisibleSql('l', viewer);
+
     return Prisma.sql`
       SELECT l.id AS activity_id
       FROM lists l
       WHERE l.owner_user_id = ANY(${actorIds}::uuid[])
-        AND l.is_hidden = false
-        AND l.visibility = 'public'
+        AND ${listVisible}
     `;
+  }
+
+  private postVisibleSql(alias: string, viewer?: AuthenticatedUser) {
+    const ref = Prisma.raw(alias);
+    const viewerId = viewer?.id ?? null;
+
+    return Prisma.sql`(${ref}.is_hidden = false OR ${canModerate(viewer)} OR ${ref}.author_user_id = ${viewerId}::uuid)`;
+  }
+
+  private listVisibleSql(alias: string, viewer?: AuthenticatedUser) {
+    const ref = Prisma.raw(alias);
+    const viewerId = viewer?.id ?? null;
+
+    return Prisma.sql`(${ref}.visibility = 'public'::list_visibility AND (${ref}.is_hidden = false OR ${canModerate(viewer)} OR ${ref}.owner_user_id = ${viewerId}::uuid))`;
   }
 }

@@ -35,8 +35,12 @@ export class ListsController {
   constructor(private readonly listsService: ListsService) {}
 
   @Get()
-  findPublic(@Query() query: GetListsQueryDto) {
-    return this.listsService.findPublic(query);
+  @UseGuards(OptionalJwtAuthGuard)
+  findPublic(
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Query() query: GetListsQueryDto,
+  ) {
+    return this.listsService.findPublic(query, user);
   }
 
   @Get(':listId')

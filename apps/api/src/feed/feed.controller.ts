@@ -16,7 +16,7 @@ export class FeedController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: GetFeedQueryDto,
   ) {
-    return this.feedService.getFollowingFeed(user.id, query);
+    return this.feedService.getFollowingFeed(user, query);
   }
 
   @Get('users/:username/feed')
@@ -26,6 +26,6 @@ export class FeedController {
     @CurrentUser() user: AuthenticatedUser | undefined,
     @Query() query: GetFeedQueryDto,
   ) {
-    return this.feedService.getUserFeed(username, query, user?.id);
+    return this.feedService.getUserFeed(username, query, user);
   }
 }

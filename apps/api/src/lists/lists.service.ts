@@ -105,6 +105,7 @@ type PublicListRow = {
   title: string;
   description: string | null;
   visibility: ListVisibility;
+  isHidden: boolean;
   createdAt: Date;
   updatedAt: Date;
   ownerId: string;
@@ -128,8 +129,8 @@ type ListViewer = { id: string; roles?: string[] };
 export class ListsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findPublic(query: GetListsQueryDto) {
-    const whereSql = this.buildPublicListWhereSql(query);
+  async findPublic(query: GetListsQueryDto, viewer?: ListViewer) {
+    const whereSql = this.buildPublicListWhereSql(query, viewer);
     const havingSql = this.buildPublicListHavingSql(query);
     const pagedOrderSql = this.buildPublicListOrderSql(query, 'fl');
     const finalOrderSql = this.buildPublicListOrderSql(query, 'p');
@@ -161,6 +162,7 @@ export class ListsService {
           l.title,
           l.description,
           l.visibility,
+          l.is_hidden            AS "isHidden",
           l.created_at           AS "createdAt",
           l.updated_at           AS "updatedAt",
           u.id                   AS "ownerId",
@@ -664,10 +666,14 @@ export class ListsService {
     };
   }
 
-  private buildPublicListWhereSql(query: GetListsQueryDto) {
+  private buildPublicListWhereSql(
+    query: GetListsQueryDto,
+    viewer?: ListViewer,
+  ) {
+    const viewerId = viewer?.id ?? null;
     const and: Prisma.Sql[] = [
       Prisma.sql`l.visibility = ${ListVisibility.public}::list_visibility`,
-      Prisma.sql`l.is_hidden = false`,
+      Prisma.sql`(l.is_hidden = false OR ${canModerate({ roles: viewer?.roles ?? [] })} OR l.owner_user_id = ${viewerId}::uuid)`,
     ];
 
     if (query.search) {
@@ -730,8 +736,7 @@ export class ListsService {
       title: list.title,
       description: list.description,
       visibility: list.visibility,
-      // findPublic only ever returns non-hidden lists (filtered in SQL).
-      isHidden: false,
+      isHidden: list.isHidden,
       createdAt: list.createdAt,
       updatedAt: list.updatedAt,
       owner: {

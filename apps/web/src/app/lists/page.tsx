@@ -20,6 +20,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FormField } from "@/components/form-field";
 import { qk } from "@/lib/query-keys";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
+import { useSession } from "@/features/auth/use-session";
 import {
   getPublicLists,
   ListsSortBy,
@@ -66,9 +67,12 @@ function ListsContent() {
   const minRatingsCount = searchParams.get("minRatingsCount") ?? "";
   const sortBy = getSortBy(searchParams);
   const sortOrder = getSortOrder(searchParams);
+  const { user } = useSession();
+  const viewerScope = user ? `${user.id}:${user.roles.join(",")}` : "guest";
 
   const listsQuery = useInfiniteQuery({
     queryKey: qk.lists.public({
+      viewer: viewerScope,
       search,
       minRating,
       minRatingsCount,

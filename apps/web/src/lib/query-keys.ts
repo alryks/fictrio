@@ -51,8 +51,9 @@ export const qk = {
   },
   feed: {
     all: ["feed"] as const,
-    following: (filter: string) => ["feed", "following", filter] as const,
-    user: (username: string, filter: string) =>
-      ["feed", "user", username, filter] as const,
+    following: (filter: string, viewerScope = "guest") =>
+      ["feed", "following", viewerScope, filter] as const,
+    user: (username: string, filter: string, viewerScope = "guest") =>
+      ["feed", "user", username, viewerScope, filter] as const,
   },
 } as const;

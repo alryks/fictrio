@@ -26,6 +26,7 @@ export default function PublicUserProfilePage() {
   const params = useParams<{ username: string }>();
   const username = decodeURIComponent(params.username);
   const { user } = useSession();
+  const viewerScope = user ? `${user.id}:${user.roles.join(",")}` : "guest";
   const [tab, setTab] = useState<ProfileTab>("feed");
 
   const profileQuery = useQuery({
@@ -76,7 +77,9 @@ export default function PublicUserProfilePage() {
               <div className="mt-5">
                 {tab === "feed" ? (
                   <FeedView
-                    queryKey={(filter) => qk.feed.user(username, filter)}
+                    queryKey={(filter) =>
+                      qk.feed.user(username, filter, viewerScope)
+                    }
                     fetchPage={(filter, offset) =>
                       getUserFeed(username, filter, offset)
                     }
