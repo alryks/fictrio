@@ -9,6 +9,7 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
+    "db:grant-role": "bun --preload ./src/config/register-database-url.ts prisma/grant-role.ts",
     "import:content": "bun --preload ./src/config/register-database-url.ts prisma/import-content.ts",
     "prisma": "bun --preload ./src/config/register-database-url.ts node_modules/prisma/build/index.js",
     "start": "nest start",
