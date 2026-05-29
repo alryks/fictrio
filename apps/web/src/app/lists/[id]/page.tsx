@@ -24,8 +24,8 @@ import { isModerator } from "@/lib/roles";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
-  HiddenBadge,
-  ModerationToggleButton,
+  HiddenNotice,
+  ModerationIconButton,
 } from "@/features/moderation/moderation-controls";
 import {
   deleteListRating,
@@ -324,17 +324,19 @@ export default function ListDetailsPage() {
                             </span>
                           </Button>
                         ) : null}
-                        {list.isHidden ? <HiddenBadge /> : null}
                         {canModerate ? (
-                          <ModerationToggleButton
+                          <ModerationIconButton
                             isHidden={list.isHidden}
                             isPending={moderationMutation.isPending}
                             onToggle={() => moderationMutation.mutate()}
+                            className="size-8"
                           />
                         ) : null}
                       </div>
                     )}
                   </header>
+
+                  {list.isHidden ? <HiddenNotice className="mt-4" /> : null}
 
                   {isEditingDetails ? (
                     <div className="mt-4 max-w-3xl space-y-3">

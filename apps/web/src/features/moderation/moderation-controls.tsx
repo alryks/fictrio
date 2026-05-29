@@ -5,54 +5,57 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**
- * Badge marking content that has been hidden by a moderator. Only privileged
- * viewers (moderators, admins, the author/owner) ever see hidden content, so
- * the badge explains why it looks different from the rest of the feed.
+ * Banner placed directly above hidden content (a review or comment body),
+ * explaining that a moderator hid it. Privileged viewers (moderators, admins,
+ * the author) still read the content below; the banner is the only visual
+ * marker — the card keeps its normal border and background.
  */
-export function HiddenBadge({ className }: { className?: string }) {
+export function HiddenNotice({ className }: { className?: string }) {
   return (
-    <span
+    <div
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive",
+        "mt-3 flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground",
         className,
       )}
     >
-      <EyeOff className="size-3" />
+      <EyeOff className="size-3.5 shrink-0" />
       Скрыто модератором
-    </span>
+    </div>
   );
 }
 
-type ModerationToggleButtonProps = {
+type ModerationIconButtonProps = {
   isHidden: boolean;
   isPending: boolean;
   onToggle: () => void;
-  size?: "xs" | "sm";
   className?: string;
 };
 
 /**
- * Hide/restore toggle shown next to moderated content for moderators. Hiding
- * is a destructive action (red); restoring is a neutral outline button.
+ * Square, icon-only hide/restore control for moderators, sized to line up
+ * with the rating mark (h-10) it sits next to. Eye = restore a hidden post,
+ * EyeOff = hide a visible one.
  */
-export function ModerationToggleButton({
+export function ModerationIconButton({
   isHidden,
   isPending,
   onToggle,
-  size = "sm",
   className,
-}: ModerationToggleButtonProps) {
+}: ModerationIconButtonProps) {
+  const label = isHidden ? "Раскрыть" : "Скрыть";
+
   return (
     <Button
-      variant={isHidden ? "outline" : "destructive"}
-      size={size}
-      className={className}
+      variant="outline"
+      size="icon"
+      className={cn("size-10", className)}
       disabled={isPending}
       onClick={onToggle}
+      title={label}
       type="button"
     >
-      {isHidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
-      {isHidden ? "Раскрыть" : "Скрыть"}
+      {isHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+      <span className="sr-only">{label}</span>
     </Button>
   );
 }

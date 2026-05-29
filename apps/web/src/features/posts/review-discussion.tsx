@@ -14,11 +14,10 @@ import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { requireUser } from "@/lib/require-user";
 import { isModerator } from "@/lib/roles";
-import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/use-session";
 import {
-  HiddenBadge,
-  ModerationToggleButton,
+  HiddenNotice,
+  ModerationIconButton,
 } from "@/features/moderation/moderation-controls";
 import {
   createReviewComment,
@@ -77,12 +76,7 @@ export function ReviewDiscussionCard({
   });
 
   return (
-    <article
-      className={cn(
-        "rounded-md border bg-background p-4",
-        review.isHidden && "border-dashed border-destructive/40 bg-destructive/5",
-      )}
-    >
+    <article className="rounded-md border bg-background p-4">
       <PostContent
         author={review.author}
         body={body}
@@ -92,7 +86,7 @@ export function ReviewDiscussionCard({
         rating={review.rating}
         action={
           canModerate ? (
-            <ModerationToggleButton
+            <ModerationIconButton
               isHidden={review.isHidden}
               isPending={moderationMutation.isPending}
               onToggle={() => moderationMutation.mutate()}
@@ -129,7 +123,6 @@ export function PostContent({
       <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={author} meta={formatDate(createdAt)} />
         <div className="flex shrink-0 items-center gap-2">
-          {isHidden ? <HiddenBadge /> : null}
           {rating === null ? null : (
             <div className="leading-none">
               <RatingMark value={rating} size="xl" />
@@ -138,6 +131,7 @@ export function PostContent({
           {action}
         </div>
       </header>
+      {isHidden ? <HiddenNotice /> : null}
       <p
         className={`mt-3 whitespace-pre-wrap text-sm leading-6 ${
           isMuted ? "text-muted-foreground" : ""
@@ -264,32 +258,26 @@ function CommentItem({
   }
 
   return (
-    <article
-      className={cn(
-        "py-3 first:pt-0 last:pb-0",
-        comment.isHidden &&
-          "rounded-md border border-dashed border-destructive/40 bg-destructive/5 px-3",
-      )}
-    >
+    <article className="py-3 first:pt-0 last:pb-0">
       <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={comment.author} meta={formatDate(comment.createdAt)} />
         <div className="flex shrink-0 items-center gap-2">
-          {comment.isHidden ? <HiddenBadge /> : null}
           {comment.rating !== null ? (
             <div className="leading-none">
               <RatingMark value={comment.rating} size="xl" />
             </div>
           ) : null}
           {canModerate ? (
-            <ModerationToggleButton
+            <ModerationIconButton
               isHidden={comment.isHidden}
               isPending={moderationMutation.isPending}
               onToggle={() => moderationMutation.mutate()}
-              size="xs"
             />
           ) : null}
         </div>
       </header>
+
+      {comment.isHidden ? <HiddenNotice /> : null}
 
       {isEditing ? (
         <form className="mt-3 space-y-2" onSubmit={handleEditSubmit}>

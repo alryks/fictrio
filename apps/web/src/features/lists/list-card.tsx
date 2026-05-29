@@ -4,8 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UserLink } from "@/components/user-link";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
-import { cn } from "@/lib/utils";
-import { HiddenBadge } from "@/features/moderation/moderation-controls";
+import { HiddenNotice } from "@/features/moderation/moderation-controls";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkCard } from "@/features/works/work-card";
 import type { FictrioList } from "./lists-api";
@@ -15,12 +14,7 @@ export function ListCard({ list }: { list: FictrioList }) {
   const hiddenWorksCount = Math.max(list.itemsTotal - works.length, 0);
 
   return (
-    <article
-      className={cn(
-        "min-w-0 overflow-hidden rounded-md border bg-card p-5 shadow-sm",
-        list.isHidden && "border-dashed border-destructive/40 bg-destructive/5",
-      )}
-    >
+    <article className="min-w-0 overflow-hidden rounded-md border bg-card p-5 shadow-sm">
       <div className="grid items-start gap-5 md:grid-cols-[minmax(0,1fr)_auto]">
         <div className="min-w-0">
           <header className="min-w-0">
@@ -37,8 +31,8 @@ export function ListCard({ list }: { list: FictrioList }) {
               <span className="text-sm text-muted-foreground">
                 {list.itemsTotal} {getWorksCountLabel(list.itemsTotal)}
               </span>
-              {list.isHidden ? <HiddenBadge /> : null}
             </div>
+            {list.isHidden ? <HiddenNotice /> : null}
           </header>
 
           {list.description ? (
