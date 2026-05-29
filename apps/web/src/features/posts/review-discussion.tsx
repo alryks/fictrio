@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, ReactNode, useMemo, useState } from "react";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Send, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,11 +13,19 @@ import { UserLink } from "@/components/user-link";
 import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { requireUser } from "@/lib/require-user";
+import { isModerator } from "@/lib/roles";
+import { cn } from "@/lib/utils";
 import { useSession } from "@/features/auth/use-session";
+import {
+  HiddenBadge,
+  ModerationToggleButton,
+} from "@/features/moderation/moderation-controls";
 import {
   createReviewComment,
   deleteComment,
   getReviewComments,
+  moderateComment,
+  moderateReview,
   Review,
   ReviewAuthor,
   ReviewComment,
@@ -45,20 +53,52 @@ export function ReviewDiscussionCard({
   review: Review;
   onMutated: OnMutated;
 }) {
+  const { user } = useSession();
+  const canModerate = isModerator(user) && review.kind === "review";
   const body =
     review.kind === "review" && review.body
       ? review.body
       : "Поставлена оценка.";
   const isMuted = review.kind !== "review";
 
+  const moderationMutation = useMutation({
+    mutationFn: () => moderateReview(review.id, review.isHidden ? "restore" : "hide"),
+    onSuccess: async () => {
+      toast.success(review.isHidden ? "Отзыв раскрыт" : "Отзыв скрыт");
+      await onMutated();
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не удалось изменить видимость отзыва",
+      );
+    },
+  });
+
   return (
-    <article className="rounded-md border bg-background p-4">
+    <article
+      className={cn(
+        "rounded-md border bg-background p-4",
+        review.isHidden && "border-dashed border-destructive/40 bg-destructive/5",
+      )}
+    >
       <PostContent
         author={review.author}
         body={body}
         createdAt={review.createdAt}
+        isHidden={review.isHidden}
         isMuted={isMuted}
         rating={review.rating}
+        action={
+          canModerate ? (
+            <ModerationToggleButton
+              isHidden={review.isHidden}
+              isPending={moderationMutation.isPending}
+              onToggle={() => moderationMutation.mutate()}
+            />
+          ) : null
+        }
       />
       {review.kind === "review" ? (
         <CommentThread review={review} onMutated={onMutated} />
@@ -71,24 +111,32 @@ export function PostContent({
   author,
   body,
   createdAt,
+  isHidden = false,
   isMuted = false,
   rating,
+  action,
 }: {
   author: ReviewAuthor;
   body: string;
   createdAt: string;
+  isHidden?: boolean;
   isMuted?: boolean;
   rating: number | null;
+  action?: ReactNode;
 }) {
   return (
     <>
-      <header className="flex h-10 items-start justify-between gap-4">
+      <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={author} meta={formatDate(createdAt)} />
-        {rating === null ? null : (
-          <div className="shrink-0 leading-none">
-            <RatingMark value={rating} size="xl" />
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {isHidden ? <HiddenBadge /> : null}
+          {rating === null ? null : (
+            <div className="leading-none">
+              <RatingMark value={rating} size="xl" />
+            </div>
+          )}
+          {action}
+        </div>
       </header>
       <p
         className={`mt-3 whitespace-pre-wrap text-sm leading-6 ${
@@ -138,6 +186,28 @@ function CommentItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editDraft, setEditDraft] = useState(comment.body);
   const isOwnComment = user?.id === comment.author.id;
+  const canModerate = isModerator(user);
+
+  const moderationMutation = useMutation({
+    mutationFn: () =>
+      moderateComment(comment.id, comment.isHidden ? "restore" : "hide"),
+    onSuccess: async () => {
+      toast.success(comment.isHidden ? "Комментарий раскрыт" : "Комментарий скрыт");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: qk.reviews.comments(reviewId),
+        }),
+        onMutated(),
+      ]);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не удалось изменить видимость комментария",
+      );
+    },
+  });
 
   const updateMutation = useMutation({
     mutationFn: () => {
@@ -194,14 +264,31 @@ function CommentItem({
   }
 
   return (
-    <article className="py-3 first:pt-0 last:pb-0">
-      <header className="flex h-10 items-start justify-between gap-4">
+    <article
+      className={cn(
+        "py-3 first:pt-0 last:pb-0",
+        comment.isHidden &&
+          "rounded-md border border-dashed border-destructive/40 bg-destructive/5 px-3",
+      )}
+    >
+      <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={comment.author} meta={formatDate(comment.createdAt)} />
-        {comment.rating !== null ? (
-          <div className="shrink-0 leading-none">
-            <RatingMark value={comment.rating} size="xl" />
-          </div>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          {comment.isHidden ? <HiddenBadge /> : null}
+          {comment.rating !== null ? (
+            <div className="leading-none">
+              <RatingMark value={comment.rating} size="xl" />
+            </div>
+          ) : null}
+          {canModerate ? (
+            <ModerationToggleButton
+              isHidden={comment.isHidden}
+              isPending={moderationMutation.isPending}
+              onToggle={() => moderationMutation.mutate()}
+              size="xs"
+            />
+          ) : null}
+        </div>
       </header>
 
       {isEditing ? (
