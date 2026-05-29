@@ -37,10 +37,22 @@ export const qk = {
     list: (filters: unknown) => ["progress", "list", filters] as const,
   },
   users: {
+    all: ["users"] as const,
     profile: (username: string) => ["user", username] as const,
+    search: (search: string) => ["users", "search", search] as const,
+    followers: (username: string, search: string) =>
+      ["users", username, "followers", search] as const,
+    following: (username: string, search: string) =>
+      ["users", username, "following", search] as const,
   },
   reviews: {
     all: ["review"] as const,
     comments: (reviewId: string) => ["review", reviewId, "comments"] as const,
+  },
+  feed: {
+    all: ["feed"] as const,
+    following: (filter: string) => ["feed", "following", filter] as const,
+    user: (username: string, filter: string) =>
+      ["feed", "user", username, filter] as const,
   },
 } as const;

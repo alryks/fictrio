@@ -8,6 +8,12 @@ type UseInfiniteScrollOptions = {
   fetchNextPage: () => unknown;
   /** Distance from the sentinel at which to prefetch the next page. */
   rootMargin?: string;
+  /**
+   * Scroll container to observe within. Defaults to the viewport; pass the
+   * scrollable element when the list lives inside its own overflow container
+   * (e.g. a dialog), otherwise the sentinel would always count as visible.
+   */
+  root?: Element | null;
 };
 
 /**
@@ -21,6 +27,7 @@ export function useInfiniteScroll({
   isFetchingNextPage,
   fetchNextPage,
   rootMargin = "320px 0px",
+  root = null,
 }: UseInfiniteScrollOptions) {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
@@ -37,13 +44,13 @@ export function useInfiniteScroll({
           void fetchNextPage();
         }
       },
-      { rootMargin },
+      { root, rootMargin },
     );
 
     observer.observe(target);
 
     return () => observer.disconnect();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage, rootMargin]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage, root, rootMargin]);
 
   return sentinelRef;
 }
