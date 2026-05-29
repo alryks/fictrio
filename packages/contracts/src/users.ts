@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  paginationSchema,
+  pageEnvelopeSchema,
+  publicUserRefSchema,
+} from "./common.js";
 
 const usernameSchema = z
   .string()
@@ -23,14 +28,57 @@ const bioSchema = z
   .nullable()
   .optional();
 
+/**
+ * Follow relationship summary attached to every public-facing user shape:
+ * how many users follow them, how many they follow, and whether the current
+ * viewer already follows them / is looking at their own record.
+ */
+export const followStatsSchema = z.object({
+  followersCount: z.number().int().nonnegative(),
+  followingCount: z.number().int().nonnegative(),
+  isFollowedByViewer: z.boolean(),
+  isSelf: z.boolean(),
+});
+export type FollowStats = z.infer<typeof followStatsSchema>;
+
 export const publicUserProfileSchema = z.object({
   id: z.string().uuid(),
   username: z.string(),
   displayName: z.string(),
   bio: z.string().nullable(),
   roles: z.array(z.string()),
+  ...followStatsSchema.shape,
 });
 export type PublicUserProfile = z.infer<typeof publicUserProfileSchema>;
+
+/**
+ * Compact user row used in search results and follower/following lists.
+ * Reuses the embedded-author ref and adds the follow summary so each row can
+ * render a follow/unfollow button without an extra request.
+ */
+export const userSummarySchema = publicUserRefSchema.extend({
+  bio: z.string().nullable(),
+  ...followStatsSchema.shape,
+});
+export type UserSummary = z.infer<typeof userSummarySchema>;
+
+export const usersPageSchema = pageEnvelopeSchema(userSummarySchema);
+export type UsersPage = z.infer<typeof usersPageSchema>;
+
+export const getUsersQuerySchema = paginationSchema({
+  limit: 20,
+  maxLimit: 50,
+}).extend({
+  search: z.string().trim().max(64).optional(),
+});
+export type GetUsersQuery = z.infer<typeof getUsersQuerySchema>;
+
+export const getFollowListQuerySchema = getUsersQuerySchema;
+export type GetFollowListQuery = z.infer<typeof getFollowListQuerySchema>;
+
+/** Result of a follow/unfollow mutation: the target user's refreshed stats. */
+export const followResponseSchema = followStatsSchema;
+export type FollowResponse = z.infer<typeof followResponseSchema>;
 
 export const updateMyProfileInputSchema = z
   .object({

@@ -7,3 +7,4 @@ export * from "./ratings.js";
 export * from "./posts.js";
 export * from "./lists.js";
 export * from "./users.js";
+export * from "./feed.js";
