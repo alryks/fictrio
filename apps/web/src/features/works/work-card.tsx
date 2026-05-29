@@ -22,7 +22,13 @@ const kindIcons = {
   book: BookOpen,
 };
 
-export function WorkCard({ work }: { work: WorkListItem }) {
+export function WorkCard({
+  work,
+  href = `/catalog/${work.id}`,
+}: {
+  work: WorkListItem;
+  href?: string;
+}) {
   const Icon = kindIcons[work.kind];
   const releaseYear = work.releaseYear
     ? String(work.releaseYear)
@@ -31,7 +37,7 @@ export function WorkCard({ work }: { work: WorkListItem }) {
   return (
     <Link
       className="group block w-full min-w-[160px] overflow-hidden rounded-md border bg-card shadow-sm outline-none transition hover:border-primary hover:shadow-md focus-visible:ring-2 focus-visible:ring-ring/50"
-      href={`/catalog/${work.id}`}
+      href={href}
     >
       <PosterPlaceholder
         imageUrl={work.imageUrl}

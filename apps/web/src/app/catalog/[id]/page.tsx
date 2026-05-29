@@ -10,6 +10,7 @@ import { formatDate } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
+import { WorkProgressPanel } from "@/features/progress/work-progress-panel";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkRail } from "@/features/works/work-rail";
 import { getWork, WorkKind } from "@/features/works/works-api";
@@ -111,6 +112,8 @@ export default function WorkDetailsPage() {
                     ),
                   )}
                 </dl>
+
+                <WorkProgressPanel work={workQuery.data} />
               </div>
 
               {workQuery.data.kind === "show" &&

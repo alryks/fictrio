@@ -321,6 +321,7 @@ async function invalidateWorkQueries(
     queryClient.invalidateQueries({ queryKey: qk.works.detail(workId) }),
     queryClient.invalidateQueries({ queryKey: qk.works.all }),
     queryClient.invalidateQueries({ queryKey: qk.works.reviews(workId) }),
+    queryClient.invalidateQueries({ queryKey: qk.progress.all }),
     queryClient.invalidateQueries({ queryKey: qk.reviews.all }),
   ]);
 }
