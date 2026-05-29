@@ -7,7 +7,6 @@ import { StateCard } from "@/components/state-card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { qk } from "@/lib/query-keys";
-import { AuthPanel } from "@/features/auth/auth-panel";
 import { FeedView } from "@/features/feed/feed-view";
 import { getFollowingFeed } from "@/features/feed/feed-api";
 import { useSession } from "@/features/auth/use-session";
@@ -19,7 +18,7 @@ export default function Home() {
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
       <SiteHeader active="feed" />
 
-      <main className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,760px)_minmax(280px,1fr)] lg:px-8">
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
         <section className="min-w-0 space-y-4">
           <div>
             <h1 className="text-2xl font-semibold">Лента</h1>
@@ -56,10 +55,6 @@ export default function Home() {
             </div>
           )}
         </section>
-
-        <aside className="space-y-4">
-          <AuthPanel />
-        </aside>
       </main>
     </div>
   );
