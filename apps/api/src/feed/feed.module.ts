@@ -1,6 +1,11 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { FeedController } from './feed.controller';
+import { FeedService } from './feed.service';
 
-// TODO: реализовать FeedController/FeedService поверх SQL-функции
-// get_feed(uuid) для ленты активности подписок (этап 13 PLAN.md).
-@Module({})
+@Module({
+  imports: [AuthModule],
+  controllers: [FeedController],
+  providers: [FeedService],
+})
 export class FeedModule {}

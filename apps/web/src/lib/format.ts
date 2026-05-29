@@ -10,16 +10,36 @@ export function formatDate(value: string): string {
   return Number.isNaN(date.getTime()) ? value : dateFormatter.format(date);
 }
 
-/** Russian plural form of "элемент" for a given count (1 / 2-4 / 5+). */
-export function getWorksCountLabel(count: number): string {
+/** Picks the Russian plural form for a count (1 / 2-4 / 5+). */
+function pluralize(
+  count: number,
+  one: string,
+  few: string,
+  many: string,
+): string {
   const mod10 = count % 10;
   const mod100 = count % 100;
 
   if (mod10 === 1 && mod100 !== 11) {
-    return "элемент";
+    return one;
   }
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
-    return "элемента";
+    return few;
   }
-  return "элементов";
+  return many;
+}
+
+/** Russian plural form of "элемент" for a given count (1 / 2-4 / 5+). */
+export function getWorksCountLabel(count: number): string {
+  return pluralize(count, "элемент", "элемента", "элементов");
+}
+
+/** Russian plural form of "подписчик" for a given count. */
+export function getFollowersCountLabel(count: number): string {
+  return pluralize(count, "подписчик", "подписчика", "подписчиков");
+}
+
+/** Russian plural form of "подписка" for a given count. */
+export function getFollowingCountLabel(count: number): string {
+  return pluralize(count, "подписка", "подписки", "подписок");
 }

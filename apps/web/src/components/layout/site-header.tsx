@@ -4,7 +4,7 @@ import Link from "next/link";
 import { HeaderAuthActions } from "@/components/layout/header-auth-actions";
 import { cn } from "@/lib/utils";
 
-type NavKey = "feed" | "catalog" | "lists";
+type NavKey = "feed" | "catalog" | "lists" | "people";
 
 type NavItem = {
   key: NavKey;
@@ -16,6 +16,7 @@ const navItems: NavItem[] = [
   { key: "feed", label: "Лента", href: "/" },
   { key: "catalog", label: "Каталог", href: "/catalog" },
   { key: "lists", label: "Списки", href: "/lists" },
+  { key: "people", label: "Люди", href: "/users" },
 ];
 
 type SiteHeaderProps = {
