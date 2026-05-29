@@ -6,5 +6,6 @@ export * from "./progress.js";
 export * from "./ratings.js";
 export * from "./posts.js";
 export * from "./lists.js";
+export * from "./moderation.js";
 export * from "./users.js";
 export * from "./feed.js";
