@@ -52,6 +52,7 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
       }),
     onSuccess: async (updated) => {
       const updatedProfile: PublicUserProfile = {
+        ...profile,
         id: updated.id,
         username: updated.username,
         displayName: updated.displayName,
