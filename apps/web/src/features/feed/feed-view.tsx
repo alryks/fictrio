@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import type { QueryKey } from "@tanstack/react-query";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { StateCard } from "@/components/state-card";
@@ -128,17 +127,7 @@ export function FeedView({
 }
 
 function ListActivityCard({ activity }: { activity: FeedListActivity }) {
-  return (
-    <div>
-      <p className="mb-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">
-          {activity.actor.displayName}
-        </span>{" "}
-        создал(а) список
-      </p>
-      <ListCard list={activity.list} />
-    </div>
-  );
+  return <ListCard list={activity.list} />;
 }
 
 function PostActivityCard({
@@ -164,23 +153,12 @@ function PostActivityCard({
   };
 
   return (
-    <article className="grid gap-4 rounded-md border bg-card p-4 shadow-sm sm:grid-cols-[132px_minmax(0,1fr)]">
-      <div className="w-32 sm:w-full">
+    <article className="grid gap-4 rounded-md border bg-card p-4 shadow-sm sm:grid-cols-[160px_minmax(0,1fr)]">
+      <div className="w-40">
         <WorkCard work={activity.work} />
       </div>
 
       <div className="min-w-0">
-        <p className="mb-2 text-sm text-muted-foreground">
-          {activity.postKind === "review"
-            ? "написал(а) отзыв на"
-            : "поставил(а) оценку"}{" "}
-          <Link
-            href={`/catalog/${activity.work.id}`}
-            className="font-medium text-primary hover:underline"
-          >
-            {activity.work.title}
-          </Link>
-        </p>
         <ReviewDiscussionCard review={review} onMutated={onMutated} />
       </div>
     </article>
