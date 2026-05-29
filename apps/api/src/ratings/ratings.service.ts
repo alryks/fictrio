@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProgressService } from '../progress/progress.service';
 import { aggregateRateableRating } from '../common/rating-stats';
 import { UpsertRatingDto } from './ratings.dto';
 
 @Injectable()
 export class RatingsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly progressService: ProgressService,
+  ) {}
 
   async upsertWorkRating(workId: string, userId: string, dto: UpsertRatingDto) {
     const work = await this.prisma.work.findUnique({
@@ -38,6 +42,7 @@ export class RatingsService {
     });
 
     const stats = await aggregateRateableRating(this.prisma, work.rateableId);
+    await this.progressService.markWorkCompleted(work.id, userId);
 
     return {
       id: rating.id,

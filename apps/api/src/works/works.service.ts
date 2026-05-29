@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, WorkKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ProgressService } from '../progress/progress.service';
 import { RatingStats } from '../common/rating-stats';
 import { GetWorksQueryDto } from './works.dto';
 
@@ -112,7 +113,10 @@ type CountRow = {
 
 @Injectable()
 export class WorksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly progressService: ProgressService,
+  ) {}
 
   async findMany(query: GetWorksQueryDto) {
     const whereSql = this.buildListWhereSql(query);
@@ -175,7 +179,7 @@ export class WorksService {
     };
   }
 
-  async findOne(workId: string) {
+  async findOne(workId: string, userId?: string) {
     const work = await this.prisma.work.findFirst({
       where: {
         id: workId,
@@ -187,8 +191,11 @@ export class WorksService {
       throw new NotFoundException('Произведение не найдено');
     }
 
-    const ratings = await this.loadRatingStats(work);
-    return this.toDetails(work, ratings);
+    const [ratings, userProgress] = await Promise.all([
+      this.loadRatingStats(work),
+      userId ? this.progressService.getWorkProgress(work.id, userId) : null,
+    ]);
+    return this.toDetails(work, ratings, userProgress);
   }
 
   private buildListWhereSql(query: GetWorksQueryDto) {
@@ -323,7 +330,13 @@ export class WorksService {
     );
   }
 
-  private toDetails(work: WorkWithDetails, ratings: Map<string, RatingStats>) {
+  private toDetails(
+    work: WorkWithDetails,
+    ratings: Map<string, RatingStats>,
+    userProgress: Awaited<
+      ReturnType<ProgressService['getWorkProgress']>
+    > | null,
+  ) {
     return {
       ...this.buildWorkItem(
         work,
@@ -357,6 +370,7 @@ export class WorksService {
               : work.kind === WorkKind.episode
                 ? work.episode
                 : work.book,
+      userProgress,
       seasons:
         work.kind === WorkKind.show
           ? (work.show?.seasons.map((season) => ({

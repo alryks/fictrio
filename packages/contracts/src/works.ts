@@ -4,7 +4,7 @@ import {
   paginationSchema,
   ratingStatsSchema,
 } from "./common.js";
-import { workKindSchema } from "./enums.js";
+import { progressStatusSchema, workKindSchema } from "./enums.js";
 
 const yearSchema = z.coerce.number().int().min(1800).max(2100);
 
@@ -72,6 +72,18 @@ export const workListItemSchema = z.object({
 });
 export type WorkListItem = z.infer<typeof workListItemSchema>;
 
+export const workProgressSchema = z.object({
+  workId: z.string().uuid(),
+  status: progressStatusSchema.nullable(),
+  valueNow: z.number().int().nonnegative().nullable(),
+  valueMax: z.number().int().positive().nullable(),
+  updatedAt: z.iso.datetime({ offset: true }).nullable(),
+  targetWorkId: z.string().uuid().nullable(),
+  completedItems: z.number().int().nonnegative().nullable(),
+  totalItems: z.number().int().nonnegative().nullable(),
+});
+export type WorkProgress = z.infer<typeof workProgressSchema>;
+
 const workSeasonItemSchema: z.ZodType<
   WorkListItem & { episodes: WorkListItem[] }
 > = workListItemSchema.extend({
@@ -81,6 +93,7 @@ const workSeasonItemSchema: z.ZodType<
 export const workDetailsSchema = workListItemSchema.extend({
   details: workMetaSchema.nullable(),
   userRating: z.number().nullable().optional(),
+  userProgress: workProgressSchema.nullable().optional(),
   seasons: z.array(workSeasonItemSchema).optional(),
   episodes: z.array(workListItemSchema).optional(),
 });

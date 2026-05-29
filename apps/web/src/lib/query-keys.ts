@@ -31,6 +31,11 @@ export const qk = {
     mine: ["lists", "mine"] as const,
     detail: (id: string) => ["list", id] as const,
   },
+  progress: {
+    all: ["progress"] as const,
+    summary: (username: string) => ["progress", username, "summary"] as const,
+    list: (filters: unknown) => ["progress", "list", filters] as const,
+  },
   users: {
     profile: (username: string) => ["user", username] as const,
   },

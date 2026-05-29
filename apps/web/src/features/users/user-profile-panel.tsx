@@ -15,6 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { qk } from "@/lib/query-keys";
 import { useSessionActions } from "@/features/auth/use-session";
+import { ProfileProgressSection } from "@/features/progress/profile-progress-section";
 import { updateMyProfile } from "./users-api";
 
 type FieldErrors = Record<string, string>;
@@ -119,116 +120,120 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex min-w-0 items-center gap-4">
-            <UserBadge
-              name={profile.username}
-              size="md"
-              tone="primary"
-              className="size-16 text-lg"
-            />
-            <div className="min-w-0">
-              <CardTitle className="truncate text-2xl">
-                {profile.displayName}
-              </CardTitle>
-              <p className="mt-1 truncate text-sm text-muted-foreground">
-                @{profile.username}
-              </p>
+    <div className="flex flex-col gap-6">
+      <Card>
+        <CardHeader>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <UserBadge
+                name={profile.username}
+                size="md"
+                tone="primary"
+                className="size-16 text-lg"
+              />
+              <div className="min-w-0">
+                <CardTitle className="truncate text-2xl">
+                  {profile.displayName}
+                </CardTitle>
+                <p className="mt-1 truncate text-sm text-muted-foreground">
+                  @{profile.username}
+                </p>
+              </div>
             </div>
-          </div>
-          {isOwnProfile && !isEditing ? (
-            <Button
-              variant="outline"
-              className="h-10"
-              onClick={startEditing}
-              type="button"
-            >
-              <Pencil data-icon="inline-start" />
-              Изменить
-            </Button>
-          ) : null}
-        </div>
-      </CardHeader>
-      <CardContent>
-        {isEditing ? (
-          <form
-            className="flex max-w-2xl flex-col gap-4"
-            onSubmit={handleSubmit}
-          >
-            <FormField label="Имя" error={fieldErrors.displayName}>
-              {(field) => (
-                <Input
-                  {...field}
-                  disabled={updateMutation.isPending}
-                  maxLength={64}
-                  onChange={(event) => setDisplayName(event.target.value)}
-                  required
-                  value={displayName}
-                />
-              )}
-            </FormField>
-            <FormField label="Username" error={fieldErrors.username}>
-              {(field) => (
-                <Input
-                  {...field}
-                  disabled={updateMutation.isPending}
-                  maxLength={64}
-                  minLength={3}
-                  onChange={(event) => setUsername(event.target.value)}
-                  required
-                  value={username}
-                />
-              )}
-            </FormField>
-            <FormField label="Описание" error={fieldErrors.bio}>
-              {(field) => (
-                <Textarea
-                  {...field}
-                  className="min-h-28"
-                  disabled={updateMutation.isPending}
-                  maxLength={1000}
-                  onChange={(event) => setBio(event.target.value)}
-                  value={bio}
-                />
-              )}
-            </FormField>
-            <div className="flex flex-wrap gap-2">
-              <Button disabled={updateMutation.isPending} type="submit">
-                <Save data-icon="inline-start" />
-                Сохранить
-              </Button>
+            {isOwnProfile && !isEditing ? (
               <Button
                 variant="outline"
-                disabled={updateMutation.isPending}
-                onClick={cancelEditing}
+                className="h-10"
+                onClick={startEditing}
                 type="button"
               >
-                <X data-icon="inline-start" />
-                Отмена
+                <Pencil data-icon="inline-start" />
+                Изменить
               </Button>
-            </div>
-          </form>
-        ) : (
-          <div className="flex max-w-3xl flex-col gap-4">
-            <p className="text-sm leading-6 text-muted-foreground">
-              {profile.bio ?? "Описание профиля пока не добавлено."}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {profile.roles.map((role) => (
-                <span
-                  className="inline-flex items-center gap-1 rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground"
-                  key={role}
-                >
-                  <ShieldCheck />
-                  {roleLabels[role] ?? role}
-                </span>
-              ))}
-            </div>
+            ) : null}
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {isEditing ? (
+            <form
+              className="flex max-w-2xl flex-col gap-4"
+              onSubmit={handleSubmit}
+            >
+              <FormField label="Имя" error={fieldErrors.displayName}>
+                {(field) => (
+                  <Input
+                    {...field}
+                    disabled={updateMutation.isPending}
+                    maxLength={64}
+                    onChange={(event) => setDisplayName(event.target.value)}
+                    required
+                    value={displayName}
+                  />
+                )}
+              </FormField>
+              <FormField label="Username" error={fieldErrors.username}>
+                {(field) => (
+                  <Input
+                    {...field}
+                    disabled={updateMutation.isPending}
+                    maxLength={64}
+                    minLength={3}
+                    onChange={(event) => setUsername(event.target.value)}
+                    required
+                    value={username}
+                  />
+                )}
+              </FormField>
+              <FormField label="Описание" error={fieldErrors.bio}>
+                {(field) => (
+                  <Textarea
+                    {...field}
+                    className="min-h-28"
+                    disabled={updateMutation.isPending}
+                    maxLength={1000}
+                    onChange={(event) => setBio(event.target.value)}
+                    value={bio}
+                  />
+                )}
+              </FormField>
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={updateMutation.isPending} type="submit">
+                  <Save data-icon="inline-start" />
+                  Сохранить
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={updateMutation.isPending}
+                  onClick={cancelEditing}
+                  type="button"
+                >
+                  <X data-icon="inline-start" />
+                  Отмена
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="flex max-w-3xl flex-col gap-4">
+              <p className="text-sm leading-6 text-muted-foreground">
+                {profile.bio ?? "Описание профиля пока не добавлено."}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {profile.roles.map((role) => (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-sm bg-secondary px-2 py-1 text-xs text-secondary-foreground"
+                    key={role}
+                  >
+                    <ShieldCheck />
+                    {roleLabels[role] ?? role}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <ProfileProgressSection username={profile.username} />
+    </div>
   );
 }

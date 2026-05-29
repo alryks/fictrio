@@ -6,6 +6,7 @@ import { HealthModule } from './health/health.module';
 import { ListsModule } from './lists/lists.module';
 import { PostsModule } from './posts/posts.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { ProgressModule } from './progress/progress.module';
 import { RatingsModule } from './ratings/ratings.module';
 import { RedisModule } from './redis/redis.module';
 import { UsersModule } from './users/users.module';
@@ -23,6 +24,7 @@ import { WorksModule } from './works/works.module';
     AuthModule,
     UsersModule,
     WorksModule,
+    ProgressModule,
     RatingsModule,
     PostsModule,
     ListsModule,
