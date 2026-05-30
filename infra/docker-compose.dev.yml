@@ -1,0 +1,134 @@
+# Full development stack as built images (no Traefik). Build context is the
+# repo root (..). Ports are published on localhost.
+#
+#   docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml up -d --build
+#
+# App: http://localhost:3000, API: http://localhost:3001.
+#
+# For host-based development with hot reload, start only the backing services
+# and run `bun run dev` on the host:
+#
+#   docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml up -d postgres redis
+#
+# A dedicated project name and volumes keep this stack isolated from prod.
+name: fictrio-dev
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: fictrio-postgres-dev
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - fictrio-postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:8-alpine
+    container_name: fictrio-redis-dev
+    restart: unless-stopped
+    environment:
+      REDIS_USERNAME: ${REDIS_USERNAME:?REDIS_USERNAME is required}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - fictrio-redis-data:/data
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes",
+        "--user",
+        "default",
+        "off",
+        "--user",
+        "${REDIS_USERNAME}",
+        "on",
+        ">${REDIS_PASSWORD}",
+        "~*",
+        "&*",
+        "+@all",
+      ]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "redis-cli --user \"$${REDIS_USERNAME}\" --pass \"$${REDIS_PASSWORD}\" ping",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: apps/api/Dockerfile
+    image: fictrio-api:dev
+    container_name: fictrio-api-dev
+    restart: unless-stopped
+    environment:
+      # development keeps session cookies non-Secure so login works over plain
+      # http://localhost.
+      NODE_ENV: development
+      API_HOST: 0.0.0.0
+      API_PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ACCESS_TOKEN_EXPIRES_IN: ${JWT_ACCESS_TOKEN_EXPIRES_IN:-1h}
+      # Reach the backing services by compose service name (overrides the
+      # localhost values in .env.dev that host processes use).
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_USERNAME: ${REDIS_USERNAME}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TMDB_API_BASE_URL: ${TMDB_API_BASE_URL:-https://api.themoviedb.org/3}
+      IMPORT_TMDB_MOVIE_PAGES: ${IMPORT_TMDB_MOVIE_PAGES:-2}
+      IMPORT_TMDB_SHOW_PAGES: ${IMPORT_TMDB_SHOW_PAGES:-2}
+      IMPORT_TMDB_SEASONS_PER_SHOW: ${IMPORT_TMDB_SEASONS_PER_SHOW:-}
+      OPEN_LIBRARY_API_BASE_URL: ${OPEN_LIBRARY_API_BASE_URL:-https://openlibrary.org}
+      OPEN_LIBRARY_COVERS_BASE_URL: ${OPEN_LIBRARY_COVERS_BASE_URL:-https://covers.openlibrary.org}
+      IMPORT_OPEN_LIBRARY_BOOK_LIMIT: ${IMPORT_OPEN_LIBRARY_BOOK_LIMIT:-50}
+      IMPORT_OPEN_LIBRARY_SUBJECT: ${IMPORT_OPEN_LIBRARY_SUBJECT:-fiction}
+    ports:
+      - "${API_PORT:-3001}:3001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: ..
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:3001}
+    image: fictrio-web:dev
+    container_name: fictrio-web-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+volumes:
+  fictrio-postgres-data:
+  fictrio-redis-data:
