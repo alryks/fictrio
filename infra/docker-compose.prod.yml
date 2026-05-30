@@ -81,16 +81,6 @@ services:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      
-      TMDB_API_KEY: ${TMDB_API_KEY:-}
-      TMDB_API_BASE_URL: ${TMDB_API_BASE_URL:-https://api.themoviedb.org/3}
-      IMPORT_TMDB_MOVIE_PAGES: ${IMPORT_TMDB_MOVIE_PAGES:-2}
-      IMPORT_TMDB_SHOW_PAGES: ${IMPORT_TMDB_SHOW_PAGES:-2}
-      IMPORT_TMDB_SEASONS_PER_SHOW: ${IMPORT_TMDB_SEASONS_PER_SHOW:-}
-      OPEN_LIBRARY_API_BASE_URL: ${OPEN_LIBRARY_API_BASE_URL:-https://openlibrary.org}
-      OPEN_LIBRARY_COVERS_BASE_URL: ${OPEN_LIBRARY_COVERS_BASE_URL:-https://covers.openlibrary.org}
-      IMPORT_OPEN_LIBRARY_BOOK_LIMIT: ${IMPORT_OPEN_LIBRARY_BOOK_LIMIT:-50}
-      IMPORT_OPEN_LIBRARY_SUBJECT: ${IMPORT_OPEN_LIBRARY_SUBJECT:-fiction}
     depends_on:
       postgres:
         condition: service_healthy

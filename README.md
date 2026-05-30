@@ -53,18 +53,11 @@ bun run dev
 
 The host tools (`bun run dev`, `bun run db:*`, tests) read `infra/.env.dev`.
 
-Run database migrations and import catalog data (Option B, on the host):
+Run database migrations (Option B, on the host):
 
 ```bash
 bun run db:migrate
-bun run db:import
 ```
-
-`db:import` loads popular movies and TV shows from TMDb and books from Open Library.
-Set `TMDB_API_KEY` in `infra/.env.dev` before running it. The importer is idempotent
-and skips content that already exists by external identifiers.
-By default, all regular seasons and their episodes are imported for every imported TV show.
-Set `IMPORT_TMDB_SEASONS_PER_SHOW` only when you need to limit seasons per show.
 
 Grant a moderator or administrator role to an existing account (registration only
 assigns `user`). The command is idempotent:
@@ -139,15 +132,7 @@ the host.
    the SQL routines) on every start before serving, so the schema is brought
    up to date automatically.
 
-3. Populate the catalog once (optional, needs `TMDB_API_KEY` in
-   `infra/.env.prod` for films and shows; books come from Open Library):
-
-   ```bash
-   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec \
-     --workdir /app/apps/api api bun prisma/import-content.ts
-   ```
-
-4. Grant a moderator/administrator role to an account (after it has registered):
+3. Grant a moderator/administrator role to an account (after it has registered):
 
    ```bash
    docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec \
