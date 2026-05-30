@@ -6,6 +6,8 @@ import type {
   ListsSortBy,
   ListsSortOrder,
   ListsPage,
+  ModerationInput,
+  ModerationResult,
   MyListsResponse,
   RatingStats,
   UpdateListInput,
@@ -15,6 +17,7 @@ import { apiRequest } from "@/lib/api";
 
 export type { FictrioList, ListOwner, ListsSortBy, ListsSortOrder };
 export type ListsResponse = ListsPage;
+export type ModerationAction = ModerationInput["action"];
 
 export type GetPublicListsParams = {
   search?: string;
@@ -118,4 +121,11 @@ export function deleteListRating(listId: string) {
       method: "DELETE",
     },
   );
+}
+
+export function moderateList(listId: string, action: ModerationAction) {
+  return apiRequest<ModerationResult>(`/lists/${listId}/moderation`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
 }

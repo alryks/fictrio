@@ -2,11 +2,13 @@ import {
   createCommentInputSchema,
   createReviewInputSchema,
   getPostsPageQuerySchema,
+  moderationInputSchema,
   updateCommentInputSchema,
   updateReviewInputSchema,
   type CreateCommentInput,
   type CreateReviewInput,
   type GetPostsPageQuery,
+  type ModerationInput,
   type UpdateCommentInput,
   type UpdateReviewInput,
 } from '@fictrio/contracts';
@@ -40,4 +42,11 @@ export class GetPostsPageQueryDto implements GetPostsPageQuery {
 
   limit!: number;
   offset!: number;
+}
+
+export class ModeratePostDto implements ModerationInput {
+  static readonly schema = moderationInputSchema;
+
+  action!: ModerationInput['action'];
+  reason?: string;
 }

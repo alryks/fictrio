@@ -100,6 +100,7 @@ export const fictrioListSchema = z.object({
   title: z.string(),
   description: z.string().nullable(),
   visibility: listVisibilitySchema,
+  isHidden: z.boolean(),
   createdAt: isoDateTimeSchema,
   updatedAt: isoDateTimeSchema,
   owner: publicUserRefSchema,

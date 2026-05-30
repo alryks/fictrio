@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { UserLink } from "@/components/user-link";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
+import { HiddenNotice } from "@/features/moderation/moderation-controls";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
 import { WorkCard } from "@/features/works/work-card";
 import type { FictrioList } from "./lists-api";
@@ -31,6 +32,7 @@ export function ListCard({ list }: { list: FictrioList }) {
                 {list.itemsTotal} {getWorksCountLabel(list.itemsTotal)}
               </span>
             </div>
+            {list.isHidden ? <HiddenNotice /> : null}
           </header>
 
           {list.description ? (

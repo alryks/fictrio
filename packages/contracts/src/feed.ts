@@ -39,6 +39,7 @@ export const feedPostActivitySchema = z.object({
   postKind: z.enum(["review", "rating"]),
   reviewId: z.string().uuid().nullable(),
   body: z.string().nullable(),
+  isHidden: z.boolean(),
   rating: z.number().int().nullable(),
   commentsCount: z.number().int().nonnegative(),
   work: workListItemSchema,

@@ -20,11 +20,17 @@ import { FormField } from "@/components/form-field";
 import { formatDate, getWorksCountLabel } from "@/lib/format";
 import { qk } from "@/lib/query-keys";
 import { requireUser } from "@/lib/require-user";
+import { isModerator } from "@/lib/roles";
 import { useInfiniteScroll } from "@/lib/use-infinite-scroll";
 import { useSession } from "@/features/auth/use-session";
 import {
+  HiddenNotice,
+  ModerationIconButton,
+} from "@/features/moderation/moderation-controls";
+import {
   deleteListRating,
   getList,
+  moderateList,
   rateList,
   removeWorkFromList,
   reorderListItems,
@@ -61,6 +67,7 @@ export default function ListDetailsPage() {
   });
   const list = listQuery.data?.pages[0];
   const isOwner = Boolean(user && list && user.id === list.owner.id);
+  const canModerate = isModerator(user);
   const ratingValue =
     ratingDraft === undefined ? (list?.userRating ?? 0) : (ratingDraft ?? 0);
   const hasRating =
@@ -180,6 +187,29 @@ export default function ListDetailsPage() {
     },
   });
 
+  const moderationMutation = useMutation({
+    mutationFn: () => {
+      if (!list) {
+        throw new Error("Список не найден");
+      }
+      return moderateList(params.id, list.isHidden ? "restore" : "hide");
+    },
+    onSuccess: async () => {
+      toast.success(list?.isHidden ? "Список раскрыт" : "Список скрыт");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: qk.lists.detail(params.id) }),
+        queryClient.invalidateQueries({ queryKey: qk.lists.all }),
+      ]);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Не удалось изменить видимость списка",
+      );
+    },
+  });
+
   function startEditingDetails() {
     if (!list) {
       return;
@@ -294,9 +324,19 @@ export default function ListDetailsPage() {
                             </span>
                           </Button>
                         ) : null}
+                        {canModerate ? (
+                          <ModerationIconButton
+                            isHidden={list.isHidden}
+                            isPending={moderationMutation.isPending}
+                            onToggle={() => moderationMutation.mutate()}
+                            className="size-8"
+                          />
+                        ) : null}
                       </div>
                     )}
                   </header>
+
+                  {list.isHidden ? <HiddenNotice className="mt-4" /> : null}
 
                   {isEditingDetails ? (
                     <div className="mt-4 max-w-3xl space-y-3">

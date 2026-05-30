@@ -14,6 +14,9 @@ import {
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { MODERATION_ROLES } from '../auth/roles';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { UpsertRatingDto } from '../ratings/ratings.dto';
 import {
@@ -21,6 +24,7 @@ import {
   CreateListDto,
   GetListQueryDto,
   GetListsQueryDto,
+  ModerateListDto,
   ReorderListItemsDto,
   UpdateListDto,
 } from './lists.dto';
@@ -31,8 +35,12 @@ export class ListsController {
   constructor(private readonly listsService: ListsService) {}
 
   @Get()
-  findPublic(@Query() query: GetListsQueryDto) {
-    return this.listsService.findPublic(query);
+  @UseGuards(OptionalJwtAuthGuard)
+  findPublic(
+    @CurrentUser() user: AuthenticatedUser | undefined,
+    @Query() query: GetListsQueryDto,
+  ) {
+    return this.listsService.findPublic(query, user);
   }
 
   @Get(':listId')
@@ -42,7 +50,7 @@ export class ListsController {
     @CurrentUser() user: AuthenticatedUser | undefined,
     @Query() query: GetListQueryDto,
   ) {
-    return this.listsService.findOne(listId, user?.id, query);
+    return this.listsService.findOne(listId, user, query);
   }
 
   @Post()
@@ -89,6 +97,17 @@ export class ListsController {
     @Body() dto: ReorderListItemsDto,
   ) {
     return this.listsService.reorderItems(listId, user.id, dto);
+  }
+
+  @Post(':listId/moderation')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...MODERATION_ROLES)
+  moderateList(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ModerateListDto,
+  ) {
+    return this.listsService.moderateList(listId, user, dto);
   }
 
   @Put(':listId/rating')

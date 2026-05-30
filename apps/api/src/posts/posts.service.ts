@@ -6,10 +6,13 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { mapPostWriteError } from '../common/prisma-errors';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { canModerate } from '../auth/roles';
 import {
   CreateCommentDto,
   CreateReviewDto,
   GetPostsPageQueryDto,
+  ModeratePostDto,
   UpdateCommentDto,
   UpdateReviewDto,
 } from './posts.dto';
@@ -81,9 +84,20 @@ type PublicComment = Prisma.PostGetPayload<{
 export class PostsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getWorkReviews(workId: string, query: GetPostsPageQueryDto) {
+  async getWorkReviews(
+    workId: string,
+    query: GetPostsPageQueryDto,
+    viewer?: AuthenticatedUser,
+  ) {
     const work = await this.getWorkRateable(workId);
     const { rateableId } = work;
+
+    // A review is visible when it is not hidden, or the viewer is a moderator,
+    // or the viewer is its own author. Bare ratings (a rating without a review)
+    // are only emitted when the matching review is *not* visible, so a hidden
+    // review shown to its author/a moderator is never duplicated as a rating.
+    const reviewVisible = this.postVisibleSql('p', viewer);
+    const commentVisible = this.postVisibleSql('c', viewer);
 
     const [rows, totalRows] = await this.prisma.$transaction([
       this.prisma.$queryRaw<ActivityRow[]>`
@@ -104,12 +118,12 @@ export class PostsService {
           (SELECT COUNT(*)::int
              FROM posts c
             WHERE c.parent_post_id = p.id
-              AND c.is_hidden = false)          AS "commentsCount"
+              AND ${commentVisible})              AS "commentsCount"
         FROM posts p
         JOIN users u ON u.id = p.author_user_id
         WHERE p.rateable_id    = ${rateableId}::uuid
           AND p.parent_post_id IS NULL
-          AND p.is_hidden      = false
+          AND ${reviewVisible}
 
         UNION ALL
 
@@ -134,7 +148,7 @@ export class PostsService {
              WHERE p.author_user_id = r.user_id
                AND p.rateable_id    = r.rateable_id
                AND p.parent_post_id IS NULL
-               AND p.is_hidden      = false
+               AND ${reviewVisible}
           )
 
         ORDER BY "createdAt" DESC, id
@@ -147,7 +161,7 @@ export class PostsService {
              FROM posts p
             WHERE p.rateable_id    = ${rateableId}::uuid
               AND p.parent_post_id IS NULL
-              AND p.is_hidden      = false)
+              AND ${reviewVisible})
           +
           (SELECT COUNT(*)
              FROM ratings r
@@ -158,7 +172,7 @@ export class PostsService {
                  WHERE p.author_user_id = r.user_id
                    AND p.rateable_id    = r.rateable_id
                    AND p.parent_post_id IS NULL
-                   AND p.is_hidden      = false
+                   AND ${reviewVisible}
               )) AS total
       `,
     ]);
@@ -242,13 +256,17 @@ export class PostsService {
     };
   }
 
-  async getReviewComments(postId: string, query: GetPostsPageQueryDto) {
-    await this.getPublicReview(postId);
+  async getReviewComments(
+    postId: string,
+    query: GetPostsPageQueryDto,
+    viewer?: AuthenticatedUser,
+  ) {
+    await this.getViewableReview(postId, viewer);
 
-    const where = {
+    const where: Prisma.PostWhereInput = {
       parentPostId: postId,
-      isHidden: false,
-    } satisfies Prisma.PostWhereInput;
+      ...this.postVisibleWhere(viewer),
+    };
 
     const [comments, total] = await this.prisma.$transaction([
       this.prisma.post.findMany({
@@ -404,6 +422,106 @@ export class PostsService {
     }
 
     return review;
+  }
+
+  /**
+   * Like getPublicReview, but a hidden review is still visible to a moderator
+   * or to its own author, so they can read (and moderate) the thread that
+   * ordinary users no longer see.
+   */
+  private async getViewableReview(postId: string, viewer?: AuthenticatedUser) {
+    const review = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        parentPostId: true,
+        isHidden: true,
+        authorUserId: true,
+      },
+    });
+
+    const hiddenFromViewer =
+      review?.isHidden &&
+      !canModerate(viewer) &&
+      review.authorUserId !== viewer?.id;
+
+    if (!review || review.parentPostId !== null || hiddenFromViewer) {
+      throw new NotFoundException('Отзыв не найден');
+    }
+
+    return review;
+  }
+
+  async moderatePost(
+    postId: string,
+    moderator: AuthenticatedUser,
+    dto: ModeratePostDto,
+    kind: 'review' | 'comment',
+  ) {
+    const post = await this.prisma.post.findUnique({
+      where: {
+        id: postId,
+      },
+      select: {
+        id: true,
+        parentPostId: true,
+      },
+    });
+
+    const isReview = kind === 'review';
+    const wrongShape = isReview
+      ? post?.parentPostId !== null
+      : post?.parentPostId === null;
+
+    if (!post || wrongShape) {
+      throw new NotFoundException(
+        isReview ? 'Отзыв не найден' : 'Комментарий не найден',
+      );
+    }
+
+    // moderate_post hides/restores the post and logs the action atomically.
+    await this.prisma.$executeRaw`
+      CALL moderate_post(
+        ${moderator.id}::uuid,
+        ${postId}::uuid,
+        ${dto.action}::moderation_action_kind,
+        ${dto.reason ?? null}
+      )
+    `;
+
+    return {
+      id: postId,
+      isHidden: dto.action === 'hide',
+    };
+  }
+
+  /**
+   * SQL predicate for a post being visible to the viewer: not hidden, or the
+   * viewer is a moderator, or the viewer authored it. `alias` is the post
+   * relation alias in the surrounding query.
+   */
+  private postVisibleSql(alias: string, viewer?: AuthenticatedUser) {
+    const ref = Prisma.raw(alias);
+    const viewerId = viewer?.id ?? null;
+
+    return Prisma.sql`(${ref}.is_hidden = false OR ${canModerate(viewer)} OR ${ref}.author_user_id = ${viewerId}::uuid)`;
+  }
+
+  /** Prisma `where` fragment mirroring postVisibleSql for findMany queries. */
+  private postVisibleWhere(viewer?: AuthenticatedUser): Prisma.PostWhereInput {
+    if (canModerate(viewer)) {
+      return {};
+    }
+
+    const or: Prisma.PostWhereInput[] = [{ isHidden: false }];
+
+    if (viewer?.id) {
+      or.push({ authorUserId: viewer.id });
+    }
+
+    return { OR: or };
   }
 
   private async toPublicReview(review: PublicReview) {

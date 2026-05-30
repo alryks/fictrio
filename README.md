@@ -58,6 +58,16 @@ content that already exists by external identifiers.
 By default, all regular seasons and their episodes are imported for every imported TV show.
 Set `IMPORT_TMDB_SEASONS_PER_SHOW` only when you need to limit seasons per show.
 
+Grant a moderator or administrator role to an existing account (registration only
+assigns `user`). The command is idempotent:
+
+```bash
+bun run db:grant-role <username> <user|moderator|admin>
+```
+
+Moderators and administrators can hide and restore reviews, comments and lists;
+hidden content stays visible only to moderators, administrators and its author/owner.
+
 ## Checks
 
 ```bash

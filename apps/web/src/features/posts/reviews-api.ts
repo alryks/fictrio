@@ -1,5 +1,7 @@
 import type {
   DeletedResponse,
+  ModerationInput,
+  ModerationResult,
   PublicUserRef,
   Review,
   ReviewComment,
@@ -9,6 +11,8 @@ import type {
 import { apiRequest } from "@/lib/api";
 
 export type ReviewAuthor = PublicUserRef;
+export type { ModerationResult };
+export type ModerationAction = ModerationInput["action"];
 export type { Review, ReviewComment };
 export type ReviewsResponse = ReviewsPage;
 export type ReviewCommentsResponse = ReviewCommentsPage;
@@ -62,5 +66,19 @@ export function updateComment(commentId: string, body: string) {
 export function deleteComment(commentId: string) {
   return apiRequest<DeletedResponse>(`/comments/${commentId}`, {
     method: "DELETE",
+  });
+}
+
+export function moderateReview(reviewId: string, action: ModerationAction) {
+  return apiRequest<ModerationResult>(`/reviews/${reviewId}/moderation`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
+  });
+}
+
+export function moderateComment(commentId: string, action: ModerationAction) {
+  return apiRequest<ModerationResult>(`/comments/${commentId}/moderation`, {
+    method: "POST",
+    body: JSON.stringify({ action }),
   });
 }

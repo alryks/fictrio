@@ -144,7 +144,7 @@ function PostActivityCard({
     id: activity.reviewId ?? activity.id,
     kind: activity.postKind,
     body: activity.body,
-    isHidden: false,
+    isHidden: activity.isHidden,
     createdAt: activity.createdAt,
     updatedAt: activity.createdAt,
     author: activity.actor,

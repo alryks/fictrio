@@ -130,6 +130,7 @@ export function AddToListPanel({ workId }: AddToListPanelProps) {
                     {myListsQuery.data?.items.map((list) => (
                       <SelectItem key={list.id} value={list.id}>
                         {list.title}
+                        {list.isHidden ? " (скрыт модератором)" : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>

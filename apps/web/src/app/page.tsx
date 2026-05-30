@@ -13,6 +13,7 @@ import { useSession } from "@/features/auth/use-session";
 
 export default function Home() {
   const { user, isLoading } = useSession();
+  const viewerScope = user ? `${user.id}:${user.roles.join(",")}` : "guest";
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -35,7 +36,7 @@ export default function Home() {
             </div>
           ) : user ? (
             <FeedView
-              queryKey={(filter) => qk.feed.following(filter)}
+              queryKey={(filter) => qk.feed.following(filter, viewerScope)}
               fetchPage={(filter, offset) => getFollowingFeed(filter, offset)}
               emptyTitle="В ленте пока пусто"
               emptyText="Подпишитесь на пользователей, чтобы видеть их активность."

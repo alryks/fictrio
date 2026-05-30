@@ -14,6 +14,7 @@
     "db:migrate": "bun run --cwd apps/api prisma migrate dev",
     "db:seed": "bun run --cwd apps/api prisma db seed",
     "db:import": "bun run --cwd apps/api import:content",
+    "db:grant-role": "bun run --cwd apps/api db:grant-role",
     "db:studio": "bun run --cwd apps/api prisma studio",
     "lint": "turbo lint",
     "format": "prettier --write .",
