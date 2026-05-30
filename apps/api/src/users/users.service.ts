@@ -14,6 +14,8 @@ import type {
 } from '@fictrio/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import { isUniqueConstraintError } from '../common/prisma-errors';
+import type { AuthenticatedUser } from '../auth/auth.types';
+import { isAdmin, MANAGEABLE_ROLES, ROLE_ADMIN } from '../auth/roles';
 import {
   GetFollowListQueryDto,
   GetUsersQueryDto,
@@ -60,7 +62,7 @@ export class UsersService {
 
   async findPublicProfile(
     username: string,
-    viewerId?: string,
+    viewer?: AuthenticatedUser,
   ): Promise<PublicUserProfile> {
     const user = await this.prisma.user.findUnique({
       where: {
@@ -69,20 +71,17 @@ export class UsersService {
       include: profileInclude,
     });
 
-    if (!user || !user.isActive) {
+    // A deactivated account is hidden from everyone except its owner and an
+    // administrator, both of whom need to reach it (to view / reactivate it).
+    const privileged = viewer?.id === user?.id || isAdmin(viewer);
+
+    if (!user || (!user.isActive && !privileged)) {
       throw new NotFoundException('Пользователь не найден');
     }
 
-    const followedSet = await this.viewerFollowedSet([user.id], viewerId);
+    const followedSet = await this.viewerFollowedSet([user.id], viewer?.id);
 
-    return {
-      id: user.id,
-      username: user.username,
-      displayName: user.displayName,
-      bio: user.bio,
-      roles: user.roles.map((userRole) => userRole.role.code),
-      ...this.followStats(user, followedSet, viewerId),
-    };
+    return this.toPublicProfile(user, followedSet, viewer?.id);
   }
 
   async searchUsers(
@@ -232,6 +231,138 @@ export class UsersService {
 
       throw error;
     }
+  }
+
+  async setUserActive(
+    username: string,
+    isActive: boolean,
+    admin: AuthenticatedUser,
+  ): Promise<PublicUserProfile> {
+    const target = await this.resolveUser(username);
+
+    // An administrator must not lock themselves out of the system.
+    if (target.id === admin.id && !isActive) {
+      throw new BadRequestException(
+        'Нельзя деактивировать собственную учетную запись',
+      );
+    }
+
+    await this.prisma.user.update({
+      where: { id: target.id },
+      data: { isActive },
+    });
+
+    return this.loadProfile(target.id, admin);
+  }
+
+  async assignRole(
+    username: string,
+    roleCode: string,
+    admin: AuthenticatedUser,
+  ): Promise<PublicUserProfile> {
+    const role = await this.resolveManageableRole(roleCode);
+    const target = await this.resolveUser(username);
+
+    // Idempotent: re-granting an existing role is a no-op.
+    await this.prisma.userRole.upsert({
+      where: {
+        userId_roleId: { userId: target.id, roleId: role.id },
+      },
+      create: { userId: target.id, roleId: role.id },
+      update: {},
+    });
+
+    return this.loadProfile(target.id, admin);
+  }
+
+  async removeRole(
+    username: string,
+    roleCode: string,
+    admin: AuthenticatedUser,
+  ): Promise<PublicUserProfile> {
+    const role = await this.resolveManageableRole(roleCode);
+    const target = await this.resolveUser(username);
+
+    // An administrator must not strip their own admin role and lose access.
+    if (target.id === admin.id && roleCode === ROLE_ADMIN) {
+      throw new BadRequestException(
+        'Нельзя снять роль администратора с самого себя',
+      );
+    }
+
+    await this.prisma.userRole.deleteMany({
+      where: { userId: target.id, roleId: role.id },
+    });
+
+    return this.loadProfile(target.id, admin);
+  }
+
+  private async resolveManageableRole(roleCode: string) {
+    if (!(MANAGEABLE_ROLES as readonly string[]).includes(roleCode)) {
+      throw new BadRequestException('Недопустимая роль');
+    }
+
+    return this.findRoleOrThrow(roleCode);
+  }
+
+  private async findRoleOrThrow(roleCode: string) {
+    const role = await this.prisma.role.findUnique({
+      where: { code: roleCode },
+      select: { id: true },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Роль не найдена');
+    }
+
+    return role;
+  }
+
+  private async loadProfile(
+    userId: string,
+    viewer: AuthenticatedUser,
+  ): Promise<PublicUserProfile> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      include: profileInclude,
+    });
+    const followedSet = await this.viewerFollowedSet([user.id], viewer.id);
+
+    return this.toPublicProfile(user, followedSet, viewer.id);
+  }
+
+  private toPublicProfile(
+    user: Prisma.UserGetPayload<{ include: typeof profileInclude }>,
+    followedSet: Set<string>,
+    viewerId?: string,
+  ): PublicUserProfile {
+    return {
+      id: user.id,
+      username: user.username,
+      displayName: user.displayName,
+      bio: user.bio,
+      isActive: user.isActive,
+      roles: user.roles.map((userRole) => userRole.role.code),
+      ...this.followStats(user, followedSet, viewerId),
+    };
+  }
+
+  /** Resolves a user by username regardless of active state (admin scope). */
+  private async resolveUser(username: string) {
+    const user = await this.prisma.user.findUnique({
+      where: {
+        username: this.normalizeUsername(username),
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('Пользователь не найден');
+    }
+
+    return user;
   }
 
   private async resolveActiveUser(username: string) {

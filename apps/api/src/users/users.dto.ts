@@ -1,9 +1,11 @@
 import {
   getFollowListQuerySchema,
   getUsersQuerySchema,
+  setUserActiveInputSchema,
   updateMyProfileInputSchema,
   type GetFollowListQuery,
   type GetUsersQuery,
+  type SetUserActiveInput,
   type UpdateMyProfileInput,
 } from '@fictrio/contracts';
 
@@ -29,4 +31,10 @@ export class GetFollowListQueryDto implements GetFollowListQuery {
   search?: string;
   limit!: number;
   offset!: number;
+}
+
+export class SetUserActiveDto implements SetUserActiveInput {
+  static readonly schema = setUserActiveInputSchema;
+
+  isActive!: boolean;
 }

@@ -6,16 +6,21 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { ADMIN_ROLES } from '../auth/roles';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import {
   GetFollowListQueryDto,
   GetUsersQueryDto,
+  SetUserActiveDto,
   UpdateMyProfileDto,
 } from './users.dto';
 import { UsersService } from './users.service';
@@ -48,7 +53,40 @@ export class UsersController {
     @Param('username') username: string,
     @CurrentUser() user: AuthenticatedUser | undefined,
   ) {
-    return this.usersService.findPublicProfile(username, user?.id);
+    return this.usersService.findPublicProfile(username, user);
+  }
+
+  @Patch(':username/active')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  setUserActive(
+    @Param('username') username: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SetUserActiveDto,
+  ) {
+    return this.usersService.setUserActive(username, dto.isActive, user);
+  }
+
+  @Put(':username/roles/:roleCode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  assignRole(
+    @Param('username') username: string,
+    @Param('roleCode') roleCode: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.assignRole(username, roleCode, user);
+  }
+
+  @Delete(':username/roles/:roleCode')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...ADMIN_ROLES)
+  removeRole(
+    @Param('username') username: string,
+    @Param('roleCode') roleCode: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.usersService.removeRole(username, roleCode, user);
   }
 
   @Get(':username/followers')
