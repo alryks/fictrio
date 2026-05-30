@@ -1,4 +1,4 @@
-# Production stack for fictrio.com. Build context is the repo root (..).
+# Production stack for fictrio.sklyar.app. Build context is the repo root (..).
 #
 #   docker compose --env-file .env.prod -f infra/docker-compose.prod.yml up -d --build
 #
@@ -115,7 +115,7 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-proxy}"
       # /api/* on the apex host, prefix stripped before reaching the API.
-      - "traefik.http.routers.fictrio-api.rule=Host(`${DOMAIN:-fictrio.com}`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.fictrio-api.rule=Host(`${DOMAIN:-fictrio.sklyar.app}`) && PathPrefix(`/api`)"
       - "traefik.http.routers.fictrio-api.entrypoints=websecure"
       - "traefik.http.routers.fictrio-api.tls=true"
       - "traefik.http.routers.fictrio-api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
@@ -129,7 +129,7 @@ services:
       context: ..
       dockerfile: apps/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://fictrio.com/api}
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://fictrio.sklyar.app/api}
     image: fictrio-web
     container_name: fictrio-web
     restart: unless-stopped
@@ -143,14 +143,14 @@ services:
       - "traefik.enable=true"
       - "traefik.docker.network=${TRAEFIK_NETWORK:-proxy}"
       # Apex host serves the web app (lower priority than the /api router).
-      - "traefik.http.routers.fictrio-web.rule=Host(`${DOMAIN:-fictrio.com}`)"
+      - "traefik.http.routers.fictrio-web.rule=Host(`${DOMAIN:-fictrio.sklyar.app}`)"
       - "traefik.http.routers.fictrio-web.entrypoints=websecure"
       - "traefik.http.routers.fictrio-web.tls=true"
       - "traefik.http.routers.fictrio-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"
       - "traefik.http.routers.fictrio-web.priority=10"
       - "traefik.http.services.fictrio-web.loadbalancer.server.port=3000"
       # Redirect www.${DOMAIN} to the canonical apex host so cookies stay on one origin.
-      - "traefik.http.routers.fictrio-www.rule=Host(`www.${DOMAIN:-fictrio.com}`)"
+      - "traefik.http.routers.fictrio-www.rule=Host(`www.${DOMAIN:-fictrio.sklyar.app}`)"
       - "traefik.http.routers.fictrio-www.entrypoints=websecure"
       - "traefik.http.routers.fictrio-www.tls=true"
       - "traefik.http.routers.fictrio-www.tls.certresolver=${TRAEFIK_CERTRESOLVER:-letsencrypt}"

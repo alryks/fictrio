@@ -89,21 +89,21 @@ bun run build
 Frontend runs on `http://localhost:3000`.
 API runs on `http://localhost:3001`.
 
-## Production deployment (VPS, fictrio.com)
+## Production deployment (VPS, fictrio.sklyar.app)
 
 The whole stack — PostgreSQL, Redis, the API and the web app — runs through
 `infra/docker-compose.prod.yml`. TLS and routing are delegated to an existing
 Traefik instance on the host; the `api` and `web` services advertise themselves
 to it through container labels. Routing is single-origin:
 
-- `https://fictrio.com` serves the web app;
-- `https://fictrio.com/api/*` is proxied to the API with the `/api` prefix
+- `https://fictrio.sklyar.app` serves the web app;
+- `https://fictrio.sklyar.app/api/*` is proxied to the API with the `/api` prefix
   stripped (so the browser, CSRF double-submit cookie and session all stay on
   one origin — no CORS, no cross-subdomain cookies).
 
 Prerequisites on the VPS: Docker with the Compose plugin, a running Traefik
 with an HTTPS entrypoint named `websecure` and an ACME certificate resolver,
-and DNS `A`/`AAAA` records for `fictrio.com` (and `www.fictrio.com`) pointing at
+and DNS `A`/`AAAA` records for `fictrio.sklyar.app` (and `www.fictrio.sklyar.app`) pointing at
 the host.
 
 1. Copy the repository to the VPS and create the environment file:
@@ -117,7 +117,7 @@ the host.
    `TRAEFIK_NETWORK` (the external Docker network your Traefik attaches to) and
    `TRAEFIK_CERTRESOLVER` (your ACME resolver name) to the existing Traefik
    setup. `NEXT_PUBLIC_API_URL` is baked into the web bundle at build time and
-   must be `https://fictrio.com/api`. Keep the Postgres password free of
+   must be `https://fictrio.sklyar.app/api`. Keep the Postgres password free of
    URL-reserved characters (`@ : / ? # &`).
 
 2. Build and start the stack:
