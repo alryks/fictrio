@@ -23,29 +23,37 @@ infra/  Local infrastructure
 
 ## Setup
 
+Copy the development environment file:
+
+```bash
+cp infra/.env.dev.example infra/.env.dev
+```
+
+### Option A — full stack in Docker
+
+Runs PostgreSQL, Redis, the API and the web app as built images:
+
+```bash
+docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml up -d --build
+```
+
+App: `http://localhost:3000`, API: `http://localhost:3001`. The API container
+applies database migrations on start. Re-run the command after changing code to
+rebuild.
+
+### Option B — host dev servers with hot reload
+
+Start only the backing services in Docker, then run the apps on the host:
+
 ```bash
 bun install
-```
-
-Copy environment variables:
-
-```bash
-cp .env.example .env
-```
-
-Start PostgreSQL and Redis:
-
-```bash
-docker compose --env-file .env -f infra/docker-compose.yml up -d
-```
-
-Run development servers:
-
-```bash
+docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml up -d postgres redis
 bun run dev
 ```
 
-Run database migrations and import catalog data:
+The host tools (`bun run dev`, `bun run db:*`, tests) read `infra/.env.dev`.
+
+Run database migrations and import catalog data (Option B, on the host):
 
 ```bash
 bun run db:migrate
@@ -53,8 +61,8 @@ bun run db:import
 ```
 
 `db:import` loads popular movies and TV shows from TMDb and books from Open Library.
-Set `TMDB_API_KEY` in `.env` before running it. The importer is idempotent and skips
-content that already exists by external identifiers.
+Set `TMDB_API_KEY` in `infra/.env.dev` before running it. The importer is idempotent
+and skips content that already exists by external identifiers.
 By default, all regular seasons and their episodes are imported for every imported TV show.
 Set `IMPORT_TMDB_SEASONS_PER_SHOW` only when you need to limit seasons per show.
 
