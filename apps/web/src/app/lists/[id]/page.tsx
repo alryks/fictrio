@@ -1,6 +1,6 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   useInfiniteQuery,
@@ -28,6 +28,7 @@ import {
   ModerationIconButton,
 } from "@/features/moderation/moderation-controls";
 import {
+  deleteList,
   deleteListRating,
   getList,
   moderateList,
@@ -44,6 +45,7 @@ const listItemsPageSize = 12;
 
 export default function ListDetailsPage() {
   const params = useParams<{ id: string }>();
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading } = useSession();
   const [ratingDraft, setRatingDraft] = useState<number | null | undefined>();
@@ -107,6 +109,23 @@ export default function ListDetailsPage() {
     onError: (error) => {
       toast.error(
         error instanceof Error ? error.message : "Не удалось обновить список",
+      );
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => {
+      requireUser(user, "удаления списка");
+      return deleteList(params.id);
+    },
+    onSuccess: async () => {
+      toast.success("Список удален");
+      await queryClient.invalidateQueries({ queryKey: qk.lists.all });
+      router.push("/lists");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Не удалось удалить список",
       );
     },
   });
@@ -355,23 +374,36 @@ export default function ListDetailsPage() {
                           />
                         )}
                       </FormField>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            disabled={updateMutation.isPending}
+                            form="list-details-form"
+                            type="submit"
+                          >
+                            <Save className="size-4" />
+                            Сохранить
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={updateMutation.isPending}
+                            onClick={cancelEditingDetails}
+                            type="button"
+                          >
+                            <X className="size-4" />
+                            Отмена
+                          </Button>
+                        </div>
                         <Button
-                          disabled={updateMutation.isPending}
-                          form="list-details-form"
-                          type="submit"
-                        >
-                          <Save className="size-4" />
-                          Сохранить
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={updateMutation.isPending}
-                          onClick={cancelEditingDetails}
+                          variant="destructive"
+                          disabled={
+                            updateMutation.isPending || deleteMutation.isPending
+                          }
+                          onClick={() => deleteMutation.mutate()}
                           type="button"
                         >
-                          <X className="size-4" />
-                          Отмена
+                          <Trash2 className="size-4" />
+                          Удалить список
                         </Button>
                       </div>
                     </div>
