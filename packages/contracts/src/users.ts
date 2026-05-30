@@ -46,6 +46,7 @@ export const publicUserProfileSchema = z.object({
   username: z.string(),
   displayName: z.string(),
   bio: z.string().nullable(),
+  isActive: z.boolean(),
   roles: z.array(z.string()),
   ...followStatsSchema.shape,
 });
@@ -94,3 +95,17 @@ export const updateMyProfileInputSchema = z
     { message: "Передайте имя пользователя, отображаемое имя или описание" },
   );
 export type UpdateMyProfileInput = z.infer<typeof updateMyProfileInputSchema>;
+
+/**
+ * Administrator-managed roles. The base `user` role is assigned at
+ * registration and is never granted or revoked through this API; mirrors the
+ * `MANAGEABLE_ROLES` set on the server.
+ */
+export const manageableRoleSchema = z.enum(["moderator", "admin"]);
+export type ManageableRole = z.infer<typeof manageableRoleSchema>;
+
+/** Administrator toggle of an account's active flag. */
+export const setUserActiveInputSchema = z.object({
+  isActive: z.boolean(),
+});
+export type SetUserActiveInput = z.infer<typeof setUserActiveInputSchema>;
