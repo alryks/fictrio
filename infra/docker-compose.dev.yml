@@ -1,4 +1,4 @@
-# docker compose --env-file .env.prod -f infra/docker-compose.prod.yml up -d --build
+# docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml up -d --build
 
 services:
   postgres:
@@ -9,10 +9,10 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
       POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - fictrio-postgres-data:/var/lib/postgresql
-    networks:
-      - internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
       interval: 5s
@@ -26,10 +26,10 @@ services:
     environment:
       REDIS_USERNAME: ${REDIS_USERNAME:?REDIS_USERNAME is required}
       REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - fictrio-redis-data:/data
-    networks:
-      - internal
     command:
       [
         "redis-server",
@@ -64,24 +64,24 @@ services:
     container_name: fictrio-api
     restart: unless-stopped
     environment:
-      NODE_ENV: production
+      NODE_ENV: development
       API_HOST: 0.0.0.0
       API_PORT: 3001
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
       JWT_ACCESS_TOKEN_EXPIRES_IN: ${JWT_ACCESS_TOKEN_EXPIRES_IN:-1h}
       # PrismaService.getDatabaseUrl
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
+      POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      REDIS_HOST: ${REDIS_HOST:-postgres}
+      REDIS_PORT: ${REDIS_PORT:-6379}
       REDIS_USERNAME: ${REDIS_USERNAME}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
-      
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}?schema=public
+
       TMDB_API_KEY: ${TMDB_API_KEY:-}
       TMDB_API_BASE_URL: ${TMDB_API_BASE_URL:-https://api.themoviedb.org/3}
       IMPORT_TMDB_MOVIE_PAGES: ${IMPORT_TMDB_MOVIE_PAGES:-2}
@@ -91,25 +91,13 @@ services:
       OPEN_LIBRARY_COVERS_BASE_URL: ${OPEN_LIBRARY_COVERS_BASE_URL:-https://covers.openlibrary.org}
       IMPORT_OPEN_LIBRARY_BOOK_LIMIT: ${IMPORT_OPEN_LIBRARY_BOOK_LIMIT:-50}
       IMPORT_OPEN_LIBRARY_SUBJECT: ${IMPORT_OPEN_LIBRARY_SUBJECT:-fiction}
+    ports:
+      - "${API_PORT:-3001}:3001"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    networks:
-      - internal
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:?TRAEFIK_NETWORK is required}"
-      - "traefik.http.routers.fictrio-api.rule=Host(`${DOMAIN:?DOMAIN is required}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.fictrio-api.entrypoints=websecure"
-      - "traefik.http.routers.fictrio-api.tls=true"
-      - "traefik.http.routers.fictrio-api.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
-      - "traefik.http.routers.fictrio-api.priority=20"
-      - "traefik.http.routers.fictrio-api.middlewares=fictrio-api-strip"
-      - "traefik.http.middlewares.fictrio-api-strip.stripprefix.prefixes=/api"
-      - "traefik.http.services.fictrio-api.loadbalancer.server.port=3001"
 
   web:
     build:
@@ -122,26 +110,11 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+    ports:
+      - "${WEB_PORT:-3000}:3000"
     depends_on:
       - api
-    networks:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.docker.network=${TRAEFIK_NETWORK:?TRAEFIK_NETWORK is required}"
-      - "traefik.http.routers.fictrio-web.rule=Host(`${DOMAIN:?DOMAIN is required}`)"
-      - "traefik.http.routers.fictrio-web.entrypoints=websecure"
-      - "traefik.http.routers.fictrio-web.tls=true"
-      - "traefik.http.routers.fictrio-web.tls.certresolver=${TRAEFIK_CERTRESOLVER:-le}"
-      - "traefik.http.routers.fictrio-web.priority=10"
-      - "traefik.http.services.fictrio-web.loadbalancer.server.port=3000"
 
 volumes:
   fictrio-postgres-data:
   fictrio-redis-data:
-
-networks:
-  internal:
-  traefik:
-    external: true
-    name: ${TRAEFIK_NETWORK:?TRAEFIK_NETWORK is required}

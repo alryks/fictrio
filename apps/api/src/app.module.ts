@@ -15,7 +15,7 @@ import { WorksModule } from './works/works.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      envFilePath: ['../../.env', '.env'],
+      envFilePath: ['../../infra/.env.dev', '.env'],
       isGlobal: true,
     }),
     PrismaModule,
