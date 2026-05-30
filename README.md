@@ -88,3 +88,64 @@ bun run build
 
 Frontend runs on `http://localhost:3000`.
 API runs on `http://localhost:3001`.
+
+## Production deployment (VPS, fictrio.com)
+
+The whole stack — PostgreSQL, Redis, the API and the web app — runs through
+`infra/docker-compose.prod.yml`. TLS and routing are delegated to an existing
+Traefik instance on the host; the `api` and `web` services advertise themselves
+to it through container labels. Routing is single-origin:
+
+- `https://fictrio.com` serves the web app;
+- `https://fictrio.com/api/*` is proxied to the API with the `/api` prefix
+  stripped (so the browser, CSRF double-submit cookie and session all stay on
+  one origin — no CORS, no cross-subdomain cookies).
+
+Prerequisites on the VPS: Docker with the Compose plugin, a running Traefik
+with an HTTPS entrypoint named `websecure` and an ACME certificate resolver,
+and DNS `A`/`AAAA` records for `fictrio.com` (and `www.fictrio.com`) pointing at
+the host.
+
+1. Copy the repository to the VPS and create the environment file:
+
+   ```bash
+   cp infra/.env.prod.example infra/.env.prod
+   # then edit infra/.env.prod
+   ```
+
+   Set strong `JWT_SECRET`, `POSTGRES_PASSWORD` and `REDIS_PASSWORD`, and match
+   `TRAEFIK_NETWORK` (the external Docker network your Traefik attaches to) and
+   `TRAEFIK_CERTRESOLVER` (your ACME resolver name) to the existing Traefik
+   setup. `NEXT_PUBLIC_API_URL` is baked into the web bundle at build time and
+   must be `https://fictrio.com/api`. Keep the Postgres password free of
+   URL-reserved characters (`@ : / ? # &`).
+
+2. Build and start the stack:
+
+   ```bash
+   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml up -d --build
+   ```
+
+   The API container applies database migrations (`prisma migrate deploy`,
+   which also provisions the `app_user`/`app_moderator`/`app_admin` roles and
+   the SQL routines) on every start before serving, so the schema is brought
+   up to date automatically.
+
+3. Populate the catalog once (optional, needs `TMDB_API_KEY` in
+   `infra/.env.prod` for films and shows; books come from Open Library):
+
+   ```bash
+   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec \
+     --workdir /app/apps/api api bun prisma/import-content.ts
+   ```
+
+4. Grant a moderator/administrator role to an account (after it has registered):
+
+   ```bash
+   docker compose --env-file infra/.env.prod -f infra/docker-compose.prod.yml exec \
+     --workdir /app/apps/api api bun prisma/grant-role.ts <username> <user|moderator|admin>
+   ```
+
+To update after pulling new code, re-run the `up -d --build` command; to stop
+the stack use `down` (add `-v` only if you intend to drop the database and
+Redis volumes).

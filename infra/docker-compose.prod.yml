@@ -88,9 +88,21 @@ services:
       REDIS_PORT: 6379
       REDIS_USERNAME: ${REDIS_USERNAME}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
-      # Used by `prisma migrate deploy` in the entrypoint. Keep the credentials
-      # free of URL-reserved characters so this matches PrismaService's URL.
+      # Used by `prisma migrate deploy` in the entrypoint and by the one-off
+      # catalog import (both build a PrismaClient from DATABASE_URL). Keep the
+      # credentials free of URL-reserved characters so this matches the URL the
+      # app composes from POSTGRES_*.
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      # Catalog import (used only by `import:content`, otherwise unused).
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TMDB_API_BASE_URL: ${TMDB_API_BASE_URL:-https://api.themoviedb.org/3}
+      IMPORT_TMDB_MOVIE_PAGES: ${IMPORT_TMDB_MOVIE_PAGES:-2}
+      IMPORT_TMDB_SHOW_PAGES: ${IMPORT_TMDB_SHOW_PAGES:-2}
+      IMPORT_TMDB_SEASONS_PER_SHOW: ${IMPORT_TMDB_SEASONS_PER_SHOW:-}
+      OPEN_LIBRARY_API_BASE_URL: ${OPEN_LIBRARY_API_BASE_URL:-https://openlibrary.org}
+      OPEN_LIBRARY_COVERS_BASE_URL: ${OPEN_LIBRARY_COVERS_BASE_URL:-https://covers.openlibrary.org}
+      IMPORT_OPEN_LIBRARY_BOOK_LIMIT: ${IMPORT_OPEN_LIBRARY_BOOK_LIMIT:-50}
+      IMPORT_OPEN_LIBRARY_SUBJECT: ${IMPORT_OPEN_LIBRARY_SUBJECT:-fiction}
     depends_on:
       postgres:
         condition: service_healthy
