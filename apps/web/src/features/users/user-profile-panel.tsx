@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Save, ShieldCheck, X } from "lucide-react";
+import { Ban, Pencil, Save, ShieldCheck, X } from "lucide-react";
 import { toast } from "sonner";
 import type { PublicUserProfile, SelfUser } from "@fictrio/contracts";
 import { FormField } from "@/components/form-field";
@@ -17,6 +17,7 @@ import { qk } from "@/lib/query-keys";
 import { useSessionActions } from "@/features/auth/use-session";
 import { FollowButton } from "./follow-button";
 import { FollowListDialog } from "./follow-list-dialog";
+import { UserAdminControls } from "./user-admin-controls";
 import { updateMyProfile } from "./users-api";
 
 type FieldErrors = Record<string, string>;
@@ -253,6 +254,17 @@ export function UserProfilePanel({ profile, viewer }: UserProfilePanelProps) {
           )}
         </CardContent>
       </Card>
+
+      {isOwnProfile && !profile.isActive ? (
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <Ban className="size-4 shrink-0" />
+          Ваша учетная запись деактивирована администратором. Вы можете
+          просматривать контент, но не можете оставлять оценки, отзывы,
+          комментарии и создавать списки.
+        </div>
+      ) : null}
+
+      <UserAdminControls profile={profile} viewer={viewer} />
     </div>
   );
 }

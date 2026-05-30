@@ -1,5 +1,6 @@
 import type {
   FollowResponse,
+  ManageableRole,
   PublicUserProfile,
   SelfUser,
   UpdateMyProfileInput,
@@ -8,7 +9,13 @@ import type {
 } from "@fictrio/contracts";
 import { apiRequest } from "@/lib/api";
 
-export type { PublicUserProfile, UpdateMyProfileInput, UserSummary, UsersPage };
+export type {
+  ManageableRole,
+  PublicUserProfile,
+  UpdateMyProfileInput,
+  UserSummary,
+  UsersPage,
+};
 
 export function getUserProfile(username: string) {
   return apiRequest<PublicUserProfile>(
@@ -69,6 +76,30 @@ export function followUser(username: string) {
 export function unfollowUser(username: string) {
   return apiRequest<FollowResponse>(
     `/users/${encodeURIComponent(username)}/follow`,
+    { method: "DELETE" },
+  );
+}
+
+export function setUserActive(username: string, isActive: boolean) {
+  return apiRequest<PublicUserProfile>(
+    `/users/${encodeURIComponent(username)}/active`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ isActive }),
+    },
+  );
+}
+
+export function assignUserRole(username: string, role: ManageableRole) {
+  return apiRequest<PublicUserProfile>(
+    `/users/${encodeURIComponent(username)}/roles/${role}`,
+    { method: "PUT" },
+  );
+}
+
+export function removeUserRole(username: string, role: ManageableRole) {
+  return apiRequest<PublicUserProfile>(
+    `/users/${encodeURIComponent(username)}/roles/${role}`,
     { method: "DELETE" },
   );
 }
