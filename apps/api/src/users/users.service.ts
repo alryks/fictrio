@@ -34,11 +34,15 @@ type UserWithRoles = Prisma.UserGetPayload<{
   include: typeof userWithRolesInclude;
 }>;
 
+// Deactivated accounts behave like guests, so they are excluded from the
+// follower/following counts (the follower/following lists already filter them
+// out via buildUserSearchWhere). A follow by — or of — a deactivated account
+// therefore does not inflate anyone's counts.
 const followCountsInclude = {
   _count: {
     select: {
-      followers: true,
-      following: true,
+      followers: { where: { follower: { isActive: true } } },
+      following: { where: { followed: { isActive: true } } },
     },
   },
 } satisfies Prisma.UserInclude;
