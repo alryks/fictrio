@@ -1,6 +1,7 @@
 export type AuthenticatedUser = {
   id: string;
   username: string;
+  isActive: boolean;
   roles: string[];
 };
 

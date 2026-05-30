@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   Res,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
@@ -22,7 +23,7 @@ import {
 } from './cookies';
 import { CurrentUser } from './current-user.decorator';
 import { LoginDto, RegisterDto } from './auth.dto';
-import { JwtAuthGuard } from './jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import type { AuthenticatedUser } from './auth.types';
 
 @Controller('auth')
@@ -56,8 +57,15 @@ export class AuthController {
   }
 
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  me(@CurrentUser() user: AuthenticatedUser) {
+  @UseGuards(OptionalJwtAuthGuard)
+  me(@CurrentUser() user: AuthenticatedUser | undefined) {
+    // Uses the optional guard (not JwtAuthGuard, which rejects deactivated
+    // accounts) so a deactivated user can still load their own session and
+    // see that they are deactivated.
+    if (!user) {
+      throw new UnauthorizedException('Требуется авторизация');
+    }
+
     return this.authService.getProfile(user);
   }
 

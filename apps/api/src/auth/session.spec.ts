@@ -73,12 +73,13 @@ describe('resolveSessionUser', () => {
     expect(user).toEqual({
       id: 'user-1',
       username: 'fan',
+      isActive: true,
       roles: ['user', 'moderator'],
     });
     expect(request.user).toEqual(user);
   });
 
-  it('returns null when the account is deactivated', async () => {
+  it('resolves a deactivated account, carrying isActive: false', async () => {
     const jwtService = createJwtService();
     const prisma = createPrisma({
       id: 'user-1',
@@ -98,7 +99,14 @@ describe('resolveSessionUser', () => {
       prisma,
     );
 
-    expect(user).toBeNull();
+    // The user is still resolved (so it can read its own profile); the
+    // deactivated flag rides along for the guards to act on.
+    expect(user).toEqual({
+      id: 'user-1',
+      username: 'fan',
+      isActive: false,
+      roles: ['user'],
+    });
   });
 
   it('returns null when the user no longer exists', async () => {
