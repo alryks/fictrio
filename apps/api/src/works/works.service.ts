@@ -3,7 +3,7 @@ import { Prisma, WorkKind } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ProgressService } from '../progress/progress.service';
 import { RatingStats } from '../common/rating-stats';
-import { GetWorksQueryDto } from './works.dto';
+import { GetWorksQueryDto, UpdateWorkDto } from './works.dto';
 import { WorksCacheService } from './works-cache.service';
 
 /** Shared include for a work detail and its nested seasons/episodes. */
@@ -212,6 +212,122 @@ export class WorksService {
 
     const ratings = await this.loadRatingStats(work);
     return this.toDetails(work, ratings);
+  }
+
+  async updateWork(workId: string, dto: UpdateWorkDto) {
+    const work = await this.prisma.work.findUnique({
+      where: {
+        id: workId,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    if (!work) {
+      throw new NotFoundException('Произведение не найдено');
+    }
+
+    await this.prisma.work.update({
+      where: {
+        id: workId,
+      },
+      data: {
+        ...(dto.title !== undefined ? { title: dto.title } : {}),
+        ...(dto.originalTitle !== undefined
+          ? { originalTitle: dto.originalTitle || null }
+          : {}),
+        ...(dto.description !== undefined
+          ? { description: dto.description || null }
+          : {}),
+      },
+    });
+
+    // The detail card (and the lists/catalog rows that embed it) are cached;
+    // bump the generation so the edit is visible immediately.
+    await this.cache.invalidate();
+
+    return this.findOne(workId);
+  }
+
+  async deleteWork(workId: string) {
+    const work = await this.prisma.work.findUnique({
+      where: {
+        id: workId,
+      },
+      select: {
+        id: true,
+        kind: true,
+        rateableId: true,
+      },
+    });
+
+    if (!work) {
+      throw new NotFoundException('Произведение не найдено');
+    }
+
+    const { workIds, rateableIds } = await this.collectWorkSubtree(work);
+
+    // Work.rateable is onDelete: Restrict, so delete the work rows first
+    // (cascading the kind tables, contents, list items, seasons and
+    // episodes), then their rateables (cascading ratings and posts).
+    await this.prisma.$transaction([
+      this.prisma.work.deleteMany({
+        where: {
+          id: { in: workIds },
+        },
+      }),
+      this.prisma.rateable.deleteMany({
+        where: {
+          id: { in: rateableIds },
+        },
+      }),
+    ]);
+
+    await this.cache.invalidate();
+
+    return { deleted: true as const };
+  }
+
+  /**
+   * Collects a work plus, for a show, every nested season and episode — each
+   * of which is its own work with its own rateable — so a delete removes the
+   * whole subtree instead of orphaning rateables behind the restricted FK.
+   */
+  private async collectWorkSubtree(work: {
+    id: string;
+    kind: WorkKind;
+    rateableId: string;
+  }) {
+    const workIds = [work.id];
+    const rateableIds = [work.rateableId];
+
+    if (work.kind === WorkKind.show) {
+      const seasons = await this.prisma.season.findMany({
+        where: {
+          showWorkId: work.id,
+        },
+        select: {
+          work: { select: { id: true, rateableId: true } },
+          episodes: {
+            select: {
+              work: { select: { id: true, rateableId: true } },
+            },
+          },
+        },
+      });
+
+      for (const season of seasons) {
+        workIds.push(season.work.id);
+        rateableIds.push(season.work.rateableId);
+        for (const episode of season.episodes) {
+          workIds.push(episode.work.id);
+          rateableIds.push(episode.work.rateableId);
+        }
+      }
+    }
+
+    return { workIds, rateableIds };
   }
 
   private buildListWhereSql(query: GetWorksQueryDto) {
