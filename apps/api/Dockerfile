@@ -34,13 +34,17 @@ FROM oven/bun:1.3.14-slim AS runtime
 WORKDIR /app
 ENV NODE_ENV=production
 
-# Workspace node_modules (with the generated Prisma client and the
-# @fictrio/contracts symlink), the compiled API and the migrations.
+# Bun uses an isolated layout: the package store is /app/node_modules/.bun and
+# each workspace's node_modules holds symlinks into it. Copy the store plus the
+# api and contracts workspace trees so module resolution and the pinned Prisma
+# CLI (apps/api/node_modules/prisma) work without re-installing.
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/packages/contracts/package.json ./packages/contracts/package.json
 COPY --from=build /app/packages/contracts/dist ./packages/contracts/dist
+COPY --from=build /app/packages/contracts/node_modules ./packages/contracts/node_modules
 COPY --from=build /app/apps/api/package.json ./apps/api/package.json
+COPY --from=build /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=build /app/apps/api/dist ./apps/api/dist
 COPY --from=build /app/apps/api/prisma ./apps/api/prisma
 COPY apps/api/docker-entrypoint.sh ./apps/api/docker-entrypoint.sh
