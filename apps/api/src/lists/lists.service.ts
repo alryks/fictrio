@@ -11,8 +11,9 @@ import {
   aggregateRateableRating,
   averageFromValues,
 } from '../common/rating-stats';
+import { listVisibleSql } from '../common/content-visibility';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { canModerate } from '../auth/roles';
+import { canModerate, isAdmin } from '../auth/roles';
 import {
   AddListItemDto,
   CreateListDto,
@@ -30,6 +31,7 @@ function getListInclude(itemsLimit?: number, itemsOffset = 0) {
         id: true,
         username: true,
         displayName: true,
+        isActive: true,
       },
     },
     rateable: {
@@ -287,6 +289,16 @@ export class ListsService {
     }
 
     if (list.visibility !== ListVisibility.public && !isPrivileged) {
+      throw new NotFoundException('Список не найден');
+    }
+
+    // A list owned by a deactivated account is hidden from everyone but the
+    // owner and administrators.
+    if (
+      !list.owner.isActive &&
+      !isOwner &&
+      !isAdmin({ roles: viewer?.roles ?? [] })
+    ) {
       throw new NotFoundException('Список не найден');
     }
 
@@ -681,7 +693,11 @@ export class ListsService {
       isHidden: list.isHidden,
       createdAt: list.createdAt,
       updatedAt: list.updatedAt,
-      owner: list.owner,
+      owner: {
+        id: list.owner.id,
+        username: list.owner.username,
+        displayName: list.owner.displayName,
+      },
       rating: averageFromValues(list.rateable.ratings),
       userRating:
         list.rateable.ratings.find((rating) => rating.userId === viewerUserId)
@@ -709,11 +725,9 @@ export class ListsService {
     query: GetListsQueryDto,
     viewer?: ListViewer,
   ) {
-    const viewerId = viewer?.id ?? null;
-    const and: Prisma.Sql[] = [
-      Prisma.sql`l.visibility = ${ListVisibility.public}::list_visibility`,
-      Prisma.sql`(l.is_hidden = false OR ${canModerate({ roles: viewer?.roles ?? [] })} OR l.owner_user_id = ${viewerId}::uuid)`,
-    ];
+    // Public, not hidden (unless privileged), and owned by an active account
+    // (unless the viewer owns it or is an admin).
+    const and: Prisma.Sql[] = [listVisibleSql('l', viewer)];
 
     if (query.search) {
       and.push(Prisma.sql`
