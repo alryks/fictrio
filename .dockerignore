@@ -1,0 +1,26 @@
+# Dependencies and build artifacts are installed/built inside the image.
+# Copying them from the host would bring in host-platform native modules
+# (argon2, prisma engines) and stale builds.
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+.turbo
+coverage
+*.tsbuildinfo
+
+# VCS and local env
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+
+# Editor / OS noise
+.idea
+.vscode
+**/.DS_Store
+
+# Docs and infra that the app images don't need
+infra
+*.md
