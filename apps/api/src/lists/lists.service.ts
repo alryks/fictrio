@@ -603,11 +603,10 @@ export class ListsService {
       select: {
         id: true,
         ownerUserId: true,
-        isHidden: true,
       },
     });
 
-    if (!list || list.isHidden) {
+    if (!list) {
       throw new NotFoundException('Список не найден');
     }
 

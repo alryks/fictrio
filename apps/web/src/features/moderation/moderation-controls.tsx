@@ -14,7 +14,7 @@ export function HiddenNotice({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "mt-3 flex items-center gap-1.5 rounded-md bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground",
+        "mt-3 flex items-center gap-1.5 rounded-md w-fit bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground",
         className,
       )}
     >

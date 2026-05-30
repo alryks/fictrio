@@ -123,12 +123,12 @@ export function PostContent({
       <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={author} meta={formatDate(createdAt)} />
         <div className="flex shrink-0 items-center gap-2">
+          {action}
           {rating === null ? null : (
             <div className="leading-none">
               <RatingMark value={rating} size="xl" />
             </div>
           )}
-          {action}
         </div>
       </header>
       {isHidden ? <HiddenNotice /> : null}
@@ -262,17 +262,17 @@ function CommentItem({
       <header className="flex min-h-10 items-start justify-between gap-3">
         <UserLink user={comment.author} meta={formatDate(comment.createdAt)} />
         <div className="flex shrink-0 items-center gap-2">
-          {comment.rating !== null ? (
-            <div className="leading-none">
-              <RatingMark value={comment.rating} size="xl" />
-            </div>
-          ) : null}
           {canModerate ? (
             <ModerationIconButton
               isHidden={comment.isHidden}
               isPending={moderationMutation.isPending}
               onToggle={() => moderationMutation.mutate()}
             />
+          ) : null}
+          {comment.rating !== null ? (
+            <div className="leading-none">
+              <RatingMark value={comment.rating} size="xl" />
+            </div>
           ) : null}
         </div>
       </header>
