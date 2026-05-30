@@ -1,6 +1,8 @@
 import {
   getWorksQuerySchema,
+  updateWorkInputSchema,
   type SortOrder,
+  type UpdateWorkInput,
   type WorkKind,
   type WorksSortBy,
 } from '@fictrio/contracts';
@@ -24,4 +26,12 @@ export class GetWorksQueryDto {
   sortOrder!: SortOrder;
   limit!: number;
   offset!: number;
+}
+
+export class UpdateWorkDto implements UpdateWorkInput {
+  static readonly schema = updateWorkInputSchema;
+
+  title?: string;
+  originalTitle?: string | null;
+  description?: string | null;
 }

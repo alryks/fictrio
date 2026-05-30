@@ -68,6 +68,16 @@ bun run db:grant-role <username> <user|moderator|admin>
 Moderators and administrators can hide and restore reviews, comments and lists;
 hidden content stays visible only to moderators, administrators and its author/owner.
 
+Administrators additionally manage the catalog and accounts from the UI: they can
+edit a work's title, original title and description or delete it (from the work
+card), activate/deactivate any account, and grant or revoke the moderator and
+administrator roles (from a user's profile). A deactivated account keeps read
+access to its own profile but, like a guest, cannot rate, review, comment or
+create lists; its profile, feed and historical content (reviews, comments,
+ratings and lists) are visible only to the owner and administrators. That
+content is filtered at read time — it is never altered or removed from the
+database.
+
 ## Checks
 
 ```bash

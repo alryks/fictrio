@@ -107,3 +107,45 @@ export const worksReviewsPaginationSchema = paginationSchema({
   limit: 10,
   maxLimit: 50,
 });
+
+const workTitleSchema = z
+  .string()
+  .trim()
+  .min(1, "Название произведения обязательно")
+  .max(255, "Название произведения должно содержать не более 255 символов");
+
+const workOriginalTitleSchema = z
+  .string()
+  .trim()
+  .max(255, "Оригинальное название должно содержать не более 255 символов")
+  .nullable()
+  .optional();
+
+const workDescriptionSchema = z
+  .string()
+  .trim()
+  .max(5000, "Описание должно содержать не более 5000 символов")
+  .nullable()
+  .optional();
+
+/**
+ * Administrator edit of a work card. Every field is optional, but at least
+ * one must be present; `originalTitle` and `description` accept `null` to
+ * clear them.
+ */
+export const updateWorkInputSchema = z
+  .object({
+    title: workTitleSchema.optional(),
+    originalTitle: workOriginalTitleSchema,
+    description: workDescriptionSchema,
+  })
+  .refine(
+    (value) =>
+      value.title !== undefined ||
+      value.originalTitle !== undefined ||
+      value.description !== undefined,
+    {
+      message: "Передайте название, оригинальное название или описание",
+    },
+  );
+export type UpdateWorkInput = z.infer<typeof updateWorkInputSchema>;

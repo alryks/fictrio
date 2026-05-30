@@ -1,6 +1,7 @@
 import {
   CanActivate,
   ExecutionContext,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -28,6 +29,12 @@ export class JwtAuthGuard implements CanActivate {
 
     if (!user) {
       throw new UnauthorizedException('Требуется авторизация');
+    }
+
+    // A deactivated account keeps a session (so it can read its own profile)
+    // but is barred from every protected, mutating endpoint.
+    if (!user.isActive) {
+      throw new ForbiddenException('Учетная запись деактивирована');
     }
 
     return true;

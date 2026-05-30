@@ -3,7 +3,12 @@ import { Prisma } from '@prisma/client';
 import type { FeedItem, FeedPage } from '@fictrio/contracts';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
-import { canModerate } from '../auth/roles';
+import { isAdmin } from '../auth/roles';
+import {
+  authorActiveSql,
+  listVisibleSql,
+  postVisibleSql,
+} from '../common/content-visibility';
 import { GetFeedQueryDto } from './feed.dto';
 
 /** How many works are previewed inside a list activity card. */
@@ -36,7 +41,11 @@ export class FeedService {
       select: { id: true, isActive: true },
     });
 
-    if (!user || !user.isActive) {
+    // A deactivated account's feed is reachable only by the account itself and
+    // by administrators; everyone else gets a 404, mirroring its profile.
+    const privileged = viewer?.id === user?.id || isAdmin(viewer);
+
+    if (!user || (!user.isActive && !privileged)) {
       throw new NotFoundException('Пользователь не найден');
     }
 
@@ -169,8 +178,12 @@ export class FeedService {
     actorIds: string[],
     viewer?: AuthenticatedUser,
   ): Prisma.Sql {
-    const reviewVisible = this.postVisibleSql('p', viewer);
-    const commentVisible = this.postVisibleSql('c', viewer);
+    const reviewVisible = postVisibleSql('p', viewer);
+    const commentVisible = postVisibleSql('c', viewer);
+    const ratingAuthorVisible = authorActiveSql(
+      Prisma.raw('r.user_id'),
+      viewer,
+    );
 
     return Prisma.sql`
       SELECT
@@ -208,6 +221,7 @@ export class FeedService {
         0              AS comments_count
       FROM ratings r
       WHERE r.user_id = ANY(${actorIds}::uuid[])
+        AND ${ratingAuthorVisible}
         AND NOT EXISTS (
           SELECT 1 FROM posts p
           WHERE p.author_user_id = r.user_id
@@ -226,7 +240,7 @@ export class FeedService {
       ? Prisma.sql`(SELECT x.value FROM ratings x
           WHERE x.rateable_id = l.rateable_id AND x.user_id = ${viewer.id}::uuid)`
       : Prisma.sql`NULL::int`;
-    const listVisible = this.listVisibleSql('l', viewer);
+    const listVisible = listVisibleSql('l', viewer);
 
     return Prisma.sql`
       SELECT
@@ -314,7 +328,7 @@ export class FeedService {
     actorIds: string[],
     viewer?: AuthenticatedUser,
   ): Prisma.Sql {
-    const listVisible = this.listVisibleSql('l', viewer);
+    const listVisible = listVisibleSql('l', viewer);
 
     return Prisma.sql`
       SELECT l.id AS activity_id
@@ -322,19 +336,5 @@ export class FeedService {
       WHERE l.owner_user_id = ANY(${actorIds}::uuid[])
         AND ${listVisible}
     `;
-  }
-
-  private postVisibleSql(alias: string, viewer?: AuthenticatedUser) {
-    const ref = Prisma.raw(alias);
-    const viewerId = viewer?.id ?? null;
-
-    return Prisma.sql`(${ref}.is_hidden = false OR ${canModerate(viewer)} OR ${ref}.author_user_id = ${viewerId}::uuid)`;
-  }
-
-  private listVisibleSql(alias: string, viewer?: AuthenticatedUser) {
-    const ref = Prisma.raw(alias);
-    const viewerId = viewer?.id ?? null;
-
-    return Prisma.sql`(${ref}.visibility = 'public'::list_visibility AND (${ref}.is_hidden = false OR ${canModerate(viewer)} OR ${ref}.owner_user_id = ${viewerId}::uuid))`;
   }
 }

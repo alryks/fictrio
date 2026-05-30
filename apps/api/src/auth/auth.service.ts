@@ -90,7 +90,9 @@ export class AuthService {
       include: this.userWithRolesInclude(),
     });
 
-    if (!user || !user.isActive) {
+    // A deactivated account may still sign in to reach its own profile; it is
+    // the guards that bar it from any participating action.
+    if (!user) {
       throw new UnauthorizedException('Неверное имя пользователя или пароль');
     }
 
@@ -112,7 +114,7 @@ export class AuthService {
       include: this.userWithRolesInclude(),
     });
 
-    if (!foundUser || !foundUser.isActive) {
+    if (!foundUser) {
       throw new UnauthorizedException('Требуется авторизация');
     }
 
