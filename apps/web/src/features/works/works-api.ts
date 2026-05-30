@@ -1,6 +1,8 @@
 import type {
   CatalogWorkKind,
+  DeletedResponse,
   SortOrder,
+  UpdateWorkInput,
   WorkDetails,
   WorkKind,
   WorkListItem,
@@ -12,6 +14,7 @@ import { apiRequest } from "@/lib/api";
 
 export type {
   CatalogWorkKind,
+  UpdateWorkInput,
   WorkDetails,
   WorkKind,
   WorkListItem,
@@ -75,4 +78,17 @@ export async function getWorks(params: GetWorksParams) {
 
 export async function getWork(id: string) {
   return apiRequest<WorkDetails>(`/works/${id}`);
+}
+
+export function updateWork(id: string, input: UpdateWorkInput) {
+  return apiRequest<WorkDetails>(`/works/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteWork(id: string) {
+  return apiRequest<DeletedResponse>(`/works/${id}`, {
+    method: "DELETE",
+  });
 }

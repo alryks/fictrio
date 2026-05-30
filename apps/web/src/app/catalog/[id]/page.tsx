@@ -12,6 +12,7 @@ import { AddToListPanel } from "@/features/lists/add-to-list-panel";
 import { WorkReviews } from "@/features/posts/work-reviews";
 import { WorkProgressPanel } from "@/features/progress/work-progress-panel";
 import { AverageRatingSummary } from "@/features/ratings/average-rating-summary";
+import { WorkAdminControls } from "@/features/works/work-admin-controls";
 import { WorkRail } from "@/features/works/work-rail";
 import { getWork, WorkKind } from "@/features/works/works-api";
 
@@ -140,6 +141,7 @@ export default function WorkDetailsPage() {
               ) : null}
             </article>
 
+            <WorkAdminControls work={workQuery.data} />
             <WorkProgressPanel work={workQuery.data} />
             <AddToListPanel workId={workQuery.data.id} />
             <WorkReviews work={workQuery.data} />
