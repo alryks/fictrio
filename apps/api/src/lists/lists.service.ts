@@ -561,6 +561,46 @@ export class ListsService {
     };
   }
 
+  async deleteList(listId: string, userId: string) {
+    const list = await this.prisma.list.findUnique({
+      where: {
+        id: listId,
+      },
+      select: {
+        ownerUserId: true,
+        rateableId: true,
+      },
+    });
+
+    if (!list) {
+      throw new NotFoundException('Список не найден');
+    }
+
+    if (list.ownerUserId !== userId) {
+      throw new ForbiddenException('Можно изменять только собственный список');
+    }
+
+    // List.rateable is onDelete: Restrict, so drop the list row first
+    // (cascading items and moderation actions), then its rateable
+    // (cascading ratings and posts) inside one transaction.
+    await this.prisma.$transaction([
+      this.prisma.list.delete({
+        where: {
+          id: listId,
+        },
+      }),
+      this.prisma.rateable.delete({
+        where: {
+          id: list.rateableId,
+        },
+      }),
+    ]);
+
+    return {
+      deleted: true,
+    };
+  }
+
   async moderateList(
     listId: string,
     moderator: AuthenticatedUser,

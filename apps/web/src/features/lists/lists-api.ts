@@ -91,6 +91,12 @@ export function updateList(listId: string, input: UpdateListInput) {
   });
 }
 
+export function deleteList(listId: string) {
+  return apiRequest<DeletedResponse>(`/lists/${listId}`, {
+    method: "DELETE",
+  });
+}
+
 export function removeWorkFromList(listId: string, workId: string) {
   return apiRequest<FictrioList>(`/lists/${listId}/items/${workId}`, {
     method: "DELETE",

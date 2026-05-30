@@ -69,6 +69,15 @@ export class ListsController {
     return this.listsService.updateList(listId, user.id, dto);
   }
 
+  @Delete(':listId')
+  @UseGuards(JwtAuthGuard)
+  deleteList(
+    @Param('listId', ParseUUIDPipe) listId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.listsService.deleteList(listId, user.id);
+  }
+
   @Post(':listId/items')
   @UseGuards(JwtAuthGuard)
   addItem(
