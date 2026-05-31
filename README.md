@@ -90,6 +90,33 @@ bun run build
 Frontend runs on `http://localhost:3000`.
 API runs on `http://localhost:3001`.
 
+## Content import
+
+Set `TMDB_API_KEY` to a TMDB v4 read access token and set
+`OPEN_LIBRARY_USER_AGENT` to an identifying value with contact information.
+The scripts throttle requests through `TMDB_REQUEST_DELAY_MS` and
+`OPEN_LIBRARY_REQUEST_DELAY_MS`.
+
+```bash
+bun run content:candidates:movies 10000 data/movie_candidates.csv
+bun run content:candidates:shows 10000 data/show_candidates.csv
+bun run content:candidates:books 10000 data/book_candidates.csv
+bun run content:fetch:movies 1000 data/movie_candidates.csv data/movies.csv
+bun run content:fetch:shows 1000 data/show_candidates.csv data/shows.csv data/seasons.csv data/episodes.csv
+bun run content:fetch:books 1000 data/book_candidates.csv data/books.csv
+bun run content:import:movies data/movies.csv
+bun run content:import:shows data/shows.csv data/seasons.csv data/episodes.csv
+bun run content:import:books data/books.csv
+bun run content:delete:movies
+bun run content:delete:shows
+bun run content:delete:books
+bun run content:delete:all
+```
+
+The detail CSV files keep source rating fields
+(`external_rating_average`, `external_rating_count`) for future use, but the
+current database import ignores them.
+
 ## Production deployment (VPS, fictrio.sklyar.app)
 
 The whole stack — PostgreSQL, Redis, the API and the web app — runs through
