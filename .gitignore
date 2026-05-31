@@ -30,6 +30,7 @@ infra/.env.dev
 .turbo
 .turbo/
 **/.turbo/
+.tmp/
 .eslintcache
 .cache
 *.tsbuildinfo
