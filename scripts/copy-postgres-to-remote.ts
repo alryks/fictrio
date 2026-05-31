@@ -1,6 +1,9 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { existsSync, readFileSync } from "node:fs";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 type CopyConfig = {
   sourceUrl: string;
@@ -326,6 +329,22 @@ async function copyDatabase(
   copyConfig: CopyConfig,
   dumpCommand: DumpCommand,
 ): Promise<void> {
+  const tempDir = await mkdtemp(join(tmpdir(), "fictrio-db-copy-"));
+  const dumpPath = join(tempDir, "dump.sql");
+
+  try {
+    await dumpDatabase(copyConfig, dumpCommand, dumpPath);
+    await restoreDatabase(copyConfig, dumpPath);
+  } finally {
+    await rm(tempDir, { force: true, recursive: true });
+  }
+}
+
+async function dumpDatabase(
+  copyConfig: CopyConfig,
+  dumpCommand: DumpCommand,
+  dumpPath: string,
+): Promise<void> {
   const dumpArgs = [
     copyConfig.sourceUrl,
     "--clean",
@@ -342,50 +361,40 @@ async function copyDatabase(
     dumpArgs.push("--data-only");
   }
 
+  dumpArgs.push("--file", dumpPath);
+
+  console.log(`Writing temporary dump: ${dumpPath}`);
+  const dump = await runCapture(dumpCommand.command, [
+    ...dumpCommand.argsPrefix,
+    ...dumpArgs,
+  ]);
+
+  if (dump.exitCode !== 0) {
+    throw new Error(
+      `pg_dump failed with code ${dump.exitCode}:\n${dump.output}`,
+    );
+  }
+}
+
+async function restoreDatabase(
+  copyConfig: CopyConfig,
+  dumpPath: string,
+): Promise<void> {
   const psqlArgs = [
     copyConfig.targetUrl,
     "--set",
     "ON_ERROR_STOP=1",
     "--no-password",
     "--quiet",
+    "--file",
+    dumpPath,
   ];
 
-  const dump = spawn(
-    dumpCommand.command,
-    [...dumpCommand.argsPrefix, ...dumpArgs],
-    {
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  const restore = spawn("psql", psqlArgs, {
-    stdio: ["pipe", "inherit", "pipe"],
-  });
-  let dumpError = "";
-  let restoreError = "";
+  const restore = await runCapture("psql", psqlArgs);
 
-  dump.stderr.setEncoding("utf8");
-  restore.stderr.setEncoding("utf8");
-  dump.stderr.on("data", (chunk: string) => {
-    dumpError += chunk;
-  });
-  restore.stderr.on("data", (chunk: string) => {
-    restoreError += chunk;
-  });
-
-  dump.stdout.pipe(restore.stdin);
-
-  const [[dumpCode], [restoreCode]] = (await Promise.all([
-    once(dump, "close") as Promise<[number]>,
-    once(restore, "close") as Promise<[number]>,
-  ])) as [[number], [number]];
-
-  if (dumpCode !== 0) {
-    throw new Error(`pg_dump failed with code ${dumpCode}:\n${dumpError}`);
-  }
-
-  if (restoreCode !== 0) {
+  if (restore.exitCode !== 0) {
     throw new Error(
-      `psql restore failed with code ${restoreCode}:\n${restoreError}`,
+      `psql restore failed with code ${restore.exitCode}:\n${restore.output}`,
     );
   }
 }
