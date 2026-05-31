@@ -13,6 +13,7 @@
     "db:generate": "bun run --cwd apps/api prisma generate",
     "db:migrate": "bun run --cwd apps/api prisma migrate dev",
     "db:grant-role": "bun run --cwd apps/api db:grant-role",
+    "db:seed:social": "bun apps/api/prisma/social-seed.ts",
     "db:studio": "bun run --cwd apps/api prisma studio",
     "content:candidates:movies": "bun apps/api/prisma/content-import/1-discover-movie-candidates.ts",
     "content:candidates:shows": "bun apps/api/prisma/content-import/2-discover-show-candidates.ts",
