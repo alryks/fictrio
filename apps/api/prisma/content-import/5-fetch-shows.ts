@@ -86,6 +86,8 @@ async function main(): Promise<void> {
       'description',
       'release_year',
       'image_url',
+      'external_rating_average',
+      'external_rating_count',
       'first_air_date',
       'last_air_date',
       'creator_names',

@@ -45,6 +45,8 @@ export interface TmdbTranslations {
 
 export interface TmdbMovieDetails {
   id: number;
+  vote_average?: number;
+  vote_count?: number;
   title?: string;
   original_title?: string;
   overview?: string;
@@ -66,6 +68,8 @@ export interface TmdbSeasonSummary {
 
 export interface TmdbShowDetails {
   id: number;
+  vote_average?: number;
+  vote_count?: number;
   name?: string;
   original_name?: string;
   overview?: string;

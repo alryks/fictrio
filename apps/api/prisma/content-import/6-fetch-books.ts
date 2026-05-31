@@ -23,7 +23,7 @@ async function main(): Promise<void> {
       {
         q: `key:${candidate.id}`,
         fields:
-          'key,title,author_name,first_publish_year,cover_i,number_of_pages_median',
+          'key,title,author_name,first_publish_year,ratings_average,ratings_count,cover_i,number_of_pages_median',
         limit: 1,
         lang: 'ru',
       },
@@ -43,6 +43,8 @@ async function main(): Promise<void> {
       description: openLibraryDescription(work.description),
       release_year: doc?.first_publish_year ?? null,
       image_url: openLibraryCoverUrl(doc?.cover_i ?? work.covers?.[0]),
+      external_rating_average: doc?.ratings_average ?? null,
+      external_rating_count: doc?.ratings_count ?? null,
       first_publish_year: doc?.first_publish_year ?? null,
       author_names: (doc?.author_name ?? []).join(', ') || null,
       pages: doc?.number_of_pages_median ?? null,
@@ -58,6 +60,8 @@ async function main(): Promise<void> {
       'description',
       'release_year',
       'image_url',
+      'external_rating_average',
+      'external_rating_count',
       'first_publish_year',
       'author_names',
       'pages',

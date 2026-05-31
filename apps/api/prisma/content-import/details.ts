@@ -89,6 +89,8 @@ export function movieRow(
     description: localized.description,
     release_year: toYear(details.release_date),
     image_url: imageUrl(details.poster_path),
+    external_rating_average: details.vote_average ?? null,
+    external_rating_count: details.vote_count ?? null,
     runtime_minutes: details.runtime ?? null,
     director_names: crewNames(details.credits, ['Director']),
     actor_names: castNames(details.credits),
@@ -111,6 +113,8 @@ export function showRow(
     description: details.overview ?? null,
     release_year: toYear(details.first_air_date),
     image_url: imageUrl(details.poster_path),
+    external_rating_average: details.vote_average ?? null,
+    external_rating_count: details.vote_count ?? null,
     first_air_date: toIsoDate(details.first_air_date),
     last_air_date: toIsoDate(details.last_air_date),
     creator_names: joinNames(

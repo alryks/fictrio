@@ -113,6 +113,10 @@ bun run content:delete:books
 bun run content:delete:all
 ```
 
+The detail CSV files keep source rating fields
+(`external_rating_average`, `external_rating_count`) for future use, but the
+current database import ignores them.
+
 ## Production deployment (VPS, fictrio.sklyar.app)
 
 The whole stack — PostgreSQL, Redis, the API and the web app — runs through
