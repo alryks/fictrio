@@ -98,12 +98,12 @@ The scripts throttle requests through `TMDB_REQUEST_DELAY_MS` and
 `OPEN_LIBRARY_REQUEST_DELAY_MS`.
 
 ```bash
-bun run content:candidates:movies 1000 data/movie_candidates.csv
-bun run content:candidates:shows 1000 data/show_candidates.csv
-bun run content:candidates:books 1000 data/book_candidates.csv
-bun run content:fetch:movies 500 data/movie_candidates.csv data/movies.csv
-bun run content:fetch:shows 100 data/show_candidates.csv data/shows.csv data/seasons.csv data/episodes.csv
-bun run content:fetch:books 500 data/book_candidates.csv data/books.csv
+bun run content:candidates:movies 10000 data/movie_candidates.csv
+bun run content:candidates:shows 10000 data/show_candidates.csv
+bun run content:candidates:books 10000 data/book_candidates.csv
+bun run content:fetch:movies 1000 data/movie_candidates.csv data/movies.csv
+bun run content:fetch:shows 1000 data/show_candidates.csv data/shows.csv data/seasons.csv data/episodes.csv
+bun run content:fetch:books 1000 data/book_candidates.csv data/books.csv
 bun run content:import:movies data/movies.csv
 bun run content:import:shows data/shows.csv data/seasons.csv data/episodes.csv
 bun run content:import:books data/books.csv
