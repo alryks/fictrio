@@ -23,6 +23,11 @@
     "content:import:movies": "bun apps/api/prisma/content-import/7-import-movies.ts",
     "content:import:shows": "bun apps/api/prisma/content-import/8-import-shows.ts",
     "content:import:books": "bun apps/api/prisma/content-import/9-import-books.ts",
+    "content:delete": "bun apps/api/prisma/content-import/delete-content.ts",
+    "content:delete:movies": "bun apps/api/prisma/content-import/delete-content.ts movies",
+    "content:delete:shows": "bun apps/api/prisma/content-import/delete-content.ts shows",
+    "content:delete:books": "bun apps/api/prisma/content-import/delete-content.ts books",
+    "content:delete:all": "bun apps/api/prisma/content-import/delete-content.ts all",
     "lint": "turbo lint",
     "format": "prettier --write .",
     "typecheck": "turbo typecheck"

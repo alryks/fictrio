@@ -107,6 +107,10 @@ bun run content:fetch:books 500 data/book_candidates.csv data/books.csv
 bun run content:import:movies data/movies.csv
 bun run content:import:shows data/shows.csv data/seasons.csv data/episodes.csv
 bun run content:import:books data/books.csv
+bun run content:delete:movies
+bun run content:delete:shows
+bun run content:delete:books
+bun run content:delete:all
 ```
 
 ## Production deployment (VPS, fictrio.sklyar.app)
