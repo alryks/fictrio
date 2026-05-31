@@ -80,6 +80,7 @@ type ProgressListRow = {
   showActorNames: string | null;
   firstPublishYear: number | null;
   authorNames: string | null;
+  pages: number | null;
   progressStatus: ProgressStatus;
   valueNow: number | null;
   valueMax: number | null;
@@ -527,6 +528,10 @@ export class ProgressService {
       return work.episode?.runtimeMinutes ?? 1;
     }
 
+    if (work.kind === WorkKind.book) {
+      return work.book?.pages ?? 1;
+    }
+
     return 1;
   }
 
@@ -552,6 +557,7 @@ export class ProgressService {
           NULL::text AS "showActorNames",
           b.first_publish_year AS "firstPublishYear",
           b.author_names AS "authorNames",
+          b.pages,
           p.status AS "progressStatus",
           p.value_now AS "valueNow",
           p.value_max AS "valueMax",
@@ -589,6 +595,7 @@ export class ProgressService {
           s.actor_names AS "showActorNames",
           NULL::smallint AS "firstPublishYear",
           NULL::text AS "authorNames",
+          NULL::smallint AS "pages",
           CASE
             WHEN sp.completed_items = sp.total_items THEN 'completed'::progress_status
             WHEN sp.progress_items > 0 THEN 'started'::progress_status
@@ -691,6 +698,7 @@ export class ProgressService {
     return {
       firstPublishYear: row.firstPublishYear,
       authorNames: row.authorNames,
+      pages: row.pages,
     };
   }
 }

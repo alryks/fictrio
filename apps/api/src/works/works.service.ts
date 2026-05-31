@@ -91,6 +91,7 @@ type WorkMetaSource = {
   book?: {
     firstPublishYear: number | null;
     authorNames: string | null;
+    pages: number | null;
   } | null;
 };
 
@@ -106,6 +107,7 @@ type WorkListRow = WorkScalars & {
   showActorNames: string | null;
   firstPublishYear: number | null;
   authorNames: string | null;
+  pages: number | null;
 };
 
 type CountRow = {
@@ -149,7 +151,8 @@ export class WorksService {
           s.creator_names AS "creatorNames",
           s.actor_names AS "showActorNames",
           b.first_publish_year AS "firstPublishYear",
-          b.author_names AS "authorNames"
+          b.author_names AS "authorNames",
+          b.pages
         FROM works w
         JOIN rateables rt ON rt.id = w.rateable_id
         LEFT JOIN ratings r ON r.rateable_id = rt.id
@@ -457,6 +460,7 @@ export class WorksService {
         book: {
           firstPublishYear: work.firstPublishYear,
           authorNames: work.authorNames,
+          pages: work.pages,
         },
       }),
     );
@@ -627,6 +631,7 @@ export class WorksService {
     return {
       firstPublishYear: source.book?.firstPublishYear ?? null,
       authorNames: source.book?.authorNames ?? null,
+      pages: source.book?.pages ?? null,
     };
   }
 }

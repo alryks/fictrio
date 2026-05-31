@@ -291,11 +291,12 @@ function getProgressText(
 }
 
 function getDefaultMax(work: WorkDetails) {
-  if (work.kind !== "movie" && work.kind !== "episode") {
-    return 1;
-  }
-
-  const value = work.meta.runtimeMinutes;
+  const value =
+    work.kind === "book"
+      ? work.meta.pages
+      : work.kind === "movie" || work.kind === "episode"
+        ? work.meta.runtimeMinutes
+        : null;
   if (typeof value === "number" && value > 0) {
     return value;
   }

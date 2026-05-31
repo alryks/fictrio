@@ -214,6 +214,7 @@ model Book {
   openlibraryWorkKey String  @unique @map("openlibrary_work_key") @db.VarChar(32)
   firstPublishYear   Int?    @map("first_publish_year") @db.SmallInt
   authorNames        String? @map("author_names") @db.Text
+  pages              Int?    @db.SmallInt
 
   work Work @relation(fields: [workId], references: [id], onDelete: Cascade)
 

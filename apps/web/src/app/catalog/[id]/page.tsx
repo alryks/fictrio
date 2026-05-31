@@ -393,6 +393,7 @@ function getMetaLabel(key: string) {
     airDate: "Дата выхода",
     firstPublishYear: "Первый год публикации",
     authorNames: "Авторы",
+    pages: "Страниц",
   };
 
   return labels[key] ?? key;
@@ -401,6 +402,10 @@ function getMetaLabel(key: string) {
 function formatMetaValue(key: string, value: string | number) {
   if (key === "runtimeMinutes") {
     return `${value} мин.`;
+  }
+
+  if (key === "pages") {
+    return `${value} стр.`;
   }
 
   if (key === "firstAirDate" || key === "lastAirDate" || key === "airDate") {
