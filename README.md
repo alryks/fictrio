@@ -90,6 +90,25 @@ bun run build
 Frontend runs on `http://localhost:3000`.
 API runs on `http://localhost:3001`.
 
+## Content import
+
+Set `TMDB_API_KEY` to a TMDB v4 read access token and set
+`OPEN_LIBRARY_USER_AGENT` to an identifying value with contact information.
+The scripts throttle requests through `TMDB_REQUEST_DELAY_MS` and
+`OPEN_LIBRARY_REQUEST_DELAY_MS`.
+
+```bash
+bun run content:candidates:movies 1000 data/movie_candidates.csv
+bun run content:candidates:shows 1000 data/show_candidates.csv
+bun run content:candidates:books 1000 data/book_candidates.csv
+bun run content:fetch:movies 500 data/movie_candidates.csv data/movies.csv
+bun run content:fetch:shows 100 data/show_candidates.csv data/shows.csv data/seasons.csv data/episodes.csv
+bun run content:fetch:books 500 data/book_candidates.csv data/books.csv
+bun run content:import:movies data/movies.csv
+bun run content:import:shows data/shows.csv data/seasons.csv data/episodes.csv
+bun run content:import:books data/books.csv
+```
+
 ## Production deployment (VPS, fictrio.sklyar.app)
 
 The whole stack — PostgreSQL, Redis, the API and the web app — runs through
