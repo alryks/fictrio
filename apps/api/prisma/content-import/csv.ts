@@ -15,14 +15,15 @@ function escapeCsvValue(value: CsvValue): string {
   return text;
 }
 
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
+function parseCsv(content: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
   let current = '';
   let inQuotes = false;
 
-  for (let index = 0; index < line.length; index += 1) {
-    const char = line[index];
-    const next = line[index + 1];
+  for (let index = 0; index < content.length; index += 1) {
+    const char = content[index];
+    const next = content[index + 1];
 
     if (char === '"' && inQuotes && next === '"') {
       current += '"';
@@ -36,7 +37,23 @@ function parseCsvLine(line: string): string[] {
     }
 
     if (char === ',' && !inQuotes) {
-      values.push(current);
+      row.push(current);
+      current = '';
+      continue;
+    }
+
+    if ((char === '\n' || char === '\r') && !inQuotes) {
+      if (char === '\r' && next === '\n') {
+        index += 1;
+      }
+
+      row.push(current);
+
+      if (row.some((value) => value.length > 0)) {
+        rows.push(row);
+      }
+
+      row = [];
       current = '';
       continue;
     }
@@ -44,9 +61,15 @@ function parseCsvLine(line: string): string[] {
     current += char;
   }
 
-  values.push(current);
+  if (current.length > 0 || row.length > 0) {
+    row.push(current);
 
-  return values;
+    if (row.some((value) => value.length > 0)) {
+      rows.push(row);
+    }
+  }
+
+  return rows;
 }
 
 export async function writeCsv(
@@ -66,17 +89,13 @@ export async function writeCsv(
 
 export async function readCsv(path: string): Promise<Record<string, string>[]> {
   const content = await readFile(path, 'utf8');
-  const lines = content.split(/\r?\n/).filter((line) => line.length > 0);
-  const [headerLine, ...dataLines] = lines;
+  const [headers, ...dataRows] = parseCsv(content);
 
-  if (!headerLine) {
+  if (!headers) {
     return [];
   }
 
-  const headers = parseCsvLine(headerLine);
-
-  return dataLines.map((line) => {
-    const values = parseCsvLine(line);
+  return dataRows.map((values) => {
     const row: Record<string, string> = {};
 
     headers.forEach((header, index) => {
