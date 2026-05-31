@@ -1,6 +1,11 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { createWriteStream, existsSync, readFileSync } from "node:fs";
+import {
+  createReadStream,
+  createWriteStream,
+  existsSync,
+  readFileSync,
+} from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -459,18 +464,33 @@ async function restoreDatabase(
     "ON_ERROR_STOP=1",
     "--no-password",
     "--quiet",
-    "--file",
-    dumpPath,
   ];
 
-  const restore = await runCapture(restoreCommand.command, [
+  const restore = spawn(restoreCommand.command, [
     ...restoreCommand.argsPrefix,
     ...psqlArgs,
   ]);
+  const dumpFile = createReadStream(dumpPath, { encoding: "utf8" });
+  let restoreOutput = "";
 
-  if (restore.exitCode !== 0) {
+  restore.stdout.setEncoding("utf8");
+  restore.stderr.setEncoding("utf8");
+  restore.stdout.on("data", (chunk: string) => {
+    restoreOutput += chunk;
+  });
+  restore.stderr.on("data", (chunk: string) => {
+    restoreOutput += chunk;
+  });
+  dumpFile.pipe(restore.stdin);
+
+  const [[restoreCode]] = (await Promise.all([
+    once(restore, "close") as Promise<[number]>,
+    once(dumpFile, "close"),
+  ])) as [[number], unknown];
+
+  if (restoreCode !== 0) {
     throw new Error(
-      `psql restore failed with code ${restore.exitCode}:\n${restore.output}`,
+      `psql restore failed with code ${restoreCode}:\n${restoreOutput}`,
     );
   }
 }
