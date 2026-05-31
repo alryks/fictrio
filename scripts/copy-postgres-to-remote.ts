@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
 import { once } from "node:events";
-import { existsSync, readFileSync } from "node:fs";
+import { createWriteStream, existsSync, readFileSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -361,18 +361,27 @@ async function dumpDatabase(
     dumpArgs.push("--data-only");
   }
 
-  dumpArgs.push("--file", dumpPath);
-
   console.log(`Writing temporary dump: ${dumpPath}`);
-  const dump = await runCapture(dumpCommand.command, [
+  const dump = spawn(dumpCommand.command, [
     ...dumpCommand.argsPrefix,
     ...dumpArgs,
   ]);
+  const dumpFile = createWriteStream(dumpPath, { encoding: "utf8" });
+  let dumpError = "";
 
-  if (dump.exitCode !== 0) {
-    throw new Error(
-      `pg_dump failed with code ${dump.exitCode}:\n${dump.output}`,
-    );
+  dump.stderr.setEncoding("utf8");
+  dump.stderr.on("data", (chunk: string) => {
+    dumpError += chunk;
+  });
+  dump.stdout.pipe(dumpFile);
+
+  const [[dumpCode]] = (await Promise.all([
+    once(dump, "close") as Promise<[number]>,
+    once(dumpFile, "finish"),
+  ])) as [[number], unknown];
+
+  if (dumpCode !== 0) {
+    throw new Error(`pg_dump failed with code ${dumpCode}:\n${dumpError}`);
   }
 }
 
