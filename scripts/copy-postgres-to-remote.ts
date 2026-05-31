@@ -19,7 +19,7 @@ type CommandResult = {
   output: string;
 };
 
-type DumpCommand = {
+type PostgresCommand = {
   label: string;
   command: string;
   argsPrefix: string[];
@@ -175,8 +175,7 @@ The target database is cleaned with pg_dump --clean output before restore.
 Do not point --target-url at a database that contains data you need to keep.
 
 If local pg_dump is older than the source PostgreSQL server, the script
-automatically falls back to:
-  docker compose --env-file infra/.env.dev -f infra/docker-compose.dev.yml exec -T postgres pg_dump`);
+automatically falls back to pg_dump/psql from the dev Docker postgres service.`);
 }
 
 function maskUrl(value: string): string {
@@ -267,22 +266,35 @@ async function getServerMajorVersion(url: string): Promise<number> {
 }
 
 async function getPgDumpMajorVersion(): Promise<number> {
-  const result = await runCapture("pg_dump", ["--version"]);
+  return getClientMajorVersion("pg_dump");
+}
+
+async function getPsqlMajorVersion(): Promise<number> {
+  return getClientMajorVersion("psql");
+}
+
+async function getClientMajorVersion(
+  command: "pg_dump" | "psql",
+): Promise<number> {
+  const result = await runCapture(command, ["--version"]);
 
   if (result.exitCode !== 0) {
-    throw new Error(`pg_dump is not available or failed: ${result.output}`);
+    throw new Error(`${command} is not available or failed: ${result.output}`);
   }
 
   const version = /(\d+)(?:\.\d+)?/.exec(result.output);
 
   if (!version?.[1]) {
-    throw new Error(`Cannot parse pg_dump version: ${result.output}`);
+    throw new Error(`Cannot parse ${command} version: ${result.output}`);
   }
 
   return Number(version[1]);
 }
 
-async function selectDumpCommand(sourceUrl: string): Promise<DumpCommand> {
+async function selectDumpCommand(sourceUrl: string): Promise<{
+  command: PostgresCommand;
+  dumpMajor: number;
+}> {
   const sourceMajor = await getServerMajorVersion(sourceUrl);
   const localDumpMajor = await getPgDumpMajorVersion();
 
@@ -291,9 +303,12 @@ async function selectDumpCommand(sourceUrl: string): Promise<DumpCommand> {
       `pg_dump source compatibility: local ${localDumpMajor} >= server ${sourceMajor}`,
     );
     return {
-      label: "local pg_dump",
-      command: "pg_dump",
-      argsPrefix: [],
+      command: {
+        label: "local pg_dump",
+        command: "pg_dump",
+        argsPrefix: [],
+      },
+      dumpMajor: localDumpMajor,
     };
   }
 
@@ -319,22 +334,70 @@ async function selectDumpCommand(sourceUrl: string): Promise<DumpCommand> {
   console.log(`docker postgres pg_dump: ${dockerDump.output.trim()}`);
 
   return {
-    label: "docker compose postgres pg_dump",
+    command: {
+      label: "docker compose postgres pg_dump",
+      command: "docker",
+      argsPrefix: [...DEV_COMPOSE_ARGS, "exec", "-T", "postgres", "pg_dump"],
+    },
+    dumpMajor: sourceMajor,
+  };
+}
+
+async function selectRestoreCommand(
+  dumpMajor: number,
+): Promise<PostgresCommand> {
+  const localPsqlMajor = await getPsqlMajorVersion();
+
+  if (localPsqlMajor >= dumpMajor) {
+    console.log(
+      `psql dump compatibility: local ${localPsqlMajor} >= dump ${dumpMajor}`,
+    );
+    return {
+      label: "local psql",
+      command: "psql",
+      argsPrefix: [],
+    };
+  }
+
+  console.log(
+    `psql dump compatibility: local ${localPsqlMajor} < dump ${dumpMajor}; trying dev Docker postgres service`,
+  );
+
+  const dockerPsql = await runCapture("docker", [
+    ...DEV_COMPOSE_ARGS,
+    "exec",
+    "-T",
+    "postgres",
+    "psql",
+    "--version",
+  ]);
+
+  if (dockerPsql.exitCode !== 0) {
+    throw new Error(
+      `Local psql is too old and Docker fallback failed:\n${dockerPsql.output}`,
+    );
+  }
+
+  console.log(`docker postgres psql: ${dockerPsql.output.trim()}`);
+
+  return {
+    label: "docker compose postgres psql",
     command: "docker",
-    argsPrefix: [...DEV_COMPOSE_ARGS, "exec", "-T", "postgres", "pg_dump"],
+    argsPrefix: [...DEV_COMPOSE_ARGS, "exec", "-T", "postgres", "psql"],
   };
 }
 
 async function copyDatabase(
   copyConfig: CopyConfig,
-  dumpCommand: DumpCommand,
+  dumpCommand: PostgresCommand,
+  restoreCommand: PostgresCommand,
 ): Promise<void> {
   const tempDir = await mkdtemp(join(tmpdir(), "fictrio-db-copy-"));
   const dumpPath = join(tempDir, "dump.sql");
 
   try {
     await dumpDatabase(copyConfig, dumpCommand, dumpPath);
-    await restoreDatabase(copyConfig, dumpPath);
+    await restoreDatabase(copyConfig, restoreCommand, dumpPath);
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
@@ -342,7 +405,7 @@ async function copyDatabase(
 
 async function dumpDatabase(
   copyConfig: CopyConfig,
-  dumpCommand: DumpCommand,
+  dumpCommand: PostgresCommand,
   dumpPath: string,
 ): Promise<void> {
   const dumpArgs = [
@@ -387,6 +450,7 @@ async function dumpDatabase(
 
 async function restoreDatabase(
   copyConfig: CopyConfig,
+  restoreCommand: PostgresCommand,
   dumpPath: string,
 ): Promise<void> {
   const psqlArgs = [
@@ -399,7 +463,10 @@ async function restoreDatabase(
     dumpPath,
   ];
 
-  const restore = await runCapture("psql", psqlArgs);
+  const restore = await runCapture(restoreCommand.command, [
+    ...restoreCommand.argsPrefix,
+    ...psqlArgs,
+  ]);
 
   if (restore.exitCode !== 0) {
     throw new Error(
@@ -418,7 +485,10 @@ async function main(): Promise<void> {
   await checkCommand("psql");
   await checkConnection("source", copyConfig.sourceUrl);
   await checkConnection("target", copyConfig.targetUrl);
-  const dumpCommand = await selectDumpCommand(copyConfig.sourceUrl);
+  const { command: dumpCommand, dumpMajor } = await selectDumpCommand(
+    copyConfig.sourceUrl,
+  );
+  const restoreCommand = await selectRestoreCommand(dumpMajor);
 
   if (copyConfig.dryRun) {
     console.log("Dry run complete. No data was copied.");
@@ -432,9 +502,9 @@ async function main(): Promise<void> {
   }
 
   console.log(
-    `Copying database with ${dumpCommand.label}. Target objects will be dropped/recreated by pg_dump --clean output...`,
+    `Copying database with ${dumpCommand.label} and ${restoreCommand.label}. Target objects will be dropped/recreated by pg_dump --clean output...`,
   );
-  await copyDatabase(copyConfig, dumpCommand);
+  await copyDatabase(copyConfig, dumpCommand, restoreCommand);
   console.log("Database copy complete.");
 }
 
