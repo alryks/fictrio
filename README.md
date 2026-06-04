@@ -59,6 +59,20 @@ Run database migrations (Option B, on the host):
 bun run db:migrate
 ```
 
+Copy the local development PostgreSQL database to a remote PostgreSQL database
+after opening the server port. Run a connection check first:
+
+```bash
+TARGET_DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DB' bun run db:copy:to-remote -- --dry-run
+```
+
+Then run the destructive copy. The target database is overwritten by
+`pg_dump --clean` output, so point it only at the intended server database:
+
+```bash
+TARGET_DATABASE_URL='postgresql://USER:PASSWORD@HOST:PORT/DB' bun run db:copy:to-remote -- --confirm
+```
+
 Grant a moderator or administrator role to an existing account (registration only
 assigns `user`). The command is idempotent:
 
