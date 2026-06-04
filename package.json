@@ -14,6 +14,7 @@
     "db:migrate": "bun run --cwd apps/api prisma migrate dev",
     "db:grant-role": "bun run --cwd apps/api db:grant-role",
     "db:copy:to-remote": "bun scripts/copy-postgres-to-remote.ts",
+    "research:indexes": "bun scripts/run-index-research.ts",
     "db:studio": "bun run --cwd apps/api prisma studio",
     "content:candidates:movies": "bun apps/api/prisma/content-import/1-discover-movie-candidates.ts",
     "content:candidates:shows": "bun apps/api/prisma/content-import/2-discover-show-candidates.ts",
@@ -36,6 +37,8 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "^25.9.0",
+    "chart.js": "^4.5.1",
+    "chartjs-node-canvas": "^5.0.0",
     "eslint": "^10.4.0",
     "prettier": "^3.8.3",
     "turbo": "^2.9.14",
